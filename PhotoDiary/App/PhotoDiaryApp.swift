@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import OSLog
 
 @main
 struct PhotoDiaryApp: App {
@@ -14,6 +15,8 @@ struct PhotoDiaryApp: App {
         AppLanguage.apply(AppLanguage.stored)
     }
 
+    static let isHostingUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -24,10 +27,13 @@ struct PhotoDiaryApp: App {
                 .environment(\.locale, AppLanguage.current.locale)
                 .id(language)
                 .task {
+                    // 作为单元测试宿主启动时不读照片库：测试用自己的假照片库，不能改到模拟器里的照片。
+                    guard !Self.isHostingUnitTests else { return }
                     DiaryFonts.shared.prepare()
                     await store.start()
                 }
                 .onChange(of: scenePhase) { _, phase in
+                    Log.app.debug("scenePhase → \(String(describing: phase), privacy: .public)")
                     if phase == .active { store.refreshAuthorization() }
                 }
         }

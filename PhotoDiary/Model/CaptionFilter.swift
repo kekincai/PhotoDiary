@@ -6,8 +6,12 @@ nonisolated enum CaptionFilter {
     static let defaultsKey = "hiddenCaptions"
 
     static var patterns: [String] {
-        get { UserDefaults.standard.stringArray(forKey: defaultsKey) ?? [] }
+        get { patterns(in: .standard) }
         set { UserDefaults.standard.set(newValue, forKey: defaultsKey) }
+    }
+
+    static func patterns(in defaults: UserDefaults) -> [String] {
+        defaults.stringArray(forKey: defaultsKey) ?? []
     }
 
     static func normalized(_ text: String) -> String {
@@ -15,8 +19,8 @@ nonisolated enum CaptionFilter {
     }
 
     /// 一次读出全部规则，批量判断时用。
-    static func matcher() -> (String?) -> Bool {
-        let set = Set(patterns.map(normalized).filter { !$0.isEmpty })
+    static func matcher(defaults: UserDefaults = .standard) -> (String?) -> Bool {
+        let set = Set(patterns(in: defaults).map(normalized).filter { !$0.isEmpty })
         return { caption in
             guard !set.isEmpty, let caption else { return false }
             return set.contains(normalized(caption))

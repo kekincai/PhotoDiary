@@ -3,6 +3,7 @@ import Observation
 import Photos
 import CoreLocation
 import UIKit
+import OSLog
 
 /// App 的单一数据源：本地索引 + 照片库同步。
 @Observable
@@ -12,7 +13,26 @@ final class DiaryStore {
         case scanning(processed: Int, total: Int)
     }
 
-    private(set) var authorization: PHAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+    /// 外部依赖。默认值就是真实实现；测试换成假照片库、临时目录和固定时间。
+    struct Dependencies {
+        var library: any PhotoLibraryClient = PhotoKitLibrary()
+        var index = IndexStore()
+        var placeNamer: any PlaceNaming = PlaceNamer()
+        /// 说明过滤规则存在这里。
+        var defaults: UserDefaults = .standard
+        var now: () -> Date = { .now }
+        /// 索引写盘前的防抖。
+        var saveDelay: Duration = .seconds(1)
+        /// 照片库变更通知的防抖。
+        var changeDelay: Duration = .milliseconds(350)
+        /// 两次反向地理编码之间的间隔（频率限制）。
+        var geocodeInterval: Duration = .milliseconds(600)
+    }
+
+    private let deps: Dependencies
+    private var library: any PhotoLibraryClient { deps.library }
+
+    private(set) var authorization: PHAuthorizationStatus
     private(set) var syncState: SyncState = .idle
     private(set) var hasLoaded = false
     /// 至少完成过一次同步。之前列表为空不代表真的没有日记。
@@ -48,7 +68,7 @@ final class DiaryStore {
     /// 被设置里的说明过滤规则隐藏的照片。
     private var hiddenIDs: Set<String> = []
     /// 派生数据是按哪一天算的；跨天回到前台时重算“那年今日”和本周。
-    private var derivedDay = DayStamp.today
+    private var derivedDay: DayStamp
 
     struct TagCount: Hashable {
         var name: String
@@ -80,11 +100,20 @@ final class DiaryStore {
     private var writtenInApp: Set<String> = []
     private var placeCache: [String: String] = [:]
     private var timeZoneCache: [String: String] = [:]
-    private var observer: LibraryObserver?
+    private var observer: AnyObject?
     private var syncTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
     private var pendingIncremental = false
-    private let placeNamer = PlaceNamer()
+    /// 反向地理编码失败过的照片，本次运行不再重试。
+    private var placeFailures = Set<String>()
+
+    init(_ dependencies: Dependencies = Dependencies()) {
+        deps = dependencies
+        authorization = dependencies.library.authorizationStatus()
+        derivedDay = DayStamp(dependencies.now())
+    }
+
+    private var today: DayStamp { DayStamp(deps.now()) }
 
     var isLimited: Bool { authorization == .limited }
 
@@ -98,9 +127,10 @@ final class DiaryStore {
     // MARK: 启动
 
     func start() async {
-        authorization = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        authorization = library.authorizationStatus()
+        Log.app.notice("启动，照片权限 \(self.authorization.rawValue, privacy: .public)")
         guard canRead else { return }
-        if !hasLoaded, let snapshot = await IndexStore.load() {
+        if !hasLoaded, let snapshot = await deps.index.load() {
             writtenInApp = snapshot.writtenInApp
             placeCache = snapshot.placeCache
             timeZoneCache = snapshot.timeZoneCache ?? [:]
@@ -113,23 +143,22 @@ final class DiaryStore {
     }
 
     func requestAccess() async {
-        authorization = await PHPhotoLibrary.requestAuthorization(for: .readWrite)
+        authorization = await library.requestAuthorization()
         await start()
     }
 
     func refreshAuthorization() {
-        if DayStamp.today != derivedDay { rebuildDerived() }
-        let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
+        if today != derivedDay { rebuildDerived() }
+        let status = library.authorizationStatus()
         guard status != authorization else { return }
+        Log.app.notice("照片权限变为 \(status.rawValue, privacy: .public)")
         authorization = status
         if canRead { Task { await start() } }
     }
 
     private func registerObserver() {
         guard observer == nil else { return }
-        let observer = LibraryObserver { [weak self] in self?.scheduleIncremental() }
-        PHPhotoLibrary.shared().register(observer)
-        self.observer = observer
+        observer = library.observeChanges { [weak self] in self?.scheduleIncremental() }
     }
 
     // MARK: 同步
@@ -139,10 +168,15 @@ final class DiaryStore {
         guard syncTask == nil else { pendingIncremental = true; return }
         syncTask = Task {
             if let token = changeToken {
+                let state = Log.signposter.beginInterval("sync.incremental")
                 do {
-                    let result = try await LibraryScanner.incremental(since: token)
+                    let result = try await library.incremental(since: token)
+                    Log.signposter.endInterval("sync.incremental", state)
+                    Log.sync.info("增量同步：更新 \(result.updated.count)，移除 \(result.removed.count)")
                     apply(result)
                 } catch {
+                    Log.signposter.endInterval("sync.incremental", state)
+                    Log.sync.notice("增量同步失败，改为全量读取：\(error, privacy: .public)")
                     await fullScan()
                 }
             } else {
@@ -158,6 +192,7 @@ final class DiaryStore {
     }
 
     func rebuildIndex() {
+        Log.sync.notice("手动重建索引")
         syncTask?.cancel()
         syncTask = nil
         changeToken = nil
@@ -169,17 +204,20 @@ final class DiaryStore {
     private func scheduleIncremental() {
         incrementalDebounce?.cancel()
         incrementalDebounce = Task {
-            try? await Task.sleep(for: .milliseconds(350))
+            try? await Task.sleep(for: deps.changeDelay)
             guard !Task.isCancelled else { return }
             sync()
         }
     }
 
     private func fullScan() async {
+        let state = Log.signposter.beginInterval("sync.fullScan")
+        defer { Log.signposter.endInterval("sync.fullScan", state) }
         var fresh: [String: DiaryEntry] = [:]
-        for await event in LibraryScanner.fullScan() {
+        for await event in library.fullScan() {
             switch event {
             case .started(let total):
+                Log.sync.info("全量读取开始：\(total) 张照片")
                 syncState = .scanning(processed: 0, total: total)
             case .batch(let processed, let found):
                 var decorated: [(String, DiaryEntry)] = []
@@ -197,8 +235,11 @@ final class DiaryStore {
                 }
             case .finished(let token):
                 if let token {
+                    Log.sync.info("全量读取完成：\(fresh.count) 篇日记")
                     entries = fresh
                     changeToken = token
+                } else {
+                    Log.sync.notice("全量读取被取消，已读到 \(fresh.count) 篇")
                 }
             }
         }
@@ -240,7 +281,14 @@ final class DiaryStore {
             (!$0.tags.isEmpty || $0.writtenInApp) && Set($0.keywords) != Set($0.tags)
         }.map(\.id)
         if !mismatched.isEmpty {
-            Task { try? await LibraryScanner.reconcileKeywords(ids: mismatched) }
+            Log.library.info("按标签改写关键词：\(mismatched.count) 张")
+            Task { [library] in
+                do {
+                    try await library.reconcileKeywords(ids: mismatched)
+                } catch {
+                    Log.library.error("改写关键词失败：\(error, privacy: .public)")
+                }
+            }
         }
         resolvePlaces()
     }
@@ -257,11 +305,18 @@ final class DiaryStore {
         let caption: String?
         switch mode {
         case .new, .append:
-            caption = CaptionFormat.appending(text, to: existing)
+            caption = CaptionFormat.appending(text, to: existing, on: today,
+                                              hidden: CaptionFilter.matcher(defaults: deps.defaults))
         case .edit:
-            caption = CaptionFormat.finalizingEdit(text)
+            caption = CaptionFormat.finalizingEdit(text, on: today)
         }
-        try await LibraryScanner.write(caption: caption, to: id)
+        do {
+            try await library.write([id: caption])
+        } catch {
+            Log.library.error("写入说明失败（\(String(describing: mode), privacy: .public)）：\(error, privacy: .public)")
+            throw error
+        }
+        Log.library.info("写入说明（\(String(describing: mode), privacy: .public)）\(id)")
         if caption != nil { writtenInApp.insert(id) } else { writtenInApp.remove(id) }
         refresh(ids: [id])
     }
@@ -274,19 +329,31 @@ final class DiaryStore {
             for old in olds { caption = CaptionFormat.renamingTag(old, to: new, in: caption) }
             if caption != entry.caption { captions[entry.id] = caption }
         }
-        try await LibraryScanner.write(captions)
+        do {
+            try await library.write(captions)
+        } catch {
+            Log.library.error("标签改名失败（\(captions.count) 张）：\(error, privacy: .public)")
+            throw error
+        }
+        Log.library.info("标签改名：\(olds.count) 个标签，\(captions.count) 张照片")
         refresh(ids: Array(captions.keys))
     }
 
     func delete(id: String) async throws {
-        try await LibraryScanner.delete(ids: [id])
+        do {
+            try await library.delete(ids: [id])
+        } catch {
+            Log.library.error("删除照片失败：\(error, privacy: .public)")
+            throw error
+        }
+        Log.library.info("删除照片 \(id)")
         entries.removeValue(forKey: id)
         scheduleSave()
     }
 
     private func refresh(ids: [String]) {
         var copy = entries
-        let fetched = LibraryScanner.fetchEntries(ids: ids)
+        let fetched = library.fetchEntries(ids: ids)
         for id in ids where !fetched.contains(where: { $0.id == id }) { copy.removeValue(forKey: id) }
         for var entry in fetched {
             decorate(&entry)
@@ -298,15 +365,18 @@ final class DiaryStore {
     }
 
     func currentCaption(for id: String) -> String? {
-        PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject?.extendedMetadata.caption
+        library.currentCaption(for: id)
     }
 
     // MARK: 派生数据
 
     private func rebuildDerived() {
-        let today = DayStamp.today
+        let signpost = Log.signposter.beginInterval("store.rebuildDerived")
+        defer { Log.signposter.endInterval("store.rebuildDerived", signpost) }
+        let now = deps.now()
+        let today = DayStamp(now)
         derivedDay = today
-        let hidden = CaptionFilter.matcher()
+        let hidden = CaptionFilter.matcher(defaults: deps.defaults)
         var hiddenIDs = Set<String>()
         var visible: [DiaryEntry] = []
         visible.reserveCapacity(entries.count)
@@ -351,15 +421,15 @@ final class DiaryStore {
             }
         }
 
-        let weekStart = cal.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        let weekStart = cal.dateInterval(of: .weekOfYear, for: now)?.start ?? now
         let week = (0..<7).map { offset in
-            let day = DayStamp(cal.date(byAdding: .day, value: offset, to: weekStart) ?? .now)
+            let day = DayStamp(cal.date(byAdding: .day, value: offset, to: weekStart) ?? now)
             return WeekDay(day: day, wrote: writing.contains(day))
         }
         let weekDays = Set(week.map(\.day))
         let writtenThisWeek = visible.reduce(0) { $0 + $1.writingDays.filter(weekDays.contains).count }
 
-        let thisMonth = cal.dateInterval(of: .month, for: .now)?.start ?? .now
+        let thisMonth = cal.dateInterval(of: .month, for: now)?.start ?? now
         var calendarMonths = months.map(\.start)
         if !calendarMonths.contains(thisMonth) { calendarMonths.append(thisMonth) }
         calendarMonths.sort(by: >)
@@ -442,7 +512,7 @@ final class DiaryStore {
             // 一次列出还缺地名的坐标；同一坐标只查一次。
             var pending: [String: CLLocationCoordinate2D] = [:]
             var order: [String] = []
-            for e in diaries where e.placeName == nil && !placeNamer.failed.contains(e.id) {
+            for e in diaries where e.placeName == nil && !placeFailures.contains(e.id) {
                 guard let key = placeKey(e), let coordinate = e.coordinate, pending[key] == nil else { continue }
                 pending[key] = coordinate
                 order.append(key)
@@ -450,17 +520,23 @@ final class DiaryStore {
             // 查到的地名攒一批再写回：每写一次 entries，所有界面都会重算。
             var resolved: [String: (name: String, timeZone: String?)] = [:]
             var lastFlush = ContinuousClock.now
+            var looked = 0, failures = 0
+            if !order.isEmpty { Log.places.info("待解析地名：\(order.count) 个坐标") }
             for key in order {
                 guard !Task.isCancelled else { break }
                 if let cached = placeCache[key] {
                     resolved[key] = (cached, timeZoneCache[key])
-                } else if let coordinate = pending[key], let place = await placeNamer.place(for: coordinate), let name = place.name {
+                } else if let coordinate = pending[key], let place = await deps.placeNamer.place(for: coordinate), let name = place.name {
+                    looked += 1
                     placeCache[key] = name
                     timeZoneCache[key] = place.timeZone
                     resolved[key] = (name, place.timeZone)
-                    try? await Task.sleep(for: .milliseconds(600)) // 遵守地理编码的频率限制
+                    try? await Task.sleep(for: deps.geocodeInterval) // 遵守地理编码的频率限制
                 } else {
-                    for e in diaries where placeKey(e) == key { placeNamer.failed.insert(e.id) }
+                    looked += 1
+                    failures += 1
+                    Log.places.debug("地名解析失败：\(key)")
+                    for e in diaries where placeKey(e) == key { placeFailures.insert(e.id) }
                 }
                 if !resolved.isEmpty, ContinuousClock.now - lastFlush > .seconds(3) {
                     applyPlaces(resolved)
@@ -469,6 +545,7 @@ final class DiaryStore {
                 }
             }
             applyPlaces(resolved)
+            if looked > 0 { Log.places.info("地名解析结束：查询 \(looked) 次，失败 \(failures) 次") }
             placeTask = nil
             scheduleSave()
         }
@@ -490,12 +567,12 @@ final class DiaryStore {
     private func scheduleSave() {
         saveTask?.cancel()
         saveTask = Task {
-            try? await Task.sleep(for: .seconds(1))
+            try? await Task.sleep(for: deps.saveDelay)
             guard !Task.isCancelled else { return }
             let snapshot = IndexSnapshot(entries: Array(entries.values), changeToken: changeToken,
                                          writtenInApp: writtenInApp, placeCache: placeCache,
                                          timeZoneCache: timeZoneCache)
-            await IndexStore.save(snapshot)
+            await deps.index.save(snapshot)
         }
     }
 
@@ -510,18 +587,5 @@ final class DiaryStore {
             out += "## \(title)\n\n\(e.caption)\n\n"
         }
         return out
-    }
-}
-
-/// PHPhotoLibraryChangeObserver：App 运行时收到变更就做一次增量同步。
-private final class LibraryObserver: NSObject, PHPhotoLibraryChangeObserver, Sendable {
-    let onChange: @MainActor @Sendable () -> Void
-
-    init(onChange: @escaping @MainActor @Sendable () -> Void) {
-        self.onChange = onChange
-    }
-
-    nonisolated func photoLibraryDidChange(_ changeInstance: PHChange) {
-        Task { @MainActor in onChange() }
     }
 }

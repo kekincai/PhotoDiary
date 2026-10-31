@@ -1311,6 +1311,22 @@
         }
       }
     },
+    "导出诊断日志": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Export Diagnostic Log"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "診断ログを書き出す"
+          }
+        }
+      }
+    },
     "已写日记的照片": {
       "localizations": {
         "en": {

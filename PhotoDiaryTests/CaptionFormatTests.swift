@@ -100,16 +100,16 @@ struct CaptionFormatTests {
     }
 
     @Test func hiddenCaptionsMatchExactlyAndGetOverwritten() {
-        let saved = CaptionFilter.patterns
-        defer { CaptionFilter.patterns = saved }
-        CaptionFilter.patterns = ["0", " IMG "]
-        #expect(CaptionFilter.hides("0"))
-        #expect(CaptionFilter.hides(" 0\n"))
-        #expect(CaptionFilter.hides("img"))
-        #expect(!CaptionFilter.hides("10"))
-        #expect(!CaptionFilter.hides("0 号线"))
+        let defaults = isolatedDefaults()
+        defaults.set(["0", " IMG "], forKey: CaptionFilter.defaultsKey)
+        let hides = CaptionFilter.matcher(defaults: defaults)
+        #expect(hides("0"))
+        #expect(hides(" 0\n"))
+        #expect(hides("img"))
+        #expect(!hides("10"))
+        #expect(!hides("0 号线"))
         let day = DayStamp(year: 2026, month: 10, day: 31)!
-        #expect(CaptionFormat.appending("夕阳", to: "0", on: day) == "夕阳\n— 2026.10.31")
+        #expect(CaptionFormat.appending("夕阳", to: "0", on: day, hidden: hides) == "夕阳\n— 2026.10.31")
     }
 
     @Test func indexRoundTripRebuildsDerivedFields() throws {

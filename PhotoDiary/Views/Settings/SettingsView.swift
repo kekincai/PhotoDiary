@@ -72,6 +72,10 @@ struct SettingsView: View {
                               preview: SharePreview(export.filename, image: Image(systemName: "doc.text"))) {
                         Label("导出全部日记（Markdown）", systemImage: "square.and.arrow.up")
                     }
+                    ShareLink(item: DiagnosticLog(),
+                              preview: SharePreview(DiagnosticLog.filename, image: Image(systemName: "ladybug"))) {
+                        Label("导出诊断日志", systemImage: "ladybug")
+                    }
                     Button {
                         confirmRebuild = true
                     } label: {
@@ -179,6 +183,19 @@ struct SettingsView: View {
     private func saveHiddenCaptions() {
         CaptionFilter.patterns = hiddenCaptions
         store.captionFilterChanged()
+    }
+}
+
+/// 本次运行以来的日志，分享时才读取。日志里从不记说明正文。
+struct DiagnosticLog: Transferable {
+    static let filename = "PhotoDiary-log.txt"
+
+    static var transferRepresentation: some TransferRepresentation {
+        FileRepresentation(exportedContentType: .plainText) { _ in
+            let url = URL.temporaryDirectory.appending(path: filename)
+            try await Log.export().write(to: url, atomically: true, encoding: .utf8)
+            return SentTransferredFile(url)
+        }
     }
 }
 

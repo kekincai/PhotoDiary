@@ -139,10 +139,12 @@ nonisolated enum CaptionFormat {
     }
 
     /// 新写或追加一段：正文后自动补写作时间行，追加时与旧内容空一行。
-    static func appending(_ newText: String, to existing: String?, on day: DayStamp = .today) -> String {
+    /// `hidden` 是设置里的说明过滤规则；被过滤的旧说明和相机说明一样直接覆盖。
+    static func appending(_ newText: String, to existing: String?, on day: DayStamp = .today,
+                          hidden: (String?) -> Bool = CaptionFilter.matcher()) -> String {
         let body = normalizeTags(newText.trimmingCharacters(in: .whitespacesAndNewlines))
         let segment = body + "\n" + dateLine(day)
-        let ignored = isCameraBoilerplate(existing) || CaptionFilter.hides(existing)
+        let ignored = isCameraBoilerplate(existing) || hidden(existing)
         let old = ignored ? "" : (existing ?? "").trimmingTrailingWhitespace()
         return old.isEmpty ? segment : old + "\n\n" + segment
     }
