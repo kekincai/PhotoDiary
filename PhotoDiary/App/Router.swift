@@ -6,9 +6,9 @@ enum AppTab: Hashable, CaseIterable {
 
     var title: String {
         switch self {
-        case .journal: "日记"
-        case .review: "回顾"
-        case .search: "搜索"
+        case .journal: String(localized: "日记")
+        case .review: String(localized: "回顾")
+        case .search: String(localized: "搜索")
         }
     }
 

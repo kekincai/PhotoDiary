@@ -142,7 +142,8 @@ nonisolated enum CaptionFormat {
     static func appending(_ newText: String, to existing: String?, on day: DayStamp = .today) -> String {
         let body = normalizeTags(newText.trimmingCharacters(in: .whitespacesAndNewlines))
         let segment = body + "\n" + dateLine(day)
-        let old = isCameraBoilerplate(existing) ? "" : (existing ?? "").trimmingTrailingWhitespace()
+        let ignored = isCameraBoilerplate(existing) || CaptionFilter.hides(existing)
+        let old = ignored ? "" : (existing ?? "").trimmingTrailingWhitespace()
         return old.isEmpty ? segment : old + "\n\n" + segment
     }
 

@@ -18,17 +18,23 @@ struct RootView: View {
 }
 
 /// 三个标签页常驻（保留各自的滚动位置），底部浮动玻璃标签栏 + 主题色“+”按钮。
+/// 日记在根页面时，标签栏上方多一条视图切换；搜索页用自己的底部搜索框代替标签栏。
 private struct MainTabs: View {
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @SceneStorage("journalMode") private var mode: JournalMode = .list
     @Namespace private var zoom
+
+    private var showsTabBar: Bool { router.isAtRoot && router.tab != .search }
+    /// 搜索页的搜索框自己画渐隐；放在这里会盖在搜索框上面，看起来发灰。
+    private var showsFade: Bool { showsTabBar && !(router.tab == .journal && mode == .map) }
 
     var body: some View {
         @Bindable var router = router
         ZStack {
             tab(.journal) {
-                NavigationStack(path: $router.journalPath) { JournalView().routes() }
+                NavigationStack(path: $router.journalPath) { JournalView(mode: $mode).routes() }
             }
             tab(.review) {
                 NavigationStack(path: $router.reviewPath) { ReviewView().routes() }
@@ -39,12 +45,27 @@ private struct MainTabs: View {
         }
         .environment(\.zoomNamespace, zoom)
         .overlay(alignment: .bottom) {
-            if router.isAtRoot {
-                FloatingTabBar()
-                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+            if showsFade {
+                BottomFade()
+                    .ignoresSafeArea(edges: .bottom)
+                    .transition(.opacity)
+            }
+        }
+        .overlay(alignment: .bottom) {
+            if showsTabBar {
+                VStack(spacing: 16) {
+                    if router.tab == .journal {
+                        GlassSegmented(options: JournalMode.allCases, selection: $mode, title: \.title)
+                            .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottom)))
+                    }
+                    FloatingTabBar()
+                }
+                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
         }
         .animation(.move, value: router.isAtRoot)
+        .animation(.move, value: router.tab == .search)
+        .animation(.snappy, value: router.tab == .journal)
         .sheet(isPresented: $router.showAddFromPhotos) {
             AddFromPhotosView()
         }

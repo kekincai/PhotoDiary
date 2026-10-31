@@ -36,7 +36,7 @@ struct PermissionView: View {
                     Task { await store.requestAccess(); requesting = false }
                 }
             } label: {
-                Text(denied ? "前往“设置”允许访问照片" : "允许访问照片")
+                (denied ? Text("前往“设置”允许访问照片") : Text("允许访问照片"))
                     .font(.headline)
                     .foregroundStyle(brand)
                     .frame(maxWidth: .infinity)
@@ -46,8 +46,8 @@ struct PermissionView: View {
             .buttonStyle(.press)
             .disabled(requesting)
 
-            Text(denied ? "需要“完整访问”才能读取和写入照片说明。也可以只选部分照片。"
-                        : "需要读写照片说明。选择“有限访问”也可以使用，但只会显示你选的照片。")
+            (denied ? Text("需要“完整访问”才能读取和写入照片说明。也可以只选部分照片。")
+                    : Text("需要读写照片说明。选择“有限访问”也可以使用，但只会显示你选的照片。"))
                 .font(.footnote)
                 .foregroundStyle(.white.opacity(0.75))
                 .frame(maxWidth: .infinity)
@@ -60,7 +60,7 @@ struct PermissionView: View {
         .background(brand)
     }
 
-    private func point(_ symbol: String, _ title: String, _ text: String) -> some View {
+    private func point(_ symbol: String, _ title: LocalizedStringKey, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: symbol)
                 .font(.system(size: 20))

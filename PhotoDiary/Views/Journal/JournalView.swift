@@ -7,10 +7,10 @@ enum JournalMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .list: "列表"
-        case .calendar: "日历"
-        case .media: "照片"
-        case .map: "地图"
+        case .list: String(localized: "列表")
+        case .calendar: String(localized: "日历")
+        case .media: String(localized: "照片")
+        case .map: String(localized: "地图")
         }
     }
 }
@@ -19,148 +19,114 @@ extension EnvironmentValues {
     @Entry var zoomNamespace: Namespace.ID? = nil
 }
 
-/// 日记：主题色头部 + 同一份日记的四种视图。
-///
-/// 结构始终不变：大标题随内容滚走，切换条吸顶，切换时只替换白色卡片里的内容，
-/// 背景和卡片本身不参与过渡，所以不会闪。
+/// 日记：同一份日记的四种视图。白底，大标题随内容滚走；颜色交给照片。
+/// 视图切换在底部的浮动玻璃分段控件里（RootView）。
 struct JournalView: View {
+    @Binding var mode: JournalMode
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
-    @Environment(\.brand) private var brand
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @SceneStorage("journalMode") private var mode: JournalMode = .list
-    @State private var position = ScrollPosition(edge: .top)
-    @State private var titleHeight: CGFloat = 96
-    @State private var barHeight: CGFloat = 60
     @State private var pastTitle = false
 
     var body: some View {
-        GeometryReader { viewport in
-            ScrollView {
-                LazyVStack(spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    titleBlock
-                        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { titleHeight = $0 }
-                    Section {
-                        // 地图铺到屏幕底边（越过底部安全区，从浮动标签栏下面透出来）。
-                        content(viewportHeight: viewport.size.height, bottomInset: viewport.safeAreaInsets.bottom)
-                    } header: {
-                        pinnedBar
-                            .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { barHeight = $0 }
-                    }
-                }
-            }
-            .scrollPosition($position)
-            .scrollDisabled(mode == .map)
-            .scrollIndicators(.hidden)
-            .onScrollGeometryChange(for: Bool.self) { geo in
-                geo.contentOffset.y + geo.contentInsets.top > titleHeight - 8
-            } action: { _, past in
-                pastTitle = past
-            }
-            .background {
-                // 顶部回弹露出主题色，底部露出卡片的白色。
-                VStack(spacing: 0) { brand; Color(.systemBackground) }.ignoresSafeArea()
+        Group {
+            switch mode {
+            case .list, .calendar: scroll
+            // 还没有日记时，照片视图和列表一样显示空状态。
+            case .media: if store.timeline.isEmpty { scroll } else { mediaScroll }
+            case .map: MapContent().ignoresSafeArea()
             }
         }
-        .onChange(of: mode) { _, new in
-            // 地图不滚动，回到顶部铺满；其他视图保持切换条吸顶的状态。
-            if new == .map {
-                position.scrollTo(edge: .top)
-            } else if pastTitle {
-                position.scrollTo(y: titleHeight)
-            }
-        }
-        .toolbarBackground(brand, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
+        .id(mode)
+        .transition(.opacity)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: mode)
+        .onChange(of: mode) { pastTitle = false }
+        .navigationTitle("日记")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbarColorScheme(mode == .media && !pastTitle ? .dark : nil, for: .navigationBar)
+        .toolbarBackgroundVisibility(mode == .map ? .hidden : .automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
                 Text("日记")
                     .font(.headline)
-                    .foregroundStyle(.white)
-                    .opacity(pastTitle ? 1 : 0)
+                    .opacity(pastTitle || mode == .map ? 1 : 0)
                     .animation(.easeOut(duration: 0.15), value: pastTitle)
-                    .accessibilityHidden(!pastTitle)
+                    .accessibilityHidden(!(pastTitle || mode == .map))
             }
             ToolbarItem(placement: .topBarTrailing) { moreMenu }
         }
     }
 
-    // MARK: 头部
+    // MARK: 列表、日历
 
-    private var titleBlock: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("日记")
-                .font(.system(size: 34, weight: .bold))
-                .tracking(-0.7)
-                .accessibilityAddTraits(.isHeader)
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundStyle(.white.opacity(0.8))
-                .contentTransition(.numericText())
-                .animation(.snappy, value: subtitle)
+    private var scroll: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
+                TitleBlock(subtitle: subtitle)
+                Section {
+                    if mode == .calendar { CalendarContent() } else { ListContent() }
+                } header: {
+                    if mode == .calendar { WeekdayHeader().padding(.top, 18) }
+                }
+            }
+            .padding(.bottom, 170)
         }
-        .foregroundStyle(.white)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
-        .padding(.top, 2)
-        .padding(.bottom, 16)
+        .scrollIndicators(.hidden)
+        .onScrollGeometryChange(for: Bool.self) { geo in
+            geo.contentOffset.y + geo.contentInsets.top > 46
+        } action: { _, past in
+            pastTitle = past
+        }
     }
+
+    // MARK: 照片网格：铺到屏幕顶部，标题压在照片上
+
+    private var mediaScroll: some View {
+        GeometryReader { viewport in
+            ScrollView {
+                MediaGridContent()
+                    .overlay(alignment: .top) {
+                        ZStack(alignment: .top) {
+                            LinearGradient(stops: [
+                                .init(color: .black.opacity(0.55), location: 0),
+                                .init(color: .black.opacity(0.28), location: 0.55),
+                                .init(color: .black.opacity(0), location: 1),
+                            ], startPoint: .top, endPoint: .bottom)
+                            .frame(height: max(190, viewport.safeAreaInsets.top + 92))
+                            .allowsHitTesting(false)
+                            TitleBlock(subtitle: gridSubtitle, onPhoto: true)
+                                .padding(.top, viewport.safeAreaInsets.top)
+                                .allowsHitTesting(false)
+                        }
+                    }
+                    .padding(.bottom, 170)
+            }
+            .scrollIndicators(.hidden)
+            .ignoresSafeArea(edges: .top)
+            .scrollEdgeEffectHidden(!pastTitle, for: .top)
+            .onScrollGeometryChange(for: Bool.self) { geo in
+                geo.contentOffset.y > 120
+            } action: { _, past in
+                pastTitle = past
+            }
+        }
+    }
+
+    // MARK: 头部
 
     private var subtitle: String {
         if case .scanning(let done, let total) = store.syncState, total > 0 {
-            return "正在读取照片说明 \(Int(Double(done) / Double(total) * 100))%"
+            let percent = Int(Double(done) / Double(total) * 100)
+            return String(localized: "正在读取照片说明 \(percent)%")
         }
-        let month = DateFormatter.zh("LLLL").string(from: .now)
+        let month = DiaryDates.monthLong(.now)
         let n = store.writtenThisMonth
-        return n == 0 ? "\(month)还没写" : "\(month)写了 \(n) 篇"
+        return n == 0 ? String(localized: "\(month)还没写") : String(localized: "\(month)写了 \(n) 篇")
     }
 
-    /// 吸顶部分：切换条，以及卡片的圆角上沿（日历视图里同时是星期行）。
-    private var pinnedBar: some View {
-        VStack(spacing: 0) {
-            ModeSwitcher(mode: $mode)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 14)
-                .background(brand)
-            if mode != .map {
-                Group {
-                    if mode == .calendar {
-                        WeekdayRow()
-                            .padding(.horizontal, 12)
-                            .padding(.top, 14)
-                            .padding(.bottom, 6)
-                    } else {
-                        Color.clear.frame(height: 10)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-                .background(Color(.systemBackground), in: .rect(topLeadingRadius: 22, topTrailingRadius: 22))
-                .background(brand)
-            }
-        }
-    }
-
-    @ViewBuilder
-    private func content(viewportHeight: CGFloat, bottomInset: CGFloat) -> some View {
-        Group {
-            switch mode {
-            case .list: ListContent()
-            case .calendar: CalendarContent()
-            case .media: MediaGridContent()
-            case .map:
-                MapContent()
-                    .frame(height: max(320, viewportHeight + bottomInset - titleHeight - barHeight))
-                    .clipShape(.rect(topLeadingRadius: 22, topTrailingRadius: 22))
-                    .background(brand)
-            }
-        }
-        .frame(maxWidth: .infinity, minHeight: mode == .map ? 0 : viewportHeight, alignment: .top)
-        .background(Color(.systemBackground))
-        .id(mode)
-        .transition(.opacity)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: mode)
+    /// 2026年10月 · 12 篇
+    private var gridSubtitle: String {
+        String(localized: "\(DiaryDates.yearMonth(.now)) · \(store.writtenThisMonth) 篇")
     }
 
     private var moreMenu: some View {
@@ -174,40 +140,28 @@ struct JournalView: View {
     }
 }
 
-/// 列表 / 日历 / 照片 / 地图 切换：白色滑块跟着弹簧走，内容立即替换。
-private struct ModeSwitcher: View {
-    @Binding var mode: JournalMode
-    @Environment(\.brand) private var brand
-    @Namespace private var pill
+/// 页面大标题 + 一行副标题；照片网格里是白字压在照片上。
+private struct TitleBlock: View {
+    let subtitle: String
+    var onPhoto = false
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(JournalMode.allCases) { m in
-                Button {
-                    mode = m
-                } label: {
-                    Text(m.title)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(mode == m ? brand : .white.opacity(0.92))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 34)
-                        .background {
-                            if mode == m {
-                                RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                    .fill(.white)
-                                    .matchedGeometryEffect(id: "pill", in: pill)
-                            }
-                        }
-                        .contentShape(.rect)
-                }
-                .buttonStyle(.press)
-                .accessibilityAddTraits(mode == m ? .isSelected : [])
-            }
+        VStack(alignment: .leading, spacing: 2) {
+            Text("日记")
+                .font(.system(size: 34, weight: .bold))
+                .tracking(0.2)
+                .accessibilityAddTraits(.isHeader)
+            Text(subtitle)
+                .font(.system(size: 15, weight: onPhoto ? .medium : .regular))
+                .foregroundStyle(onPhoto ? Color.white : Color.meta)
+                .contentTransition(.numericText())
+                .animation(.snappy, value: subtitle)
         }
-        .padding(3)
-        .background(.black.opacity(0.16), in: .rect(cornerRadius: 12, style: .continuous))
-        .animation(.snappy, value: mode)
-        .sensoryFeedback(.selection, trigger: mode)
+        .foregroundStyle(onPhoto ? Color.white : Color.ink)
+        .shadow(color: .black.opacity(onPhoto ? 0.25 : 0), radius: 8, y: 1)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.top, 2)
     }
 }
 
@@ -222,9 +176,9 @@ struct LimitedAccessBanner: View {
             Button("选择更多") { LimitedLibrary.present() }
                 .font(.footnote.weight(.semibold))
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 10)
-        .overlay(alignment: .bottom) { Rectangle().fill(Color.hairline).frame(height: 1) }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.tile, in: .rect(cornerRadius: 14, style: .continuous))
     }
 }
 

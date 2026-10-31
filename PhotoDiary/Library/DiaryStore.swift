@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import Photos
+import CoreLocation
 import UIKit
 
 /// App 的单一数据源：本地索引 + 照片库同步。
@@ -25,7 +26,52 @@ final class DiaryStore {
     /// 所有写了说明的照片，按照片日期倒序。
     private(set) var diaries: [DiaryEntry] = []
     /// 标签及数量，按数量排序。
-    private(set) var tagCounts: [(name: String, count: Int)] = []
+    private(set) var tagCounts: [TagCount] = []
+
+    // 下面这些都由 diaries 派生，在数据变化时算一次，界面直接读，不在每次刷新时遍历全部日记。
+    /// 按月分组（列表的月份标题）。
+    private(set) var months: [MonthGroup] = []
+    /// 日历要显示的月份：写过日记的月份加上本月，倒序。
+    private(set) var calendarMonths: [Date] = []
+    /// 写过日记的地点，按篇数排列；封面是最近一篇。
+    private(set) var places: [PlaceGroup] = []
+    /// 那年今日：往年同月同日的照片日记。
+    private(set) var onThisDay: [DiaryEntry] = []
+    /// 本周（周日起）每一天是否写过日记。
+    private(set) var weekWriting: [WeekDay] = []
+    /// 本周写了几篇（按说明里的写作日期）。
+    private(set) var writtenThisWeek = 0
+    /// 本月写了几篇（按说明里的写作日期）。
+    private(set) var writtenThisMonth = 0
+    private var byDay: [DayStamp: [DiaryEntry]] = [:]
+    private var byTag: [String: [DiaryEntry]] = [:]
+    /// 被设置里的说明过滤规则隐藏的照片。
+    private var hiddenIDs: Set<String> = []
+    /// 派生数据是按哪一天算的；跨天回到前台时重算“那年今日”和本周。
+    private var derivedDay = DayStamp.today
+
+    struct TagCount: Hashable {
+        var name: String
+        var count: Int
+    }
+
+    struct MonthGroup: Hashable, Identifiable {
+        var id: String
+        var start: Date
+        var entries: [DiaryEntry]
+    }
+
+    struct PlaceGroup: Hashable, Identifiable {
+        var name: String
+        var count: Int
+        var cover: String
+        var id: String { name }
+    }
+
+    struct WeekDay: Hashable {
+        var day: DayStamp
+        var wrote: Bool
+    }
 
     /// 列表、日历、照片、地图里显示的条目。
     var timeline: [DiaryEntry] { diaries }
@@ -66,6 +112,7 @@ final class DiaryStore {
     }
 
     func refreshAuthorization() {
+        if DayStamp.today != derivedDay { rebuildDerived() }
         let status = PHPhotoLibrary.authorizationStatus(for: .readWrite)
         guard status != authorization else { return }
         authorization = status
@@ -216,7 +263,7 @@ final class DiaryStore {
     /// 标签改名或合并：一次修改所有相关照片。
     func renameTags(_ olds: Set<String>, to new: String) async throws {
         var captions: [String: String?] = [:]
-        for entry in entries.values where !olds.isDisjoint(with: entry.tags) {
+        for entry in diaries where !olds.isDisjoint(with: entry.tags) {
             var caption = entry.caption
             for old in olds { caption = CaptionFormat.renamingTag(old, to: new, in: caption) }
             if caption != entry.caption { captions[entry.id] = caption }
@@ -251,53 +298,115 @@ final class DiaryStore {
     // MARK: 派生数据
 
     private func rebuildDerived() {
-        let all = entries.values.sorted { $0.sortDate > $1.sortDate }
-        diaries = all
+        let today = DayStamp.today
+        derivedDay = today
+        let hidden = CaptionFilter.matcher()
+        var hiddenIDs = Set<String>()
+        var visible: [DiaryEntry] = []
+        visible.reserveCapacity(entries.count)
+        for entry in entries.values {
+            if hidden(entry.caption) { hiddenIDs.insert(entry.id) } else { visible.append(entry) }
+        }
+        visible.sort { $0.sortDate > $1.sortDate }
 
         var counts: [String: Int] = [:]
-        for entry in diaries { for tag in entry.tags { counts[tag, default: 0] += 1 } }
-        tagCounts = counts.map { ($0.key, $0.value) }.sorted { ($0.count, $1.name) > ($1.count, $0.name) }
+        var byTag: [String: [DiaryEntry]] = [:]
+        var byDay: [DayStamp: [DiaryEntry]] = [:]
+        var months: [MonthGroup] = []
+        var placeCounts: [String: (count: Int, cover: String)] = [:]
+        var placeOrder: [String] = []
+        var writing = Set<DayStamp>()
+        var onThisDay: [DiaryEntry] = []
+        var writtenThisMonth = 0
+        let cal = Calendar.diary
+
+        for entry in visible {
+            for tag in entry.tags {
+                counts[tag, default: 0] += 1
+                byTag[tag, default: []].append(entry)
+            }
+            let d = entry.day
+            byDay[d, default: []].append(entry)
+            let key = "\(d.year)-\(d.month)"
+            if months.last?.id == key {
+                months[months.count - 1].entries.append(entry)
+            } else {
+                let start = cal.date(from: DateComponents(year: d.year, month: d.month, day: 1)) ?? entry.displayDate
+                months.append(MonthGroup(id: key, start: start, entries: [entry]))
+            }
+            if let place = entry.placeName {
+                if let p = placeCounts[place] { placeCounts[place] = (p.count + 1, p.cover) }
+                else { placeCounts[place] = (1, entry.id); placeOrder.append(place) }
+            }
+            if d.month == today.month && d.day == today.day && d.year < today.year { onThisDay.append(entry) }
+            for w in entry.writingDays {
+                writing.insert(w)
+                if w.year == today.year && w.month == today.month { writtenThisMonth += 1 }
+            }
+        }
+
+        let weekStart = cal.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
+        let week = (0..<7).map { offset in
+            let day = DayStamp(cal.date(byAdding: .day, value: offset, to: weekStart) ?? .now)
+            return WeekDay(day: day, wrote: writing.contains(day))
+        }
+        let weekDays = Set(week.map(\.day))
+        let writtenThisWeek = visible.reduce(0) { $0 + $1.writingDays.filter(weekDays.contains).count }
+
+        let thisMonth = cal.dateInterval(of: .month, for: .now)?.start ?? .now
+        var calendarMonths = months.map(\.start)
+        if !calendarMonths.contains(thisMonth) { calendarMonths.append(thisMonth) }
+        calendarMonths.sort(by: >)
+
+        // 只在真的变了时才赋值：Observation 每次赋值都会让读它的界面重新计算。
+        func update<T: Equatable>(_ keyPath: ReferenceWritableKeyPath<DiaryStore, T>, _ value: T) {
+            if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
+        }
+        update(\.diaries, visible)
+        update(\.tagCounts, counts.map { TagCount(name: $0.key, count: $0.value) }
+            .sorted { ($0.count, $1.name) > ($1.count, $0.name) })
+        update(\.byTag, byTag)
+        update(\.byDay, byDay)
+        update(\.months, months)
+        update(\.calendarMonths, calendarMonths)
+        update(\.places, placeOrder.map { PlaceGroup(name: $0, count: placeCounts[$0]!.count, cover: placeCounts[$0]!.cover) }
+            .sorted { $0.count > $1.count })
+        update(\.onThisDay, onThisDay)
+        update(\.weekWriting, week)
+        update(\.writtenThisWeek, writtenThisWeek)
+        update(\.writtenThisMonth, writtenThisMonth)
+        update(\.hiddenIDs, hiddenIDs)
     }
 
-    func entry(_ id: String) -> DiaryEntry? { entries[id] }
+    /// 被设置里的说明过滤规则隐藏的照片不算日记。
+    func entry(_ id: String) -> DiaryEntry? {
+        guard let entry = entries[id], !hiddenIDs.contains(id) else { return nil }
+        return entry
+    }
+
+    /// 设置里改了说明过滤规则后，重新整理列表。
+    func captionFilterChanged() { rebuildDerived() }
+
+    /// 索引里出现多次的短说明（不像日记的那种），给设置里的过滤规则做建议。
+    func frequentShortCaptions(limit: Int = 8) -> [(caption: String, count: Int)] {
+        var counts: [String: Int] = [:]
+        for entry in entries.values where !hiddenIDs.contains(entry.id) {
+            let text = entry.caption.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard text.count <= 12, !text.contains("\n"), entry.writingDays.isEmpty else { continue }
+            counts[text, default: 0] += 1
+        }
+        return counts.filter { $0.value >= 2 }
+            .map { (caption: $0.key, count: $0.value) }
+            .sorted { ($0.count, $1.caption) > ($1.count, $0.caption) }
+            .prefix(limit)
+            .map { $0 }
+    }
 
     var allTags: [String] { tagCounts.map(\.name) }
 
-    /// 本月写了几篇（按说明里的写作日期）。
-    var writtenThisMonth: Int {
-        let today = DayStamp.today
-        return diaries.reduce(0) { sum, e in
-            sum + e.writingDays.filter { $0.year == today.year && $0.month == today.month }.count
-        }
-    }
+    func entries(tagged tag: String) -> [DiaryEntry] { byTag[tag] ?? [] }
 
-    /// 本周（周日起）每一天是否写过日记。
-    var weekWriting: [(day: DayStamp, wrote: Bool)] {
-        let cal = Calendar.diary
-        let start = cal.dateInterval(of: .weekOfYear, for: .now)?.start ?? .now
-        let written = Set(diaries.flatMap(\.writingDays))
-        return (0..<7).map { offset in
-            let day = DayStamp(cal.date(byAdding: .day, value: offset, to: start) ?? .now)
-            return (day, written.contains(day))
-        }
-    }
-
-    /// 那年今日：往年同月同日的照片日记。
-    var onThisDay: [DiaryEntry] {
-        let today = DayStamp.today
-        return diaries.filter { e in
-            let d = e.day
-            return d.month == today.month && d.day == today.day && d.year < today.year
-        }
-    }
-
-    func entries(tagged tag: String) -> [DiaryEntry] {
-        diaries.filter { $0.tags.contains(tag) }
-    }
-
-    func entries(on day: DayStamp) -> [DiaryEntry] {
-        timeline.filter { $0.day == day }
-    }
+    func entries(on day: DayStamp) -> [DiaryEntry] { byDay[day] ?? [] }
 
     func search(text: String, tags: [String], range: ClosedRange<Date>?) -> [DiaryEntry] {
         let needle = text.trimmingCharacters(in: .whitespaces)
@@ -322,30 +431,50 @@ final class DiaryStore {
     private func resolvePlaces() {
         guard placeTask == nil else { return }
         placeTask = Task {
-            while let next = diaries.first(where: { $0.placeName == nil && placeKey($0) != nil && !placeNamer.failed.contains($0.id) }),
-                  let key = placeKey(next), let coordinate = next.coordinate {
+            // 一次列出还缺地名的坐标；同一坐标只查一次。
+            var pending: [String: CLLocationCoordinate2D] = [:]
+            var order: [String] = []
+            for e in diaries where e.placeName == nil && !placeNamer.failed.contains(e.id) {
+                guard let key = placeKey(e), let coordinate = e.coordinate, pending[key] == nil else { continue }
+                pending[key] = coordinate
+                order.append(key)
+            }
+            // 查到的地名攒一批再写回：每写一次 entries，所有界面都会重算。
+            var resolved: [String: (name: String, timeZone: String?)] = [:]
+            var lastFlush = ContinuousClock.now
+            for key in order {
+                guard !Task.isCancelled else { break }
                 if let cached = placeCache[key] {
-                    entries[next.id]?.placeName = cached
-                    entries[next.id]?.timeZoneID = timeZoneCache[key]
-                    continue
-                }
-                if let place = await placeNamer.place(for: coordinate), let name = place.name {
+                    resolved[key] = (cached, timeZoneCache[key])
+                } else if let coordinate = pending[key], let place = await placeNamer.place(for: coordinate), let name = place.name {
                     placeCache[key] = name
                     timeZoneCache[key] = place.timeZone
-                    var copy = entries
-                    for e in copy.values where placeKey(e) == key {
-                        copy[e.id]?.placeName = name
-                        copy[e.id]?.timeZoneID = place.timeZone
-                    }
-                    entries = copy
+                    resolved[key] = (name, place.timeZone)
+                    try? await Task.sleep(for: .milliseconds(600)) // 遵守地理编码的频率限制
                 } else {
-                    placeNamer.failed.insert(next.id)
+                    for e in diaries where placeKey(e) == key { placeNamer.failed.insert(e.id) }
                 }
-                try? await Task.sleep(for: .milliseconds(600)) // 遵守地理编码的频率限制
+                if !resolved.isEmpty, ContinuousClock.now - lastFlush > .seconds(3) {
+                    applyPlaces(resolved)
+                    resolved.removeAll()
+                    lastFlush = .now
+                }
             }
+            applyPlaces(resolved)
             placeTask = nil
             scheduleSave()
         }
+    }
+
+    private func applyPlaces(_ resolved: [String: (name: String, timeZone: String?)]) {
+        guard !resolved.isEmpty else { return }
+        var copy = entries
+        for e in copy.values where e.placeName == nil {
+            guard let key = placeKey(e), let place = resolved[key] else { continue }
+            copy[e.id]?.placeName = place.name
+            copy[e.id]?.timeZoneID = place.timeZone
+        }
+        entries = copy
     }
 
     // MARK: 持久化

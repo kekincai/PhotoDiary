@@ -1,8 +1,9 @@
 import SwiftUI
 import PhotosUI
 import AVKit
+import UniformTypeIdentifiers
 
-/// 日记详情：照片、首句标题、正文；追加的段落用分隔线隔开；底部浮条为地点、标签和“追加”。
+/// 日记详情：照片顶到屏幕最上，按钮浮在照片上；正文之后是地点和标签胶囊；底部分享和“追加感想”。
 /// 不显示拍摄参数、相机、文件大小等照片元信息。
 struct EntryDetailView: View {
     let id: String
@@ -14,6 +15,9 @@ struct EntryDetailView: View {
     @State private var showViewer = false
     @State private var confirmDelete = false
     @State private var errorMessage: String?
+    @State private var headerHeight: CGFloat = 312
+    @State private var articleHeight: CGFloat = 0
+    @State private var pastPhoto = false
     @Namespace private var viewerNamespace
 
     var body: some View {
@@ -25,27 +29,27 @@ struct EntryDetailView: View {
             }
         }
         .modifier(ZoomDestination(id: id, namespace: namespace))
-        .toolbarBackground(brand, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
+        // 浮在照片上时按钮用浅色；滚过照片后回到系统默认。
+        .toolbarColorScheme(store.entry(id) != nil && !pastPhoto ? .dark : nil, for: .navigationBar)
         .toolbar {
             if let entry = store.entry(id) {
                 ToolbarItem(placement: .principal) {
                     VStack(spacing: 1) {
                         Text(DiaryDates.dayTitle(entry.displayDate)).font(.headline)
-                        Text("\(String(entry.day.year))年")
+                        Text(DiaryDates.year(entry.displayDate))
                             .font(.caption.weight(.medium))
-                            .foregroundStyle(.white.opacity(0.85))
+                            .foregroundStyle(Color.meta)
                     }
-                    .foregroundStyle(.white)
+                    .opacity(pastPhoto ? 1 : 0)
+                    .animation(.easeOut(duration: 0.15), value: pastPhoto)
                     .accessibilityElement(children: .combine)
+                    .accessibilityHidden(!pastPhoto)
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("编辑") { router.editor = EditorRequest(assetID: id, mode: .edit) }
-                        .fontWeight(.semibold)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
+                ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button("编辑", systemImage: "pencil") {
+                        router.editor = EditorRequest(assetID: id, mode: .edit)
+                    }
                     Menu {
                         Button("在“照片”中打开", systemImage: "photo.on.rectangle") {
                             if let url = URL(string: "photos-redirect://") { UIApplication.shared.open(url) }
@@ -69,15 +73,39 @@ struct EntryDetailView: View {
         }
     }
 
+    /// 照片的高度跟着正文走：正文短时照片长高，把底部按钮以上的空间铺满（整张照片放在模糊底上），
+    /// 不在正文下面留一大片空白；正文长时照片保持原来的比例，整页滚动。
     private func content(_ entry: DiaryEntry) -> some View {
-        ScrollView {
-            VStack(spacing: 0) {
-                MediaHeader(entry: entry)
-                    .onTapGesture { if entry.mediaKind != .video { showViewer = true } }
-                    .matchedTransitionSource(id: "viewer", in: viewerNamespace)
-                article(entry)
+        GeometryReader { viewport in
+            let topInset = viewport.safeAreaInsets.top
+            let width = viewport.size.width
+            let natural = width / min(max(entry.aspectRatio, 0.8), 1.25)
+            let available = viewport.size.height + topInset
+            let height = max(natural, available - articleHeight - Self.articleBottomPadding)
+            ScrollView {
+                VStack(spacing: 0) {
+                    MediaHeader(entry: entry, height: height, topInset: topInset)
+                        .overlay(alignment: .top) {
+                            // 让浮在照片上的按钮和状态栏看得清。
+                            LinearGradient(colors: [.black.opacity(0.28), .black.opacity(0)], startPoint: .top, endPoint: .bottom)
+                                .frame(height: 120)
+                                .allowsHitTesting(false)
+                        }
+                        .onTapGesture { if entry.mediaKind != .video { showViewer = true } }
+                        .matchedTransitionSource(id: "viewer", in: viewerNamespace)
+                    article(entry)
+                        .padding(.bottom, Self.articleBottomPadding)
+                        .onGeometryChange(for: CGFloat.self, of: { $0.size.height }) { articleHeight = $0 }
+                }
             }
-            .padding(.bottom, 120)
+            .ignoresSafeArea(edges: .top)
+            .scrollEdgeEffectHidden(!pastPhoto, for: .top)
+            .onScrollGeometryChange(for: Bool.self) { geo in
+                geo.contentOffset.y > height - 110
+            } action: { _, past in
+                pastPhoto = past
+            }
+            .onChange(of: height, initial: true) { headerHeight = height }
         }
         .background(Color(.systemBackground))
         .safeAreaInset(edge: .bottom) { bottomBar(entry) }
@@ -87,88 +115,127 @@ struct EntryDetailView: View {
         }
     }
 
+    private static let articleBottomPadding: CGFloat = 28
+
     private func article(_ entry: DiaryEntry) -> some View {
         let segments = entry.displaySegments
-        return VStack(alignment: .leading, spacing: 22) {
+        return VStack(alignment: .leading, spacing: 0) {
+            Text(metaLine(entry))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.meta)
             ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
                 if index == 0 {
                     let split = CaptionFormat.splitTitle(segment.text)
-                    VStack(alignment: .leading, spacing: 10) {
-                        DiaryText(text: split.title, size: 23, bold: true)
-                            .lineSpacing(6)
-                            .accessibilityAddTraits(.isHeader)
-                        if !split.rest.isEmpty {
-                            DiaryText(text: split.rest, size: 18, color: Color.inkSecondary)
-                                .lineSpacing(11)
-                        }
-                        // 写的日子和拍的日子不同时，才注明写于哪天。
-                        if let written = segment.date, written != entry.day {
-                            Text("写于 \(DiaryDates.full(written))")
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(Color.meta)
-                                .padding(.top, 2)
-                        }
+                    DiaryText(text: split.title, size: 24, bold: true)
+                        .lineSpacing(9)
+                        .padding(.top, 10)
+                        .accessibilityAddTraits(.isHeader)
+                    if !split.rest.isEmpty {
+                        DiaryText(text: split.rest, size: 18, color: Color.inkSecondary)
+                            .lineSpacing(11)
+                            .padding(.top, 12)
+                    }
+                    // 写的日子和拍的日子不同时，才注明写于哪天。
+                    if let written = segment.date, written != entry.day {
+                        Text("写于 \(DiaryDates.full(written))")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(Color.meta)
+                            .padding(.top, 8)
                     }
                 } else {
-                    if let day = segment.date {
-                        let gap = DiaryDates.gap(from: segments[index - 1].date, to: day)
-                        SegmentDivider(primary: gap.relative, secondary: gap.date)
-                    } else {
-                        SegmentDivider(primary: "未注明日期")
+                    Group {
+                        if let day = segment.date {
+                            let gap = DiaryDates.gap(from: segments[index - 1].date, to: day)
+                            SegmentDivider(primary: gap.relative, secondary: gap.date)
+                        } else {
+                            SegmentDivider(primary: String(localized: "未注明日期"))
+                        }
                     }
+                    .padding(.top, 30)
+                    .padding(.bottom, 22)
                     DiaryText(text: segment.text, size: 18, color: Color.inkSecondary)
                         .lineSpacing(11)
                 }
             }
+            chips(entry)
         }
         .textSelection(.enabled)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 22)
-        .padding(.top, 26)
+        .padding(.horizontal, 24)
+        .padding(.top, 24)
     }
 
+    /// 2023年10月31日 周二 · 3 年前
+    private func metaLine(_ entry: DiaryEntry) -> String {
+        let date = DiaryDates.fullWithWeekday(entry.displayDate)
+        guard entry.day.year < DayStamp.today.year else { return date }
+        return "\(date) · \(DiaryDates.yearsAgo(entry.day))"
+    }
+
+    /// 地点（灰底）和标签（主题色浅底）胶囊。
     @ViewBuilder
-    private func bottomBar(_ entry: DiaryEntry) -> some View {
-        let hasMeta = entry.placeName != nil || !entry.tags.isEmpty
-        HStack(spacing: 10) {
-            if hasMeta {
-            ScrollView(.horizontal) {
-                HStack(spacing: 12) {
-                    if let place = entry.placeName {
-                        Label(place, systemImage: "mappin")
-                            .labelStyle(.titleAndIcon)
-                            .foregroundStyle(Color.ink.opacity(0.85))
+    private func chips(_ entry: DiaryEntry) -> some View {
+        if entry.placeName != nil || !entry.tags.isEmpty {
+            FlowLayout(spacing: 8) {
+                if let place = entry.placeName {
+                    Chip(height: 34) {
+                        Image(systemName: "mappin").font(.system(size: 13, weight: .semibold))
+                        Text(place)
                     }
-                    ForEach(entry.tags, id: \.self) { tag in
-                        Button("#\(tag)#") { router.push(.tag(tag)) }
-                            .foregroundStyle(brand)
-                    }
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.ink)
+                    .accessibilityElement(children: .combine)
                 }
-                .font(.footnote.weight(.semibold))
-                .padding(.leading, 16)
+                ForEach(entry.tags, id: \.self) { tag in
+                    Button { router.push(.tag(tag)) } label: {
+                        Chip(height: 34, fill: brand.soft()) {
+                            Text("#\(tag)#")
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(brand)
+                    }
+                    .buttonStyle(.press)
+                }
             }
-            .scrollIndicators(.hidden)
-            } else {
-                Spacer()
+            .padding(.top, 30)
+        }
+    }
+
+    /// 左边分享，右边主题色“追加感想”。
+    private func bottomBar(_ entry: DiaryEntry) -> some View {
+        HStack {
+            ShareLink(item: SharedPhoto(id: entry.id), message: Text(entry.caption),
+                      preview: SharePreview(entry.title)) {
+                Image(systemName: "square.and.arrow.up")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(Color.ink)
+                    .frame(width: 52, height: 52)
+                    .contentShape(.circle)
             }
+            .glassEffect(.regular.interactive(), in: .circle)
+            .accessibilityLabel("分享")
+
+            Spacer()
 
             Button {
                 router.editor = EditorRequest(assetID: entry.id, mode: .append)
             } label: {
-                Label("追加", systemImage: "plus")
-                    .font(.subheadline.weight(.semibold))
-                    .padding(.horizontal, 6)
-                    .frame(height: 30)
+                Label("追加感想", systemImage: "plus")
+                    .font(.system(size: 16, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .padding(.leading, 18)
+                    .padding(.trailing, 22)
+                    .frame(height: 52)
+                    .contentShape(.capsule)
             }
-            .buttonStyle(.glassProminent)
-            .tint(brand)
-            .padding(.trailing, 8)
+            .buttonStyle(.press)
+            .glassEffect(.regular.tint(brand).interactive(), in: .capsule)
         }
-        .frame(height: 60)
-        // 没有地点和标签时只留“追加”按钮，不铺一条空的玻璃底。
-        .glassEffect(hasMeta ? .regular : .identity, in: .capsule)
-        .padding(.horizontal, 12)
+        .padding(.horizontal, 16)
         .padding(.bottom, 4)
+        .background(alignment: .bottom) {
+            BottomFade(height: 130).ignoresSafeArea(edges: .bottom)
+        }
     }
 
     private func delete() {
@@ -203,44 +270,69 @@ private struct ZoomDestination: ViewModifier {
 
 private struct MediaHeader: View {
     let entry: DiaryEntry
+    let height: CGFloat
+    /// 状态栏 + 导航按钮的高度；照片完整显示时从这下面开始放。
+    let topInset: CGFloat
     @State private var player: AVPlayer?
 
     var body: some View {
         GeometryReader { geo in
-            Group {
-                switch entry.mediaKind {
-                case .video:
-                    if let player {
-                        VideoPlayer(player: player)
-                    } else {
-                        AssetImage(id: entry.id, allowNetwork: true)
-                            .overlay { ProgressView().tint(.white) }
-                    }
-                case .livePhoto:
-                    LivePhotoView(id: entry.id, size: geo.size)
-                        .overlay(alignment: .topLeading) {
-                            Label("实况", systemImage: "livephoto")
-                                .font(.caption.weight(.semibold))
-                                .padding(.horizontal, 8).padding(.vertical, 4)
-                                .glassEffect(.regular, in: .capsule)
-                                .padding(12)
-                        }
-                case .photo:
-                    AssetImage(id: entry.id, contentMode: .fill, allowNetwork: true)
+            let containerAspect = geo.size.width / max(geo.size.height, 1)
+            // 照片比区域宽很多（区域被拉高了）时完整显示，背后铺一层模糊的同一张照片；否则铺满裁切。
+            let fits = entry.mediaKind != .video && entry.aspectRatio > containerAspect * 1.15
+            ZStack {
+                if fits {
+                    AssetImage(id: entry.id, pointSize: CGSize(width: 80, height: 80))
+                        .blur(radius: 40, opaque: true)
+                        .overlay(Color.black.opacity(0.12))
                 }
+                media(size: fits ? fittedSize(in: geo.size) : geo.size, mode: fits ? .fit : .fill)
+                    .padding(.top, fits ? topInset / 2 : 0)
             }
             .frame(width: geo.size.width, height: geo.size.height)
         }
-        // 宽度铺满；竖图最高到 1.25 倍宽，超出部分裁切。
-        .aspectRatio(max(entry.aspectRatio, 0.8), contentMode: .fit)
+        .frame(height: height)
         .clipped()
         .task(id: entry.id) {
             guard entry.mediaKind == .video, player == nil,
                   let item = await AssetImages.shared.playerItem(for: entry.id) else { return }
             player = AVPlayer(playerItem: item)
         }
-        .accessibilityLabel(entry.mediaKind == .video ? "视频" : "照片")
+        .accessibilityLabel(entry.mediaKind == .video ? Text("视频") : Text("照片"))
         .accessibilityAddTraits(.isImage)
+    }
+
+    private func fittedSize(in size: CGSize) -> CGSize {
+        let w = size.width
+        return CGSize(width: w, height: min(w / max(entry.aspectRatio, 0.01), size.height - topInset / 2))
+    }
+
+    @ViewBuilder
+    private func media(size: CGSize, mode: ContentMode) -> some View {
+        Group {
+            switch entry.mediaKind {
+            case .video:
+                if let player {
+                    VideoPlayer(player: player)
+                } else {
+                    AssetImage(id: entry.id, allowNetwork: true)
+                        .overlay { ProgressView().tint(.white) }
+                }
+            case .livePhoto:
+                LivePhotoView(id: entry.id, size: size)
+                    .overlay(alignment: .topLeading) {
+                        Label("实况", systemImage: "livephoto")
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 8).padding(.vertical, 4)
+                            .glassEffect(.regular, in: .capsule)
+                            .padding(12)
+                    }
+            case .photo:
+                AssetImage(id: entry.id, contentMode: mode, allowNetwork: true)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .clipped()
     }
 }
 
@@ -262,5 +354,26 @@ private struct LivePhotoView: UIViewRepresentable {
         Task {
             view.livePhoto = await AssetImages.shared.livePhoto(for: id, pixelSize: px)
         }
+    }
+}
+
+/// 分享出去的照片（JPEG）；正文作为附言。
+nonisolated struct SharedPhoto: Transferable, Sendable {
+    let id: String
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .jpeg) { photo in
+            try await photo.jpegData()
+        }
+    }
+
+    @MainActor private func jpegData() async throws -> Data {
+        var last: UIImage?
+        let size = CGSize(width: 2400, height: 2400)
+        for await image in AssetImages.shared.images(for: id, pixelSize: size, contentMode: .aspectFit, allowNetwork: true) {
+            last = image
+        }
+        guard let data = last?.jpegData(compressionQuality: 0.9) else { throw CocoaError(.fileReadUnknown) }
+        return data
     }
 }

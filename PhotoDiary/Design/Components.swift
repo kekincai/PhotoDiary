@@ -92,16 +92,21 @@ struct DiaryText: View {
     }
 }
 
-/// “2 段”角标
+/// “2 段”角标：照片上的深色毛玻璃小胶囊。
 struct ParagraphBadge: View {
     let count: Int
+    var compact = false
+
     var body: some View {
         Text("\(count) 段")
-            .font(.caption2.weight(.semibold))
+            .font(.system(size: compact ? 11 : 12, weight: .semibold))
             .foregroundStyle(.white)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 1)
-            .background(.black.opacity(0.55), in: .capsule)
+            .padding(.horizontal, compact ? 7 : 9)
+            .padding(.vertical, compact ? 1 : 3)
+            .background {
+                Capsule().fill(.black.opacity(0.3)).background(.ultraThinMaterial, in: .capsule)
+            }
+            .environment(\.colorScheme, .dark)
     }
 }
 
@@ -213,9 +218,10 @@ struct EntryRow: View {
 struct TransitionSource: ViewModifier {
     let id: String
     let namespace: Namespace.ID?
+    var cornerRadius: CGFloat = 12
     func body(content: Content) -> some View {
         if let namespace {
-            content.matchedTransitionSource(id: id, in: namespace) { $0.clipShape(.rect(cornerRadius: 12)) }
+            content.matchedTransitionSource(id: id, in: namespace) { $0.clipShape(.rect(cornerRadius: cornerRadius, style: .continuous)) }
         } else {
             content
         }
@@ -224,9 +230,9 @@ struct TransitionSource: ViewModifier {
 
 /// 空状态：说清楚是什么空了，最多给一个动作。不放大图标。
 struct EmptyHint: View {
-    let title: String
-    let message: String
-    var action: (label: String, perform: () -> Void)? = nil
+    let title: LocalizedStringKey
+    let message: LocalizedStringKey
+    var action: (label: LocalizedStringKey, perform: () -> Void)? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -249,26 +255,186 @@ struct EmptyHint: View {
     }
 }
 
-/// 圆角卡片里的一行（回顾页、设置）
-struct CardRow<Leading: View>: View {
-    let title: String
-    let subtitle: String
-    @ViewBuilder var leading: Leading
+/// 首页的大照片卡片：4:3 照片，下面是日期地点、标题、预览和标签。
+struct EntryCard: View {
+    let entry: DiaryEntry
+    var namespace: Namespace.ID?
+    @Environment(\.brand) private var brand
 
     var body: some View {
-        HStack(spacing: 14) {
-            leading
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.callout.weight(.semibold)).foregroundStyle(Color.ink)
-                Text(subtitle).font(.footnote).foregroundStyle(Color.meta).lineLimit(1)
+        VStack(alignment: .leading, spacing: 12) {
+            Color.clear
+                .aspectRatio(4 / 3, contentMode: .fit)
+                .overlay { AssetImage(id: entry.id) }
+                .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                .overlay(alignment: .bottomTrailing) {
+                    if entry.segments.count > 1 {
+                        ParagraphBadge(count: entry.segments.count).padding(10)
+                    }
+                }
+                .overlay(alignment: .topTrailing) {
+                    MediaBadge(kind: entry.mediaKind).padding(12)
+                }
+                .modifier(TransitionSource(id: entry.id, namespace: namespace, cornerRadius: 22))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(metaLine)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color.meta)
+                    .lineLimit(1)
+                if !entry.title.isEmpty {
+                    Text(entry.title)
+                        .font(.diary(20, bold: true, relativeTo: .title3))
+                        .lineSpacing(4)
+                        .foregroundStyle(Color.ink)
+                }
+                if !entry.preview.isEmpty {
+                    Text(entry.preview)
+                        .font(.diary(15.5, relativeTo: .subheadline))
+                        .lineSpacing(7)
+                        .lineLimit(3)
+                        .foregroundStyle(Color.inkSecondary)
+                }
+                if !entry.tags.isEmpty {
+                    Text(entry.tags.map { "#\($0)#" }.joined(separator: "  "))
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(brand)
+                        .padding(.top, 2)
+                }
             }
-            Spacer(minLength: 0)
-            Image(systemName: "chevron.right")
-                .font(.footnote.weight(.bold))
-                .foregroundStyle(Color(.tertiaryLabel))
+            .multilineTextAlignment(.leading)
+            .padding(.horizontal, 4)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
         .contentShape(.rect)
+        .accessibilityElement(children: .combine)
     }
+
+    /// 周五 · 10月30日 · 杉并区
+    private var metaLine: String {
+        [DiaryDates.weekday(entry.displayDate), DiaryDates.short(entry.day), entry.placeName]
+            .compactMap { $0 }
+            .joined(separator: " · ")
+    }
+}
+
+/// 浮在内容上的玻璃分段控件（日记的四种视图、从照片添加的范围）。
+struct GlassSegmented<Value: Hashable>: View {
+    let options: [Value]
+    @Binding var selection: Value
+    let title: (Value) -> String
+    @Namespace private var pill
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(options, id: \.self) { option in
+                let selected = option == selection
+                Button {
+                    selection = option
+                } label: {
+                    Text(title(option))
+                        .font(.system(size: 14, weight: selected ? .semibold : .medium))
+                        .foregroundStyle(selected ? Color.ink : Color.inkSecondary)
+                        .lineLimit(1)
+                        .padding(.horizontal, 12)
+                        .frame(minWidth: 58, minHeight: 32)
+                        .background {
+                            if selected {
+                                Capsule()
+                                    .fill(Color.primary.opacity(0.075))
+                                    .matchedGeometryEffect(id: "pill", in: pill)
+                            }
+                        }
+                        .contentShape(.capsule)
+                }
+                .buttonStyle(.press)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .padding(4)
+        .glassEffect(.regular.interactive(), in: .capsule)
+        .animation(.snappy, value: selection)
+        .sensoryFeedback(.selection, trigger: selection)
+    }
+}
+
+/// 分组标题（22pt 粗体）；可点的组带灰色箭头。
+struct SectionTitle: View {
+    let title: String
+    var chevron = false
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(title)
+                .font(.title2.weight(.bold))
+                .foregroundStyle(Color.ink)
+            if chevron {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+}
+
+/// 胶囊：灰底（地点、时间）或主题色浅底（标签）。
+struct Chip<Content: View>: View {
+    var height: CGFloat = 36
+    var fill: Color = .tile
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        HStack(spacing: 6) { content }
+            .padding(.horizontal, 14)
+            .frame(height: height)
+            .background(fill, in: .capsule)
+    }
+}
+
+/// 底部浮动控件后面的渐隐，让下面的内容退后。
+struct BottomFade: View {
+    var height: CGFloat = 190
+
+    var body: some View {
+        let bg = Color(.systemBackground)
+        LinearGradient(stops: [
+            .init(color: bg.opacity(0), location: 0),
+            .init(color: bg.opacity(0.75), location: 0.55),
+            .init(color: bg.opacity(0.92), location: 1),
+        ], startPoint: .top, endPoint: .bottom)
+        .frame(height: height)
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+}
+
+/// 占位内容上从左到右扫过的高光；“减少动态效果”时不动。
+struct Shimmer: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var phase: CGFloat = -1
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if !reduceMotion {
+                    GeometryReader { geo in
+                        LinearGradient(colors: [.clear, Color(.systemBackground).opacity(0.65), .clear],
+                                       startPoint: .leading, endPoint: .trailing)
+                            .frame(width: geo.size.width * 0.5)
+                            .offset(x: phase * geo.size.width * 1.5)
+                    }
+                    .mask(content)
+                    .allowsHitTesting(false)
+                }
+            }
+            .onAppear {
+                guard !reduceMotion else { return }
+                withAnimation(.linear(duration: 1.5).repeatForever(autoreverses: false)) { phase = 1 }
+            }
+    }
+}
+
+extension View {
+    func shimmer() -> some View { modifier(Shimmer()) }
 }

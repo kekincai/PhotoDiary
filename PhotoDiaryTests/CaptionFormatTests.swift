@@ -1,4 +1,5 @@
 import Testing
+import Foundation
 @testable import PhotoDiary
 
 struct CaptionFormatTests {
@@ -96,5 +97,37 @@ struct CaptionFormatTests {
         #expect(entry.title == "风很舒服，第一次用新镜头拍日落")
         #expect(entry.preview == "三年后再看，还是喜欢这张")
         #expect(entry.tagLine == "#旅行# #镜头测试#")
+    }
+
+    @Test func hiddenCaptionsMatchExactlyAndGetOverwritten() {
+        let saved = CaptionFilter.patterns
+        defer { CaptionFilter.patterns = saved }
+        CaptionFilter.patterns = ["0", " IMG "]
+        #expect(CaptionFilter.hides("0"))
+        #expect(CaptionFilter.hides(" 0\n"))
+        #expect(CaptionFilter.hides("img"))
+        #expect(!CaptionFilter.hides("10"))
+        #expect(!CaptionFilter.hides("0 号线"))
+        let day = DayStamp(year: 2026, month: 10, day: 31)!
+        #expect(CaptionFormat.appending("夕阳", to: "0", on: day) == "夕阳\n— 2026.10.31")
+    }
+
+    @Test func indexRoundTripRebuildsDerivedFields() throws {
+        var entry = DiaryEntry(id: "1", caption: sample, keywords: [], creationDate: Date(timeIntervalSince1970: 1_792_000_000),
+                               latitude: nil, longitude: nil, mediaKind: .photo, isCloudShared: false, pixelWidth: 4, pixelHeight: 3)
+        // 旧索引里带着 segments、tags 两个键，新格式忽略它们，读入后重新解析。
+        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(entry)) as! [String: Any]
+        json["segments"] = []
+        json["tags"] = ["旧"]
+        let decoded = try JSONDecoder().decode(DiaryEntry.self, from: JSONSerialization.data(withJSONObject: json))
+        #expect(decoded.title == "风很舒服，第一次用新镜头拍日落")
+        #expect(decoded.tags == ["旅行", "镜头测试"])
+        #expect(decoded == entry)
+
+        // 时区变了，照片日期跟着变。
+        entry.timeZoneID = "Pacific/Kiritimati"
+        let kiritimati = entry.day
+        entry.timeZoneID = "Pacific/Pago_Pago"
+        #expect(entry.day != kiritimati)
     }
 }
