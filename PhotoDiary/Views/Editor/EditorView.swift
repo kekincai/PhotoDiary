@@ -45,12 +45,12 @@ struct EditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if mode != .edit { context.padding(.bottom, 22) }
+            if mode != .edit { context.padding(.bottom, 24) }
             if isShared { sharedWarning.padding(.bottom, 16) }
             if mode != .edit {
                 SegmentDivider(primary: String(localized: "今天"), secondary: DiaryDates.short(.today))
                     .padding(.horizontal, 6)
-                    .padding(.bottom, 14)
+                    .padding(.bottom, 16)
             }
             DiaryTextView(controller: controller)
                 .overlay(alignment: .topLeading) {
@@ -145,7 +145,7 @@ struct EditorView: View {
         HStack(spacing: 12) {
             AssetImage(id: assetID, pointSize: CGSize(width: 76, height: 76))
                 .frame(width: 76, height: 76)
-                .clipShape(.rect(cornerRadius: 12, style: .continuous))
+                .clipShape(.rect(cornerRadius: 8, style: .continuous))
             Text(contextText)
                 .font(.diary(14, relativeTo: .subheadline))
                 .lineSpacing(7)
@@ -155,7 +155,7 @@ struct EditorView: View {
             Spacer(minLength: 0)
         }
         .padding(8)
-        .background(Color.tile, in: .rect(cornerRadius: 18, style: .continuous))
+        .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
     }
 
     private var contextText: String {
@@ -169,14 +169,14 @@ struct EditorView: View {
 
     private var sharedWarning: some View {
         Label {
-            Text("这张照片在共享图库中，其他成员可能看到这段日记。")
+            Text("这张照片在共享图库中，其他成员可能看到这段日记")
         } icon: {
             Image(systemName: "person.2")
         }
         .font(.footnote)
         .foregroundStyle(Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.8, blue: 0.5, alpha: 1) : UIColor(red: 0.42, green: 0.25, blue: 0, alpha: 1) }))
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.orange.opacity(0.12), in: .rect(cornerRadius: 12))
     }
@@ -188,7 +188,7 @@ struct EditorView: View {
         return HStack(spacing: 6) {
             Button { controller.insertHash() } label: {
                 Text(verbatim: "#")
-                    .font(.system(size: 19, weight: .bold))
+                    .font(.system(size: 19, weight: .semibold))
                     .foregroundStyle(brand)
                     .frame(width: 40, height: 40)
                     .background(brand.soft(), in: .circle)
@@ -230,7 +230,7 @@ struct EditorView: View {
                 .accessibilityLabel("收起键盘")
             }
         }
-        .padding(.horizontal, 5)
+        .padding(.horizontal, 4)
         .frame(height: 50)
         .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, 8)

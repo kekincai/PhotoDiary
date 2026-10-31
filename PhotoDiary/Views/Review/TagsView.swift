@@ -17,7 +17,7 @@ struct TagsView: View {
     var body: some View {
         ScrollView {
             if store.tagCounts.isEmpty {
-                EmptyHint(title: "还没有标签", message: "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词。")
+                EmptyHint(title: "还没有标签", message: "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词")
             }
             LazyVGrid(columns: columns, spacing: 20) {
                 ForEach(store.tagCounts, id: \.name) { tag in
@@ -153,7 +153,7 @@ struct TagCover: View {
     @Environment(DiaryStore.self) private var store
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
+        VStack(alignment: .leading, spacing: 4) {
             Color.clear
                 .aspectRatio(1, contentMode: .fit)
                 .background(Color.tile)
@@ -163,7 +163,7 @@ struct TagCover: View {
                     }
                 }
                 .clipShape(.rect(cornerRadius: 16, style: .continuous))
-                .padding(.bottom, 5)
+                .padding(.bottom, 4)
             Text(verbatim: "#\(name)#")
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(Color.ink)
@@ -187,7 +187,7 @@ struct TagEntriesView: View {
     var body: some View {
         let entries = store.entries(tagged: tag)
         ScrollView {
-            LazyVStack(spacing: 30) {
+            LazyVStack(spacing: 32) {
                 ForEach(entries) { entry in
                     NavigationLink(value: Route.entry(entry.id)) {
                         EntryCard(entry: entry, namespace: namespace)
@@ -200,7 +200,7 @@ struct TagEntriesView: View {
             .padding(.bottom, 40)
         }
         .overlay {
-            if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了", message: "可能已经改名或合并到别的标签。") }
+            if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了", message: "可能已经改名或合并到别的标签") }
         }
         .navigationTitle(Text(verbatim: "#\(tag)#"))
         .navigationSubtitle(Text("\(entries.count) 篇"))
@@ -217,7 +217,7 @@ struct PlaceEntriesView: View {
     var body: some View {
         let entries = store.entries(at: place)
         ScrollView {
-            LazyVStack(spacing: 30) {
+            LazyVStack(spacing: 32) {
                 ForEach(entries) { entry in
                     NavigationLink(value: Route.entry(entry.id)) {
                         EntryCard(entry: entry, namespace: namespace)

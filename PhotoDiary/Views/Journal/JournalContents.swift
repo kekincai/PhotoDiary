@@ -22,7 +22,7 @@ struct ListContent: View {
             if let memory = store.onThisDay.first {
                 OnThisDayBanner(entry: memory)
                     .padding(.horizontal, 16)
-                    .padding(.top, 18)
+                    .padding(.top, 16)
             }
             if store.timeline.isEmpty {
                 emptyState
@@ -38,7 +38,7 @@ struct ListContent: View {
                     }
                     .buttonStyle(.press)
                     .padding(.horizontal, 16)
-                    .padding(.bottom, 30)
+                    .padding(.bottom, 32)
                 }
             }
         }
@@ -49,7 +49,7 @@ struct ListContent: View {
             FirstScanView()
         } else {
             EmptyHint(title: "还没有写过说明的照片",
-                      message: "选一张照片，把当时的感受写进它的说明里。",
+                      message: "选一张照片，把当时的感受写进它的说明里",
                       action: ("从照片开始", { router.showAddFromPhotos = true }))
         }
     }
@@ -62,14 +62,14 @@ struct FirstScanView: View {
     @Environment(\.brand) private var brand
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
+        VStack(alignment: .leading, spacing: 32) {
             progressCard
             if placeholders {
                 ForEach(0..<2, id: \.self) { _ in PlaceholderCard() }
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 18)
+        .padding(.top, 16)
     }
 
     private var progress: (done: Int, total: Int)? {
@@ -78,13 +78,12 @@ struct FirstScanView: View {
     }
 
     private var progressCard: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: "photo.stack")
                 .font(.system(size: 26, weight: .medium))
                 .foregroundStyle(brand)
-                .symbolEffect(.pulse, options: .repeating)
                 .frame(width: 44, height: 44)
-                .background(brand.soft(), in: .rect(cornerRadius: 12, style: .continuous))
+                .background(brand.soft(), in: .rect(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 6) {
                 Text("正在读取照片说明")
                     .font(.headline)
@@ -112,7 +111,7 @@ struct FirstScanView: View {
             }
         }
         .padding(16)
-        .background(Color.tile, in: .rect(cornerRadius: 22, style: .continuous))
+        .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
@@ -120,8 +119,8 @@ struct FirstScanView: View {
 /// 和 EntryCard 一样的形状，灰块加闪光。
 private struct PlaceholderCard: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
+        VStack(alignment: .leading, spacing: 12) {
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
                 .aspectRatio(4 / 3, contentMode: .fit)
             Group {
                 Capsule().frame(width: 150, height: 11)
@@ -137,7 +136,7 @@ private struct PlaceholderCard: View {
     }
 }
 
-/// 月份标题：“10月”加粗，年份和篇数退后一层。
+/// 月份标题：“10月”半粗，年份和篇数退后一层。
 struct MonthHeading: View {
     let date: Date
     var count: Int? = nil
@@ -145,7 +144,7 @@ struct MonthHeading: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             Text(DiaryDates.monthName(date))
-                .font(.title2.weight(.bold))
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ink)
             Text(DiaryDates.year(date))
                 .font(.subheadline)
@@ -172,7 +171,7 @@ private struct OnThisDayBanner: View {
             HStack(spacing: 12) {
                 AssetImage(id: entry.id, pointSize: CGSize(width: 48, height: 48))
                     .frame(width: 48, height: 48)
-                    .clipShape(.rect(cornerRadius: 11, style: .continuous))
+                    .clipShape(.rect(cornerRadius: 8, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DiaryDates.onThisDay(entry.day))
                         .font(.footnote.weight(.semibold))
@@ -187,11 +186,11 @@ private struct OnThisDayBanner: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color(.tertiaryLabel))
             }
-            .padding(.leading, 10)
-            .padding(.trailing, 14)
-            .padding(.vertical, 10)
-            .background(Color.tile, in: .rect(cornerRadius: 18, style: .continuous))
-            .contentShape(.rect(cornerRadius: 18))
+            .padding(.leading, 8)
+            .padding(.trailing, 16)
+            .padding(.vertical, 8)
+            .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
+            .contentShape(.rect(cornerRadius: 16))
         }
         .buttonStyle(.press)
     }
@@ -252,7 +251,7 @@ private struct MonthGrid: View {
         let days = (1...count).map { DayStamp(cal.date(byAdding: .day, value: $0 - 1, to: firstDay)!) }
         let total = days.reduce(0) { $0 + store.entries(on: $1).count }
 
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             MonthHeading(date: firstDay, count: total == 0 ? nil : total)
                 .padding(.horizontal, 16)
             LazyVGrid(columns: columns, spacing: 2) {
@@ -275,18 +274,18 @@ private struct MonthGrid: View {
                     .clipShape(.rect(cornerRadius: 8, style: .continuous))
                     .overlay(alignment: .topLeading) {
                         Text("\(day.day)")
-                            .font(.caption.weight(.bold).monospacedDigit())
+                            .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundStyle(.white)
                             .shadow(color: .black.opacity(0.55), radius: 4)
-                            .padding(.leading, 5)
-                            .padding(.top, 3)
+                            .padding(.leading, 4)
+                            .padding(.top, 4)
                     }
                     .overlay(alignment: .bottomTrailing) {
                         if entries.count > 1 {
                             Text("\(entries.count)")
-                                .font(.caption2.weight(.bold).monospacedDigit())
+                                .font(.caption2.weight(.semibold).monospacedDigit())
                                 .foregroundStyle(.white)
-                                .padding(.horizontal, 5)
+                                .padding(.horizontal, 4)
                                 .background(.black.opacity(0.4), in: .capsule)
                                 .padding(4)
                         }
@@ -364,8 +363,8 @@ struct MapContent: View {
                     Button { router.push(.entry(entry.id)) } label: {
                         AssetImage(id: entry.id, pointSize: CGSize(width: 46, height: 46))
                             .frame(width: 46, height: 46)
-                            .clipShape(.rect(cornerRadius: 9, style: .continuous))
-                            .padding(3)
+                            .clipShape(.rect(cornerRadius: 8, style: .continuous))
+                            .padding(4)
                             .background(.white, in: .rect(cornerRadius: 12, style: .continuous))
                             .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
                     }
@@ -377,10 +376,10 @@ struct MapContent: View {
         .mapControls { MapCompass(); MapScaleView() }
         .overlay {
             if located.isEmpty {
-                Text("写过说明的照片里，还没有带位置的。")
+                Text("写过说明的照片里，还没有带位置的")
                     .font(.footnote)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    .padding(.horizontal, 16).padding(.vertical, 12)
                     .glassEffect(.regular, in: .capsule)
             }
         }

@@ -67,7 +67,7 @@ struct SearchView: View {
 
     @ViewBuilder private var browse: some View {
         if store.timeline.isEmpty {
-            EmptyHint(title: "搜索日记", message: "可以搜正文和地点，输入 # 按标签筛选。")
+            EmptyHint(title: "搜索日记", message: "可以搜正文和地点，输入 # 按标签筛选")
         } else {
             if !store.tagCounts.isEmpty {
                 groupTitle("标签").padding(.top, 16)
@@ -117,7 +117,7 @@ struct SearchView: View {
 
     private func groupTitle(_ title: LocalizedStringKey) -> some View {
         Text(title)
-            .font(.title3.weight(.bold))
+            .font(.title3.weight(.semibold))
             .foregroundStyle(Color.ink)
             .padding(.horizontal, 20)
             .padding(.bottom, 12)
@@ -145,7 +145,7 @@ struct SearchView: View {
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.name)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 16, weight: .semibold))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     Text("\(item.count) 篇")
@@ -154,9 +154,9 @@ struct SearchView: View {
                 }
                 .foregroundStyle(.white)
                 .padding(.horizontal, 12)
-                .padding(.bottom, 11)
+                .padding(.bottom, 12)
             }
-            .clipShape(.rect(cornerRadius: 18, style: .continuous))
+            .clipShape(.rect(cornerRadius: 16, style: .continuous))
             .accessibilityElement(children: .combine)
     }
 
@@ -306,7 +306,7 @@ struct SearchView: View {
                         .accessibilityLabel("清除")
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, 16)
                 .frame(height: 54)
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .onTapGesture { focused = true }

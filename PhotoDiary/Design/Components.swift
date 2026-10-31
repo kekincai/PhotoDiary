@@ -101,8 +101,8 @@ struct ParagraphBadge: View {
         Text("\(count) 段")
             .font(.system(size: compact ? 11 : 12, weight: .semibold))
             .foregroundStyle(.white)
-            .padding(.horizontal, compact ? 7 : 9)
-            .padding(.vertical, compact ? 1 : 3)
+            .padding(.horizontal, compact ? 6 : 8)
+            .padding(.vertical, compact ? 2 : 4)
             .background {
                 Capsule().fill(.black.opacity(0.3)).background(.ultraThinMaterial, in: .capsule)
             }
@@ -129,17 +129,15 @@ struct EntryRow: View {
     let entry: DiaryEntry
     var showsSeparator = true
     var namespace: Namespace.ID?
-    @Environment(\.brand) private var brand
 
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             VStack(spacing: 1) {
                 Text(DiaryDates.weekday(entry.displayDate))
                     .font(.caption2.weight(.semibold))
                     .foregroundStyle(Color.meta)
                 Text("\(entry.day.day)")
-                    .font(.system(.title2, design: .default, weight: .bold))
-                    .tracking(-0.5)
+                    .font(.system(.title2, design: .default, weight: .semibold))
                     .foregroundStyle(Color.ink)
             }
             .frame(width: 36)
@@ -164,7 +162,7 @@ struct EntryRow: View {
                 metaLine
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.bottom, 14)
+            .padding(.bottom, 16)
             .overlay(alignment: .bottom) {
                 if showsSeparator { Rectangle().fill(Color.hairline).frame(height: 1) }
             }
@@ -172,7 +170,7 @@ struct EntryRow: View {
             thumbnail
         }
         .padding(.horizontal, 20)
-        .padding(.vertical, 14)
+        .padding(.vertical, 16)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(DiaryDates.dayTitle(entry.displayDate))的日记：\(entry.title)")
@@ -187,16 +185,13 @@ struct EntryRow: View {
         }
     }
 
-    private var metaText: AttributedString? {
+    /// 标签在列表里和地点一样用灰色，主题色留给正文和编辑器。
+    private var metaText: String? {
         let place = entry.placeName
         let tags = entry.tagLine
         guard place != nil || !tags.isEmpty else { return nil }
         // 地点和标签之间用空隙分开，不用“·”拼接。
-        var line = AttributedString(place.map { tags.isEmpty ? $0 : $0 + "\u{2003}" } ?? "")
-        var tagPart = AttributedString(tags)
-        tagPart.foregroundColor = brand
-        line += tagPart
-        return line
+        return place.map { tags.isEmpty ? $0 : $0 + "\u{2003}" + tags } ?? tags
     }
 
     private var thumbnail: some View {
@@ -205,7 +200,7 @@ struct EntryRow: View {
             .clipShape(.rect(cornerRadius: 12))
             .overlay(alignment: .bottomTrailing) {
                 if entry.segments.count > 1 {
-                    ParagraphBadge(count: entry.segments.count).padding(5)
+                    ParagraphBadge(count: entry.segments.count).padding(4)
                 }
             }
             .overlay(alignment: .topTrailing) {
@@ -259,25 +254,24 @@ struct EmptyHint: View {
 struct EntryCard: View {
     let entry: DiaryEntry
     var namespace: Namespace.ID?
-    @Environment(\.brand) private var brand
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Color.clear
                 .aspectRatio(4 / 3, contentMode: .fit)
                 .overlay { AssetImage(id: entry.id) }
-                .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                .clipShape(.rect(cornerRadius: 24, style: .continuous))
                 .overlay(alignment: .bottomTrailing) {
                     if entry.segments.count > 1 {
-                        ParagraphBadge(count: entry.segments.count).padding(10)
+                        ParagraphBadge(count: entry.segments.count).padding(12)
                     }
                 }
                 .overlay(alignment: .topTrailing) {
                     MediaBadge(kind: entry.mediaKind).padding(12)
                 }
-                .modifier(TransitionSource(id: entry.id, namespace: namespace, cornerRadius: 22))
+                .modifier(TransitionSource(id: entry.id, namespace: namespace, cornerRadius: 24))
 
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(metaLine)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.meta)
@@ -297,8 +291,8 @@ struct EntryCard: View {
                 }
                 if !entry.tags.isEmpty {
                     Text(entry.tags.map { "#\($0)#" }.joined(separator: "  "))
-                        .font(.footnote.weight(.semibold))
-                        .foregroundStyle(brand)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(Color.meta)
                         .padding(.top, 2)
                 }
             }
@@ -359,7 +353,7 @@ struct GlassSegmented<Value: Hashable>: View {
     }
 }
 
-/// 分组标题（22pt 粗体）；可点的组带灰色箭头。
+/// 分组标题（22pt 半粗）；可点的组带灰色箭头。
 struct SectionTitle: View {
     let title: String
     var chevron = false
@@ -367,7 +361,7 @@ struct SectionTitle: View {
     var body: some View {
         HStack(spacing: 6) {
             Text(title)
-                .font(.title2.weight(.bold))
+                .font(.title2.weight(.semibold))
                 .foregroundStyle(Color.ink)
             if chevron {
                 Image(systemName: "chevron.right")
@@ -388,7 +382,7 @@ struct Chip<Content: View>: View {
 
     var body: some View {
         HStack(spacing: 6) { content }
-            .padding(.horizontal, 14)
+            .padding(.horizontal, 16)
             .frame(height: height)
             .background(fill, in: .capsule)
     }

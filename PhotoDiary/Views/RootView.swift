@@ -122,7 +122,7 @@ private struct FloatingTabBar: View {
                         item(tab)
                     }
                 }
-                .padding(5)
+                .padding(4)
                 .animation(.snappy, value: router.tab)
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .sensoryFeedback(.selection, trigger: router.tab)

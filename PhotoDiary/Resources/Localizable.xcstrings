@@ -17,82 +17,6 @@
         }
       }
     },
-    "%@ · %lld 篇": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ · %#@n@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 2,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg entry"
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg entries"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@ · %2$lld件"
-          }
-        }
-      }
-    },
-    "%@写了 %lld 篇": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%#@n@ in %1$@"
-          },
-          "substitutions": {
-            "n": {
-              "argNum": 2,
-              "formatSpecifier": "lld",
-              "variations": {
-                "plural": {
-                  "one": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg entry"
-                    }
-                  },
-                  "other": {
-                    "stringUnit": {
-                      "state": "translated",
-                      "value": "%arg entries"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%1$@は%2$lld件"
-          }
-        }
-      }
-    },
     "%@的日记：%@": {
       "localizations": {
         "en": {
@@ -105,22 +29,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$@の日記：%2$@"
-          }
-        }
-      }
-    },
-    "%@还没写": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nothing written in %@ yet"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "%@はまだ書いていません"
           }
         }
       }
@@ -619,18 +527,18 @@
         }
       }
     },
-    "今天写下的，明年的这一天会出现在这里。": {
+    "今天写下的，明年的这一天会出现在这里": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "What you write today will show up here on this day next year."
+            "value": "What you write today will show up here on this day next year"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "今日書いたことは、来年の今日ここに表示されます。"
+            "value": "今日書いたことは、来年の今日ここに表示されます"
           }
         }
       }
@@ -891,18 +799,18 @@
         }
       }
     },
-    "写过说明的照片里，还没有带位置的。": {
+    "写过说明的照片里，还没有带位置的": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "None of your captioned photos have a location yet."
+            "value": "None of your captioned photos have a location yet"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプション付きの写真に、位置情報のあるものはまだありません。"
+            "value": "キャプション付きの写真に、位置情報のあるものはまだありません"
           }
         }
       }
@@ -923,18 +831,18 @@
         }
       }
     },
-    "切换到“全部照片”，可以给它们追加感想。": {
+    "切换到“全部照片”，可以给它们追加感想": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Switch to “All Photos” to add reflections to them."
+            "value": "Switch to “All Photos” to add reflections to them"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「すべての写真」に切り替えると、感想を追加できます。"
+            "value": "「すべての写真」に切り替えると、感想を追加できます"
           }
         }
       }
@@ -1051,66 +959,66 @@
         }
       }
     },
-    "只在原照片上标注，微单拍的大文件也不会多占一份空间。": {
+    "只在原照片上标注，微单拍的大文件也不会多占一份空间": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Notes go on the original photo, so large camera files never take up space twice."
+            "value": "Notes go on the original photo, so large camera files never take up space twice"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "元の写真に書き込むだけなので、カメラの大きなファイルでも容量を二重に使いません。"
+            "value": "元の写真に書き込むだけなので、カメラの大きなファイルでも容量を二重に使いません"
           }
         }
       }
     },
-    "只显示了你允许访问的照片。": {
+    "只显示了你允许访问的照片": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Only photos you’ve allowed are shown."
+            "value": "Only photos you’ve allowed are shown"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "アクセスを許可した写真だけが表示されています。"
+            "value": "アクセスを許可した写真だけが表示されています"
           }
         }
       }
     },
-    "可以搜正文和地点，输入 # 按标签筛选。": {
+    "可以搜正文和地点，输入 # 按标签筛选": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Search text and places. Type # to filter by tag."
+            "value": "Search text and places. Type # to filter by tag"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "本文や場所を検索できます。# を入力するとタグで絞り込めます。"
+            "value": "本文や場所を検索できます。# を入力するとタグで絞り込めます"
           }
         }
       }
     },
-    "可能已经改名或合并到别的标签。": {
+    "可能已经改名或合并到别的标签": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It may have been renamed or merged into another tag."
+            "value": "It may have been renamed or merged into another tag"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "名前が変更されたか、別のタグに統合された可能性があります。"
+            "value": "名前が変更されたか、別のタグに統合された可能性があります"
           }
         }
       }
@@ -1227,34 +1135,34 @@
         }
       }
     },
-    "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词。": {
+    "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Write #topic# in an entry and it appears here, synced as a photo keyword."
+            "value": "Write #topic# in an entry and it appears here, synced as a photo keyword"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "日記に #話題# と書くとここに表示され、写真のキーワードにも同期されます。"
+            "value": "日記に #話題# と書くとここに表示され、写真のキーワードにも同期されます"
           }
         }
       }
     },
-    "在照片 App 的说明栏写，也会出现在这里。": {
+    "在照片 App 的说明栏写，也会出现在这里": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Captions written in the Photos app show up here too."
+            "value": "Captions written in the Photos app show up here too"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「写真」アプリのキャプション欄に書いた内容もここに表示されます。"
+            "value": "「写真」アプリのキャプション欄に書いた内容もここに表示されます"
           }
         }
       }
@@ -1323,18 +1231,18 @@
         }
       }
     },
-    "它可能在照片 App 里被删除，或者说明被清空了。": {
+    "它可能在照片 App 里被删除，或者说明被清空了": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "It may have been deleted in Photos, or its caption was cleared."
+            "value": "It may have been deleted in Photos, or its caption was cleared"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "「写真」アプリで削除されたか、キャプションが消去された可能性があります。"
+            "value": "「写真」アプリで削除されたか、キャプションが消去された可能性があります"
           }
         }
       }
@@ -1489,18 +1397,18 @@
         }
       }
     },
-    "拍几张照片再来。": {
+    "拍几张照片再来": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Take some photos and come back."
+            "value": "Take some photos and come back"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "写真を撮ってから、また来てください。"
+            "value": "写真を撮ってから、また来てください"
           }
         }
       }
@@ -1777,18 +1685,18 @@
         }
       }
     },
-    "日记经 iCloud 同步，在照片 App 里可见、可搜索。": {
+    "日记经 iCloud 同步，在照片 App 里可见、可搜索": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Entries sync via iCloud and are visible and searchable in Photos."
+            "value": "Entries sync via iCloud and are visible and searchable in Photos"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "日記は iCloud で同期され、「写真」アプリでも表示・検索できます。"
+            "value": "日記は iCloud で同期され、「写真」アプリでも表示・検索できます"
           }
         }
       }
@@ -2001,6 +1909,34 @@
         }
       }
     },
+    "本月写了 %lld 篇": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld entry this month"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "%lld entries this month"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今月は%lld件"
+          }
+        }
+      }
+    },
     "本月早些时候": {
       "localizations": {
         "en": {
@@ -2013,6 +1949,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "今月"
+          }
+        }
+      }
+    },
+    "本月还没写": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing yet this month"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今月はまだ書いていません"
           }
         }
       }
@@ -2845,18 +2797,18 @@
         }
       }
     },
-    "这张照片在共享图库中，其他成员可能看到这段日记。": {
+    "这张照片在共享图库中，其他成员可能看到这段日记": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "This photo is in a Shared Library. Other members may see this entry."
+            "value": "This photo is in a Shared Library. Other members may see this entry"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "この写真は共有ライブラリにあります。ほかのメンバーにもこの日記が見える場合があります。"
+            "value": "この写真は共有ライブラリにあります。ほかのメンバーにもこの日記が見える場合があります"
           }
         }
       }
@@ -2893,18 +2845,18 @@
         }
       }
     },
-    "选一张照片，把当时的感受写进它的说明里。": {
+    "选一张照片，把当时的感受写进它的说明里": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Pick a photo and write how it felt into its caption."
+            "value": "Pick a photo and write how it felt into its caption"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "写真を選んで、そのときの気持ちをキャプションに書きましょう。"
+            "value": "写真を選んで、そのときの気持ちをキャプションに書きましょう"
           }
         }
       }

@@ -25,7 +25,7 @@ struct EntryDetailView: View {
             if let entry = store.entry(id) {
                 content(entry)
             } else {
-                EmptyHint(title: "这张照片已经不在了", message: "它可能在照片 App 里被删除，或者说明被清空了。")
+                EmptyHint(title: "这张照片已经不在了", message: "它可能在照片 App 里被删除，或者说明被清空了")
             }
         }
         .modifier(ZoomDestination(id: id, namespace: namespace))
@@ -151,8 +151,8 @@ struct EntryDetailView: View {
                             SegmentDivider(primary: String(localized: "未注明日期"))
                         }
                     }
-                    .padding(.top, 30)
-                    .padding(.bottom, 22)
+                    .padding(.top, 32)
+                    .padding(.bottom, 24)
                     DiaryText(text: segment.text, size: 18, color: Color.inkSecondary)
                         .lineSpacing(11)
                 }
@@ -202,7 +202,7 @@ struct EntryDetailView: View {
                     .buttonStyle(.press)
                 }
             }
-            .padding(.top, 30)
+            .padding(.top, 32)
         }
     }
 
@@ -228,8 +228,8 @@ struct EntryDetailView: View {
                 Label("追加感想", systemImage: "plus")
                     .font(.system(size: 16, weight: .semibold))
                     .foregroundStyle(.white)
-                    .padding(.leading, 18)
-                    .padding(.trailing, 22)
+                    .padding(.leading, 16)
+                    .padding(.trailing, 24)
                     .frame(height: 52)
                     .contentShape(.capsule)
             }

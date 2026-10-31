@@ -36,14 +36,14 @@ struct AddFromPhotosView: View {
                     ForEach(sections, id: \.title) { section in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
                             Text(section.title)
-                                .font(.title3.weight(.bold))
+                                .font(.title3.weight(.semibold))
                             if let detail = section.detail {
                                 Text(detail).font(.footnote).foregroundStyle(Color.meta)
                             }
                         }
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
-                        .padding(.bottom, 10)
+                        .padding(.bottom, 12)
                                 .accessibilityAddTraits(.isHeader)
 
                         LazyVGrid(columns: columns, spacing: 2) {
@@ -51,14 +51,14 @@ struct AddFromPhotosView: View {
                                 cell(id)
                             }
                         }
-                        .padding(.bottom, 22)
+                        .padding(.bottom, 24)
                     }
 
                     if loaded && sections.isEmpty {
                         if filter == .unwritten {
-                            EmptyHint(title: "最近的照片都写过了", message: "切换到“全部照片”，可以给它们追加感想。")
+                            EmptyHint(title: "最近的照片都写过了", message: "切换到“全部照片”，可以给它们追加感想")
                         } else {
-                            EmptyHint(title: "照片库是空的", message: "拍几张照片再来。")
+                            EmptyHint(title: "照片库是空的", message: "拍几张照片再来")
                         }
                     }
                 }
@@ -70,7 +70,7 @@ struct AddFromPhotosView: View {
                 ZStack(alignment: .bottom) {
                     BottomFade(height: 120).ignoresSafeArea(edges: .bottom)
                     GlassSegmented(options: Filter.allCases, selection: $filter.animation(.snappy), title: \.title)
-                        .padding(.bottom, 10)
+                        .padding(.bottom, 12)
                 }
             }
             .navigationTitle("从照片添加")
@@ -112,12 +112,12 @@ struct AddFromPhotosView: View {
                 .overlay(alignment: .bottomLeading) {
                     if hasDiary {
                         Image(systemName: "text.alignleft")
-                            .font(.system(size: 10, weight: .heavy))
+                            .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(Color(.label))
                             .frame(width: 20, height: 20)
                             .background(.white.opacity(0.94), in: .circle)
                             .shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
-                            .padding(5)
+                            .padding(4)
                     }
                 }
                 .matchedTransitionSource(id: id, in: zoom)

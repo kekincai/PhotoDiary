@@ -8,7 +8,7 @@ struct ReviewView: View {
     var body: some View {
         ScrollViewReader { proxy in
         ScrollView {
-            VStack(alignment: .leading, spacing: 30) {
+            VStack(alignment: .leading, spacing: 32) {
                 OnThisDaySection()
                     .id("review-top")
                 WeekSection()
@@ -45,13 +45,13 @@ private struct OnThisDaySection: View {
                 VStack(alignment: .leading, spacing: 6) {
                     Text("往年的今天还没有日记")
                         .font(.headline)
-                    Text("今天写下的，明年的这一天会出现在这里。")
+                    Text("今天写下的，明年的这一天会出现在这里")
                         .font(.subheadline)
                         .foregroundStyle(Color.meta)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(Color.tile, in: .rect(cornerRadius: 22, style: .continuous))
+                .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
                 .padding(.horizontal, 16)
             } else {
                 ScrollView(.horizontal) {
@@ -92,8 +92,8 @@ private struct OnThisDaySection: View {
                     .frame(height: 260)
                 }
                 .overlay(alignment: .bottomLeading) { caption(entry) }
-                .clipShape(.rect(cornerRadius: 26, style: .continuous))
-                .contentShape(.rect(cornerRadius: 26))
+                .clipShape(.rect(cornerRadius: 24, style: .continuous))
+                .contentShape(.rect(cornerRadius: 24))
         }
         .buttonStyle(.press)
         .overlay(alignment: .bottomTrailing) {
@@ -133,9 +133,9 @@ private struct OnThisDaySection: View {
             }
         }
         .foregroundStyle(.white)
-        .padding(.leading, 22)
+        .padding(.leading, 24)
         .padding(.trailing, 72)
-        .padding(.bottom, 22)
+        .padding(.bottom, 24)
     }
 
     /// Höfn í Hornafirði · 2 段
@@ -202,8 +202,8 @@ private struct WeekSection: View {
                 }
             }
             .padding(.horizontal, 8)
-            .padding(.vertical, 14)
-            .background(Color.tile, in: .rect(cornerRadius: 22, style: .continuous))
+            .padding(.vertical, 16)
+            .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
             .padding(.horizontal, 16)
         }
     }
@@ -260,7 +260,7 @@ private struct UnwrittenSection: View {
         } label: {
             AssetImage(id: photo.id, pointSize: CGSize(width: 150, height: 150))
                 .frame(width: 150, height: 150)
-                .clipShape(.rect(cornerRadius: 18, style: .continuous))
+                .clipShape(.rect(cornerRadius: 16, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if let label {
                         Text(label)
@@ -313,7 +313,7 @@ private struct TagsSection: View {
                     .foregroundStyle(Color.meta)
                     .padding(.horizontal, 20)
             } else {
-                LazyVGrid(columns: columns, spacing: 18) {
+                LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(tags.prefix(4), id: \.name) { tag in
                         NavigationLink(value: Route.tag(tag.name)) {
                             TagCover(name: tag.name, detail: String(localized: "\(tag.count) 篇"))

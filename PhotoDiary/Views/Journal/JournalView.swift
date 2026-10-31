@@ -73,7 +73,7 @@ struct JournalView: View {
                 Section {
                     if mode == .calendar { CalendarContent() } else { ListContent() }
                 } header: {
-                    if mode == .calendar { WeekdayHeader().padding(.top, 18) }
+                    if mode == .calendar { WeekdayHeader().padding(.top, 16) }
                 }
             }
             .padding(.bottom, 170)
@@ -107,7 +107,7 @@ struct JournalView: View {
                             ], startPoint: .top, endPoint: .bottom)
                             .frame(height: max(190, viewport.safeAreaInsets.top + 92))
                             .allowsHitTesting(false)
-                            TitleBlock(subtitle: gridSubtitle, onPhoto: true)
+                            TitleBlock(subtitle: subtitle, onPhoto: true)
                                 .padding(.top, viewport.safeAreaInsets.top)
                                 .allowsHitTesting(false)
                         }
@@ -136,14 +136,9 @@ struct JournalView: View {
             let percent = Int(Double(done) / Double(total) * 100)
             return String(localized: "正在读取照片说明 \(percent)%")
         }
-        let month = DiaryDates.monthLong(.now)
+        // 按写作日期数；下面的月份标题按照片日期数，所以这里不写月份名，免得两个“10月”数字对不上。
         let n = store.writtenThisMonth
-        return n == 0 ? String(localized: "\(month)还没写") : String(localized: "\(month)写了 \(n) 篇")
-    }
-
-    /// 2026年10月 · 12 篇
-    private var gridSubtitle: String {
-        String(localized: "\(DiaryDates.yearMonth(.now)) · \(store.writtenThisMonth) 篇")
+        return n == 0 ? String(localized: "本月还没写") : String(localized: "本月写了 \(n) 篇")
     }
 
     private var moreMenu: some View {
@@ -166,7 +161,6 @@ private struct TitleBlock: View {
         VStack(alignment: .leading, spacing: 2) {
             Text("日记")
                 .font(.system(size: 34, weight: .bold))
-                .tracking(0.2)
                 .accessibilityAddTraits(.isHeader)
             Text(subtitle)
                 .font(.system(size: 15, weight: onPhoto ? .medium : .regular))
@@ -186,16 +180,16 @@ private struct TitleBlock: View {
 struct LimitedAccessBanner: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
-            Text("只显示了你允许访问的照片。")
+            Text("只显示了你允许访问的照片")
                 .font(.footnote)
                 .foregroundStyle(Color.meta)
             Spacer(minLength: 0)
             Button("选择更多") { LimitedLibrary.present() }
                 .font(.footnote.weight(.semibold))
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 16)
         .padding(.vertical, 12)
-        .background(Color.tile, in: .rect(cornerRadius: 14, style: .continuous))
+        .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
     }
 }
 

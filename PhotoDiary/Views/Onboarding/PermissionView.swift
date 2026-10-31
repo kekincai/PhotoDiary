@@ -20,10 +20,10 @@ struct PermissionView: View {
                 .foregroundStyle(.white)
                 .padding(.bottom, 28)
 
-            VStack(alignment: .leading, spacing: 18) {
-                point("photo.on.rectangle", "不复制照片", "只在原照片上标注，微单拍的大文件也不会多占一份空间。")
-                point("icloud", "随照片同步", "日记经 iCloud 同步，在照片 App 里可见、可搜索。")
-                point("arrow.triangle.2.circlepath", "两边都能写", "在照片 App 的说明栏写，也会出现在这里。")
+            VStack(alignment: .leading, spacing: 16) {
+                point("photo.on.rectangle", "不复制照片", "只在原照片上标注，微单拍的大文件也不会多占一份空间")
+                point("icloud", "随照片同步", "日记经 iCloud 同步，在照片 App 里可见、可搜索")
+                point("arrow.triangle.2.circlepath", "两边都能写", "在照片 App 的说明栏写，也会出现在这里")
             }
             Spacer()
             Spacer()
@@ -52,7 +52,7 @@ struct PermissionView: View {
                 .foregroundStyle(.white.opacity(0.75))
                 .frame(maxWidth: .infinity)
                 .multilineTextAlignment(.center)
-                .padding(.top, 14)
+                .padding(.top, 16)
         }
         .padding(.horizontal, 28)
         .padding(.bottom, 12)
@@ -61,11 +61,11 @@ struct PermissionView: View {
     }
 
     private func point(_ symbol: String, _ title: LocalizedStringKey, _ text: LocalizedStringKey) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        HStack(alignment: .top, spacing: 12) {
             Image(systemName: symbol)
                 .font(.system(size: 20))
                 .frame(width: 28)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.headline)
                 Text(text).font(.subheadline).opacity(0.8)
             }

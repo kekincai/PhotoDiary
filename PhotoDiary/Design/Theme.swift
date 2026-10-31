@@ -220,8 +220,6 @@ enum DiaryDates {
     static func monthName(_ date: Date) -> String {
         AppLanguage.current == .english ? format("LLLL", date) : format("MMM", date)
     }
-    /// 副标题里的月份：十月 / 10月 / October
-    static func monthLong(_ date: Date) -> String { format("LLLL", date) }
     static func yearMonth(_ date: Date) -> String { format("yMMMM", date) }
     /// 只写数字：2026
     static func year(_ date: Date) -> String { String(Calendar.diary.component(.year, from: date)) }
