@@ -25,7 +25,6 @@ enum Route: Hashable {
     case entry(String)
     case tag(String)
     case tags
-    case external
     case day(DayStamp)
 }
 

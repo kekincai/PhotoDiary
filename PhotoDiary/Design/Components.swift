@@ -43,17 +43,20 @@ struct AssetImage: View {
     }
 }
 
-/// 段落之间的分隔线：—— 两天后 · 10月22日 ——
+/// 段落之间的分隔线：两侧细线，中间是相对时间（略重）和日期。
 struct SegmentDivider: View {
-    let label: String
+    let primary: String
+    var secondary: String? = nil
 
     var body: some View {
         HStack(spacing: 10) {
             line
-            Text(label)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(Color.meta)
-                .fixedSize()
+            HStack(spacing: 6) {
+                Text(primary).fontWeight(.semibold).foregroundStyle(Color.inkSecondary)
+                if let secondary { Text(secondary).foregroundStyle(Color.meta) }
+            }
+            .font(.caption.monospacedDigit())
+            .fixedSize()
             line
         }
         .accessibilityElement(children: .combine)
@@ -182,14 +185,12 @@ struct EntryRow: View {
     private var metaText: AttributedString? {
         let place = entry.placeName
         let tags = entry.tagLine
-        guard place != nil || !tags.isEmpty || !entry.isDiary else { return nil }
-        var line = AttributedString(place.map { tags.isEmpty ? $0 : $0 + " · " } ?? "")
+        guard place != nil || !tags.isEmpty else { return nil }
+        // 地点和标签之间用空隙分开，不用“·”拼接。
+        var line = AttributedString(place.map { tags.isEmpty ? $0 : $0 + "\u{2003}" } ?? "")
         var tagPart = AttributedString(tags)
         tagPart.foregroundColor = brand
         line += tagPart
-        if !entry.isDiary {
-            line += AttributedString(place == nil && tags.isEmpty ? "其他来源的说明" : " · 其他来源")
-        }
         return line
     }
 
@@ -221,27 +222,30 @@ struct TransitionSource: ViewModifier {
     }
 }
 
-/// 空状态
+/// 空状态：说清楚是什么空了，最多给一个动作。不放大图标。
 struct EmptyHint: View {
-    let symbol: String
     let title: String
     let message: String
+    var action: (label: String, perform: () -> Void)? = nil
 
     var body: some View {
-        VStack(spacing: 10) {
-            Image(systemName: symbol)
-                .font(.system(size: 40, weight: .light))
-                .foregroundStyle(Color.meta)
-                .padding(.bottom, 4)
-            Text(title).font(.headline)
+        VStack(alignment: .leading, spacing: 6) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(Color.ink)
             Text(message)
                 .font(.subheadline)
                 .foregroundStyle(Color.meta)
-                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            if let action {
+                Button(action.label, action: action.perform)
+                    .font(.subheadline.weight(.semibold))
+                    .padding(.top, 8)
+            }
         }
-        .padding(.horizontal, 40)
-        .padding(.vertical, 60)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 40)
     }
 }
 

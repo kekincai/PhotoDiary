@@ -2,7 +2,7 @@ import Foundation
 
 /// 本地索引的磁盘快照。照片说明才是正本，这个文件丢了就从照片库重建。
 nonisolated struct IndexSnapshot: Codable, Sendable {
-    static let currentVersion = 1
+    static let currentVersion = 2
 
     var version = IndexSnapshot.currentVersion
     var entries: [DiaryEntry] = []

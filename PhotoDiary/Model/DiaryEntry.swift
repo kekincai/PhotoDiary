@@ -22,7 +22,7 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
     var placeName: String?
     /// 拍摄地时区（由位置得到）。照片日期按拍摄地当地时间算，和照片 App 一致。
     var timeZoneID: String?
-    /// 曾在本 App 写过（即使用户之后删掉了日期行，也仍然算日记）。
+    /// 曾在本 App 写过。决定同步时是否按标签改写关键词。
     var writtenInApp: Bool = false
 
     // 解析结果（由 caption 派生，随 caption 一起更新）。
@@ -52,9 +52,6 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
         segments = parsed.segments
         tags = parsed.tags
     }
-
-    /// 带写作时间行或曾在本 App 写过的算日记；其余（Lightroom 导入的 IPTC 说明等）算外部说明。
-    var isDiary: Bool { writtenInApp || segments.contains { $0.date != nil } }
 
     /// 照片日期；没有拍摄日期时退回第一段的写作日期。
     var day: DayStamp {

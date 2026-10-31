@@ -8,9 +8,10 @@
 不复制、不存储照片；日记随照片经 iCloud 同步，在系统照片 App 里也能看到、能搜到。</p>
 
 <p align="center">
-  <img src="docs/screenshots/journal.png" width="260" alt="日记列表">
-  <img src="docs/screenshots/detail.png" width="260" alt="日记详情">
-  <img src="docs/screenshots/review.png" width="260" alt="回顾">
+  <img src="docs/screenshots/journal.png" width="200" alt="日记列表">
+  <img src="docs/screenshots/calendar.png" width="200" alt="日历">
+  <img src="docs/screenshots/detail.png" width="200" alt="日记详情">
+  <img src="docs/screenshots/review.png" width="200" alt="回顾">
 </p>
 
 ## 为什么
@@ -22,7 +23,7 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 ## 功能
 
 - **双向同步**：照片 App 里改的说明，打开本 App 就能看到（运行中实时，关闭期间按 change token 增量）
-- **日记**：按月分组的时间线，另有日历、照片网格、地图三种视图
+- **日记**：按月分组的时间线，另有日历、照片网格、地图三种视图，切换时背景不动、只换内容
 - **编辑器**：微博式 `#话题#` 标签，输入 `#` 弹出用过的标签；保存时自动补写作日期；可以给旧照片“追加感想”
 - **回顾**：那年今日、本周写作、还没写日记的照片
 - **标签**：标签自动同步为照片关键词；支持批量改名、合并
@@ -43,7 +44,8 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 
 - 每段末尾一行 `— YYYY.MM.DD` 是写作日期；追加感想时空一行再写新段落
 - `#话题#` 是标签，半角、全角 `＃` 都能识别，最长 20 字；照片关键词完全由标签生成
-- 没有日期行的说明（例如 Lightroom 导入的 IPTC 说明）算“其他来源的说明”，默认不进日记流；在本 App 编辑后转为日记
+- 照片 App 里直接写的说明（没有日期行）同样是日记；保存时自动补上日期行
+- 相机自动写入的说明（如 `FUJIFILM DIGITAL CAMERA GFX100RF`、`OLYMPUS DIGITAL CAMERA`、`SONY DSC`）会被忽略，写日记时直接覆盖
 - 解析失败时原文照常显示，App 不会擅自改写用户在别处写的文字
 
 ## 技术

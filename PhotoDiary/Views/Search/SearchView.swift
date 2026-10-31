@@ -98,7 +98,7 @@ struct SearchView: View {
     private var suggestions: some View {
         VStack(alignment: .leading, spacing: 12) {
             if store.tagCounts.isEmpty {
-                EmptyHint(symbol: "magnifyingglass", title: "搜索日记", message: "可以搜正文、地点，或者输入 # 按标签筛选。")
+                EmptyHint(title: "搜索日记", message: "可以搜正文和地点，输入 # 按标签筛选。")
             } else {
                 Text("标签")
                     .font(.footnote.weight(.semibold))

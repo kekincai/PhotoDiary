@@ -103,6 +103,28 @@ nonisolated enum CaptionFormat {
         }
     }
 
+    // MARK: 相机自动写入的说明
+
+    private static let cameraMakers = ["FUJIFILM", "OLYMPUS", "SONY", "NIKON", "CANON", "KODAK", "LEICA", "RICOH",
+                                       "PENTAX", "PANASONIC", "SAMSUNG", "SIGMA", "HASSELBLAD", "MINOLTA", "KONICA",
+                                       "CASIO", "GOPRO", "DJI", "LG", "HUAWEI", "XIAOMI"]
+
+    /// 相机自动写进 EXIF/IPTC 的说明，例如“FUJIFILM DIGITAL CAMERA GFX100RF”“OLYMPUS DIGITAL CAMERA”“SONY DSC”。
+    /// 这类说明不算日记，读取时忽略，写日记时直接覆盖。
+    static func isCameraBoilerplate(_ caption: String?) -> Bool {
+        guard let text = caption?.trimmingCharacters(in: .whitespacesAndNewlines), !text.isEmpty else { return false }
+        if text.contains("\n") || text.count > 64 { return false }
+        let upper = text.uppercased()
+        if ["DEFAULT", "UNTITLED", "SONY DSC", "DCIM", "DIGITAL CAMERA", "CAMERA"].contains(upper) { return true }
+        if upper.contains("DIGITAL CAMERA") || upper.contains("DIGITAL STILL CAMERA") || upper.contains("CAMERA PICTURES") {
+            return true
+        }
+        // 全大写、只含拉丁字母数字和少量符号、以厂商名开头的短串，例如“LEICA CAMERA AG”“RICOH GR III”。
+        let allowed = CharacterSet.uppercaseLetters.union(.decimalDigits).union(CharacterSet(charactersIn: " -_./"))
+        let isMachineLike = text == upper && text.unicodeScalars.allSatisfy { $0.isASCII && allowed.contains($0) }
+        return isMachineLike && cameraMakers.contains { upper.hasPrefix($0 + " ") || upper == $0 }
+    }
+
     // MARK: 写入
 
     static func dateLine(_ day: DayStamp) -> String { "— \(day.captionString)" }
@@ -120,7 +142,7 @@ nonisolated enum CaptionFormat {
     static func appending(_ newText: String, to existing: String?, on day: DayStamp = .today) -> String {
         let body = normalizeTags(newText.trimmingCharacters(in: .whitespacesAndNewlines))
         let segment = body + "\n" + dateLine(day)
-        let old = (existing ?? "").trimmingTrailingWhitespace()
+        let old = isCameraBoilerplate(existing) ? "" : (existing ?? "").trimmingTrailingWhitespace()
         return old.isEmpty ? segment : old + "\n\n" + segment
     }
 

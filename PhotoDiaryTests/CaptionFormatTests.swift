@@ -74,10 +74,25 @@ struct CaptionFormatTests {
         #expect(!CaptionFormat.isValidTagName(" 旅行"))
     }
 
+    @Test func cameraBoilerplateIsIgnored() {
+        for s in ["FUJIFILM DIGITAL CAMERA GFX100RF", "OLYMPUS DIGITAL CAMERA", "SONY DSC", "LEICA CAMERA AG",
+                  "RICOH GR III", "SAMSUNG CAMERA PICTURES", "  Default  ", "KONICA MINOLTA DIGITAL CAMERA"] {
+            #expect(CaptionFormat.isCameraBoilerplate(s), "\(s)")
+        }
+        for s in ["Fujifilm X100 test shot in Kyoto", "第一次用 FUJIFILM 拍日落", "SONY DSC\n今天很冷",
+                  "Kamakura, Japan. Shot on Fujifilm X-T5", "LOVE"] {
+            #expect(!CaptionFormat.isCameraBoilerplate(s), "\(s)")
+        }
+    }
+
+    @Test func writingOverwritesCameraBoilerplate() {
+        let day = DayStamp(year: 2026, month: 10, day: 31)!
+        #expect(CaptionFormat.appending("夕阳", to: "FUJIFILM DIGITAL CAMERA GFX100RF", on: day) == "夕阳\n— 2026.10.31")
+    }
+
     @Test func entryDisplay() {
         let entry = DiaryEntry(id: "1", caption: sample, keywords: [], creationDate: nil, latitude: nil,
                                longitude: nil, mediaKind: .photo, isCloudShared: false, pixelWidth: 4, pixelHeight: 3)
-        #expect(entry.isDiary)
         #expect(entry.title == "风很舒服，第一次用新镜头拍日落")
         #expect(entry.preview == "三年后再看，还是喜欢这张")
         #expect(entry.tagLine == "#旅行# #镜头测试#")

@@ -110,7 +110,8 @@ nonisolated enum LibraryScanner {
     static func entry(for asset: PHAsset) -> DiaryEntry? {
         let metadata = asset.extendedMetadata
         guard let caption = metadata.caption,
-              !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+              !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              !CaptionFormat.isCameraBoilerplate(caption) else { return nil }
         let kind: MediaKind = asset.mediaType == .video ? .video
             : asset.mediaSubtypes.contains(.photoLive) ? .livePhoto : .photo
         return DiaryEntry(

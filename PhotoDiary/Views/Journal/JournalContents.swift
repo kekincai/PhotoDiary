@@ -7,10 +7,12 @@ import MapKit
 /// 按月分组的时间线；顶部“那年今日”提示。
 struct ListContent: View {
     @Environment(DiaryStore.self) private var store
+    @Environment(Router.self) private var router
     @Environment(\.zoomNamespace) private var namespace
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
+            if store.isLimited { LimitedAccessBanner() }
             if let memory = store.onThisDay.first {
                 OnThisDayBanner(entry: memory)
             }
@@ -18,14 +20,10 @@ struct ListContent: View {
                 emptyState
             }
             ForEach(months, id: \.key) { month in
-                Text(DiaryDates.monthHeader(month.entries[0].displayDate))
-                    .font(.footnote.weight(.semibold))
-                    .tracking(0.5)
-                    .foregroundStyle(Color.meta)
+                MonthHeading(date: month.entries[0].displayDate, count: month.entries.count)
                     .padding(.horizontal, 20)
-                    .padding(.top, 18)
-                    .padding(.bottom, 6)
-                    .accessibilityAddTraits(.isHeader)
+                    .padding(.top, 24)
+                    .padding(.bottom, 2)
                 ForEach(month.entries) { entry in
                     NavigationLink(value: Route.entry(entry.id)) {
                         EntryRow(entry: entry, showsSeparator: entry.id != month.entries.last?.id, namespace: namespace)
@@ -34,7 +32,6 @@ struct ListContent: View {
                 }
             }
         }
-        .padding(.top, 8)
         .padding(.bottom, 120)
     }
 
@@ -49,12 +46,38 @@ struct ListContent: View {
     }
 
     @ViewBuilder private var emptyState: some View {
-        if case .scanning = store.syncState {
-            EmptyHint(symbol: "photo.stack", title: "正在读取照片说明", message: "第一次打开需要遍历照片库，建好的部分会先显示出来。")
+        if !store.hasSynced && store.timeline.isEmpty {
+            EmptyHint(title: "正在读取照片说明", message: "照片多的话需要一会儿，读到的会先显示出来。")
         } else {
-            EmptyHint(symbol: "text.below.photo", title: "还没有日记",
-                      message: "点右下角的 + 选一张照片，把当时的感受写进它的说明里。")
+            EmptyHint(title: "还没有写过说明的照片",
+                      message: "选一张照片，把当时的感受写进它的说明里。",
+                      action: ("从照片开始", { router.showAddFromPhotos = true }))
         }
+    }
+}
+
+/// 月份标题：“10月”加粗，年份和篇数退后一层。
+struct MonthHeading: View {
+    let date: Date
+    var count: Int? = nil
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
+            Text(DateFormatter.zh("M月").string(from: date))
+                .font(.title3.weight(.bold))
+                .foregroundStyle(Color.ink)
+            Text(DateFormatter.zh("yyyy").string(from: date))
+                .font(.subheadline)
+                .foregroundStyle(Color.meta)
+            Spacer(minLength: 0)
+            if let count {
+                Text("\(count) 篇")
+                    .font(.footnote.monospacedDigit())
+                    .foregroundStyle(Color.meta)
+            }
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
     }
 }
 
@@ -64,13 +87,13 @@ private struct OnThisDayBanner: View {
 
     var body: some View {
         NavigationLink(value: Route.entry(entry.id)) {
-            HStack(spacing: 12) {
-                AssetImage(id: entry.id, pointSize: CGSize(width: 44, height: 44))
-                    .frame(width: 44, height: 44)
-                    .clipShape(.rect(cornerRadius: 10))
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("那年今日 · \(DiaryDates.yearsAgo(entry.day))")
-                        .font(.caption.weight(.semibold))
+            HStack(spacing: 14) {
+                AssetImage(id: entry.id, pointSize: CGSize(width: 52, height: 52))
+                    .frame(width: 52, height: 52)
+                    .clipShape(.rect(cornerRadius: 10, style: .continuous))
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("\(DiaryDates.yearsAgo(entry.day))的今天")
+                        .font(.footnote.weight(.semibold))
                         .foregroundStyle(brand)
                     Text(entry.title)
                         .font(.diary(15, relativeTo: .subheadline))
@@ -78,45 +101,64 @@ private struct OnThisDayBanner: View {
                         .lineLimit(1)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.right")
-                    .font(.footnote.weight(.bold))
-                    .foregroundStyle(Color(.tertiaryLabel))
             }
-            .padding(10)
-            .background(brand.opacity(0.08), in: .rect(cornerRadius: 16))
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .contentShape(.rect)
         }
-        .buttonStyle(.press)
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
-        .padding(.bottom, 6)
+        .buttonStyle(.row())
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(Color.hairline).frame(height: 1).padding(.horizontal, 20)
+        }
     }
 }
 
 // MARK: 日历
 
-/// 按月显示，写过日记的日子显示缩略图。
+/// 星期行：吸顶在切换条下面，所有月份共用。
+struct WeekdayRow: View {
+    private let names = ["日", "一", "二", "三", "四", "五", "六"]
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(Array(names.enumerated()), id: \.offset) { i, name in
+                Text(name)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(i == 0 || i == 6 ? Color(.tertiaryLabel) : Color.meta)
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// 只列出写过日记的月份（加上本月），写过的日子铺满照片。
 struct CalendarContent: View {
     @Environment(DiaryStore.self) private var store
 
     var body: some View {
         let byDay = Dictionary(grouping: store.timeline, by: \.day)
-        LazyVStack(spacing: 28) {
+        LazyVStack(alignment: .leading, spacing: 32) {
             ForEach(months, id: \.self) { first in
                 MonthGrid(firstDay: first, entriesByDay: byDay)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 20)
+        .padding(.horizontal, 12)
+        .padding(.top, 10)
         .padding(.bottom, 120)
     }
 
-    /// 从本月往前，直到最早一篇日记所在的月份（至少 12 个月）。
     private var months: [Date] {
         let cal = Calendar.diary
         let thisMonth = cal.dateInterval(of: .month, for: .now)!.start
-        let earliest = store.timeline.last?.sortDate ?? thisMonth
-        let span = max(11, cal.dateComponents([.month], from: earliest, to: thisMonth).month ?? 0)
-        return (0...min(span, 600)).compactMap { cal.date(byAdding: .month, value: -$0, to: thisMonth) }
+        var seen = Set<Date>([thisMonth])
+        var out = [thisMonth]
+        for entry in store.timeline {
+            guard let start = cal.dateInterval(of: .month, for: entry.displayDate)?.start, !seen.contains(start) else { continue }
+            seen.insert(start)
+            out.append(start)
+        }
+        return out.sorted(by: >)
     }
 }
 
@@ -124,60 +166,77 @@ private struct MonthGrid: View {
     let firstDay: Date
     let entriesByDay: [DayStamp: [DiaryEntry]]
     @Environment(\.brand) private var brand
+    @Environment(\.zoomNamespace) private var namespace
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
-    private let weekdays = ["日", "一", "二", "三", "四", "五", "六"]
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 3), count: 7)
 
     var body: some View {
         let cal = Calendar.diary
         let leading = cal.component(.weekday, from: firstDay) - 1
         let count = cal.range(of: .day, in: .month, for: firstDay)?.count ?? 30
-        let today = DayStamp.today
+        let days = (1...count).map { DayStamp(cal.date(byAdding: .day, value: $0 - 1, to: firstDay)!) }
+        let total = days.reduce(0) { $0 + (entriesByDay[$1]?.count ?? 0) }
 
         VStack(alignment: .leading, spacing: 10) {
-            Text(DateFormatter.zh("yyyy年M月").string(from: firstDay))
-                .font(.title3.weight(.bold))
-                .padding(.horizontal, 4)
-                .accessibilityAddTraits(.isHeader)
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(weekdays, id: \.self) { w in
-                    Text(w).font(.caption.weight(.semibold)).foregroundStyle(Color.meta)
-                }
-                ForEach(0..<leading, id: \.self) { _ in Color.clear.frame(height: 1) }
-                ForEach(1...count, id: \.self) { d in
-                    let day = DayStamp(cal.date(byAdding: .day, value: d - 1, to: firstDay)!)
-                    cell(day: day, entries: entriesByDay[day] ?? [], isToday: day == today)
+            MonthHeading(date: firstDay, count: total == 0 ? nil : total)
+                .padding(.horizontal, 8)
+            LazyVGrid(columns: columns, spacing: 3) {
+                ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit) }
+                ForEach(days, id: \.self) { day in
+                    cell(day: day, entries: entriesByDay[day] ?? [])
                 }
             }
         }
     }
 
     @ViewBuilder
-    private func cell(day: DayStamp, entries: [DiaryEntry], isToday: Bool) -> some View {
+    private func cell(day: DayStamp, entries: [DiaryEntry]) -> some View {
+        let today = DayStamp.today
         if let first = entries.first {
             NavigationLink(value: entries.count == 1 ? Route.entry(first.id) : Route.day(day)) {
-                AssetImage(id: first.id)
+                Color.clear
                     .aspectRatio(1, contentMode: .fit)
-                    .clipShape(.rect(cornerRadius: 8))
-                    .overlay(alignment: .bottomLeading) {
+                    .overlay { AssetImage(id: first.id) }
+                    .clipShape(.rect(cornerRadius: 9, style: .continuous))
+                    .overlay(alignment: .topLeading) {
                         Text("\(day.day)")
-                            .font(.caption.weight(.bold))
+                            .font(.caption.weight(.semibold).monospacedDigit())
                             .foregroundStyle(.white)
-                            .shadow(color: .black.opacity(0.5), radius: 2)
-                            .padding(4)
+                            .shadow(color: .black.opacity(0.45), radius: 3)
+                            .padding(.leading, 6)
+                            .padding(.top, 4)
+                    }
+                    .overlay(alignment: .bottomTrailing) {
+                        if entries.count > 1 {
+                            Text("\(entries.count)")
+                                .font(.caption2.weight(.bold).monospacedDigit())
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 5)
+                                .background(.black.opacity(0.4), in: .capsule)
+                                .padding(4)
+                        }
                     }
                     .overlay {
-                        if isToday { RoundedRectangle(cornerRadius: 8).strokeBorder(brand, lineWidth: 2) }
+                        if day == today {
+                            RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(brand, lineWidth: 2)
+                        }
                     }
+                    .modifier(TransitionSource(id: first.id, namespace: entries.count == 1 ? namespace : nil))
             }
             .buttonStyle(.press)
-            .accessibilityLabel("\(DiaryDates.full(day))，\(entries.count) 篇日记")
+            .accessibilityLabel("\(DiaryDates.full(day))，\(entries.count) 篇")
         } else {
-            Text("\(day.day)")
-                .font(.subheadline.weight(isToday ? .bold : .regular))
-                .foregroundStyle(isToday ? brand : Color.meta)
-                .frame(maxWidth: .infinity)
-                .aspectRatio(1, contentMode: .fit)
+            VStack(spacing: 3) {
+                Text("\(day.day)")
+                    .font(.callout.weight(day == today ? .bold : .regular).monospacedDigit())
+                    .foregroundStyle(day == today ? brand : (day > today ? Color(.quaternaryLabel) : Color(.secondaryLabel)))
+                Circle()
+                    .fill(day == today ? brand : .clear)
+                    .frame(width: 4, height: 4)
+            }
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1, contentMode: .fit)
+            .accessibilityLabel(DiaryDates.full(day))
         }
     }
 }
@@ -194,8 +253,10 @@ struct MediaGridContent: View {
         LazyVGrid(columns: columns, spacing: 2) {
             ForEach(store.timeline) { entry in
                 NavigationLink(value: Route.entry(entry.id)) {
-                    AssetImage(id: entry.id)
+                    Color.clear
                         .aspectRatio(1, contentMode: .fit)
+                        .overlay { AssetImage(id: entry.id) }
+                        .clipped()
                         .overlay(alignment: .bottomTrailing) {
                             if entry.segments.count > 1 { ParagraphBadge(count: entry.segments.count).padding(5) }
                         }
@@ -206,11 +267,10 @@ struct MediaGridContent: View {
                 .accessibilityLabel("\(DiaryDates.dayTitle(entry.displayDate))：\(entry.title)")
             }
         }
-        .padding(.top, 2)
         .padding(.bottom, 120)
-        .overlay {
+        .overlay(alignment: .top) {
             if store.timeline.isEmpty {
-                EmptyHint(symbol: "photo.on.rectangle", title: "还没有写过日记的照片", message: "写过日记的照片会出现在这里。")
+                EmptyHint(title: "这里还是空的", message: "写过说明的照片会排在这里。")
             }
         }
     }
@@ -229,12 +289,12 @@ struct MapContent: View {
             ForEach(located) { entry in
                 Annotation(entry.title, coordinate: entry.coordinate!, anchor: .bottom) {
                     Button { router.push(.entry(entry.id)) } label: {
-                        AssetImage(id: entry.id, pointSize: CGSize(width: 48, height: 48))
-                            .frame(width: 48, height: 48)
-                            .clipShape(.rect(cornerRadius: 10))
+                        AssetImage(id: entry.id, pointSize: CGSize(width: 46, height: 46))
+                            .frame(width: 46, height: 46)
+                            .clipShape(.rect(cornerRadius: 9, style: .continuous))
                             .padding(3)
-                            .background(.white, in: .rect(cornerRadius: 13))
-                            .shadow(color: .black.opacity(0.25), radius: 6, y: 3)
+                            .background(.white, in: .rect(cornerRadius: 12, style: .continuous))
+                            .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
                     }
                     .buttonStyle(.press)
                 }
@@ -242,16 +302,14 @@ struct MapContent: View {
             }
         }
         .mapControls { MapCompass(); MapScaleView() }
-        .clipShape(.rect(topLeadingRadius: 22, topTrailingRadius: 22))
         .overlay {
             if located.isEmpty {
-                Text("日记照片里还没有带位置信息的")
-                    .font(.footnote.weight(.medium))
+                Text("写过说明的照片里，还没有带位置的。")
+                    .font(.footnote)
                     .padding(.horizontal, 14).padding(.vertical, 10)
                     .glassEffect(.regular, in: .capsule)
             }
         }
-        .ignoresSafeArea(edges: .bottom)
     }
 }
 

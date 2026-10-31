@@ -73,7 +73,6 @@ extension View {
             case .entry(let id): EntryDetailView(id: id)
             case .tag(let name): TagEntriesView(tag: name)
             case .tags: TagsView()
-            case .external: ExternalCaptionsView()
             case .day(let day): DayEntriesView(day: day)
             }
         }
@@ -94,6 +93,7 @@ private struct FloatingTabBar: View {
                     }
                 }
                 .padding(5)
+                .animation(.snappy, value: router.tab)
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .sensoryFeedback(.selection, trigger: router.tab)
 
@@ -126,7 +126,8 @@ private struct FloatingTabBar: View {
                 case .search: router.searchPath.removeAll()
                 }
             }
-            withAnimation(.snappy) { router.tab = tab }
+            // 内容立即切换，只有选中的滑块做动画。
+            router.tab = tab
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: tab.symbol)

@@ -13,10 +13,6 @@ struct PermissionView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer()
-            Image(systemName: "text.below.photo")
-                .font(.system(size: 52, weight: .light))
-                .foregroundStyle(.white)
-                .padding(.bottom, 24)
             Text("把日记写在\n照片的说明里")
                 .font(.system(size: 34, weight: .bold))
                 .tracking(-0.7)
@@ -61,7 +57,7 @@ struct PermissionView: View {
         .padding(.horizontal, 28)
         .padding(.bottom, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(brand.gradient)
+        .background(brand)
     }
 
     private func point(_ symbol: String, _ title: String, _ text: String) -> some View {

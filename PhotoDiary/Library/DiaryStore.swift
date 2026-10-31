@@ -14,28 +14,21 @@ final class DiaryStore {
     private(set) var authorization: PHAuthorizationStatus = PHPhotoLibrary.authorizationStatus(for: .readWrite)
     private(set) var syncState: SyncState = .idle
     private(set) var hasLoaded = false
+    /// 至少完成过一次同步。之前列表为空不代表真的没有日记。
+    private(set) var hasSynced = false
 
     /// 所有带说明的照片，按 localIdentifier 索引。
     private(set) var entries: [String: DiaryEntry] = [:] {
         didSet { rebuildDerived() }
     }
 
-    /// 日记（按照片日期倒序）。
+    /// 所有写了说明的照片，按照片日期倒序。
     private(set) var diaries: [DiaryEntry] = []
-    /// 外部说明（Lightroom 导入、以前手写的）。
-    private(set) var externals: [DiaryEntry] = []
     /// 标签及数量，按数量排序。
     private(set) var tagCounts: [(name: String, count: Int)] = []
 
-    var showExternal: Bool = UserDefaults.standard.bool(forKey: "showExternal") {
-        didSet {
-            UserDefaults.standard.set(showExternal, forKey: "showExternal")
-            rebuildDerived()
-        }
-    }
-
     /// 列表、日历、照片、地图里显示的条目。
-    private(set) var timeline: [DiaryEntry] = []
+    var timeline: [DiaryEntry] { diaries }
 
     private var changeToken: Data?
     private var writtenInApp: Set<String> = []
@@ -103,6 +96,7 @@ final class DiaryStore {
                 await fullScan()
             }
             syncTask = nil
+            hasSynced = true
             if pendingIncremental {
                 pendingIncremental = false
                 sync()
@@ -187,9 +181,10 @@ final class DiaryStore {
     }
 
     private func afterSync(ids: [String]) {
-        // 关键词完全由说明里的标签生成；只修正日记，不碰外部说明。
+        // 关键词由说明里的标签生成。说明里没有标签、也没在本 App 写过的照片不动，
+        // 以免抹掉 Lightroom 等导入时自带的关键词。
         let mismatched = ids.compactMap { entries[$0] }.filter {
-            $0.isDiary && Set($0.keywords) != Set($0.tags)
+            (!$0.tags.isEmpty || $0.writtenInApp) && Set($0.keywords) != Set($0.tags)
         }.map(\.id)
         if !mismatched.isEmpty {
             Task { try? await LibraryScanner.reconcileKeywords(ids: mismatched) }
@@ -257,9 +252,7 @@ final class DiaryStore {
 
     private func rebuildDerived() {
         let all = entries.values.sorted { $0.sortDate > $1.sortDate }
-        diaries = all.filter(\.isDiary)
-        externals = all.filter { !$0.isDiary }
-        timeline = showExternal ? all : diaries
+        diaries = all
 
         var counts: [String: Int] = [:]
         for entry in diaries { for tag in entry.tags { counts[tag, default: 0] += 1 } }

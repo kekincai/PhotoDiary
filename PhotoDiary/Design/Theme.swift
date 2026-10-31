@@ -180,10 +180,10 @@ enum DiaryDates {
     static func short(_ day: DayStamp) -> String { "\(day.month)月\(day.day)日" }
     static func full(_ day: DayStamp) -> String { "\(day.year)年\(day.month)月\(day.day)日" }
 
-    /// 段落之间的分隔：“两天后 · 10月22日”。
-    static func gap(from previous: DayStamp?, to day: DayStamp) -> String {
+    /// 段落之间的分隔：（“两天后”，“10月22日”）。
+    static func gap(from previous: DayStamp?, to day: DayStamp) -> (relative: String, date: String) {
         let label = short(day)
-        guard let previous else { return year(prefix: day) + label }
+        guard let previous else { return (year(prefix: day) + label, "") }
         let n = previous.days(to: day)
         let relative: String
         switch n {
@@ -194,7 +194,7 @@ enum DiaryDates {
         case 30..<365: relative = "\(n / 30) 个月后"
         default: relative = "\(n / 365) 年后"
         }
-        return relative + " · " + year(prefix: day, relativeTo: previous) + short(day)
+        return (relative, year(prefix: day, relativeTo: previous) + short(day))
     }
 
     private static func year(prefix day: DayStamp, relativeTo other: DayStamp? = nil) -> String {

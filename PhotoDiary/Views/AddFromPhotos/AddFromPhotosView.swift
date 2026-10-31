@@ -55,8 +55,8 @@ struct AddFromPhotosView: View {
                     }
 
                     if loaded && sections.isEmpty {
-                        EmptyHint(symbol: "checkmark.circle", title: filter == .unwritten ? "都写过了" : "照片库是空的",
-                                  message: filter == .unwritten ? "最近的照片都已经有日记。切换到“全部照片”可以给它们追加感想。" : "拍几张照片再来吧。")
+                        EmptyHint(title: filter == .unwritten ? "最近的照片都写过了" : "照片库是空的",
+                                  message: filter == .unwritten ? "切换到“全部照片”，可以给它们追加感想。" : "拍几张照片再来。")
                     }
                 }
             }
@@ -69,7 +69,7 @@ struct AddFromPhotosView: View {
                 }
             }
             .navigationDestination(for: String.self) { id in
-                EditorView(assetID: id, mode: store.entry(id)?.isDiary == true ? .append : .new,
+                EditorView(assetID: id, mode: store.entry(id) == nil ? .new : .append,
                            existingCaption: store.entry(id)?.caption) { saved in
                     if saved {
                         dismiss()
@@ -90,7 +90,7 @@ struct AddFromPhotosView: View {
     }
 
     private func cell(_ id: String) -> some View {
-        let hasDiary = store.entry(id)?.isDiary == true
+        let hasDiary = store.entry(id) != nil
         return Button { path.append(id) } label: {
             AssetImage(id: id)
                 .aspectRatio(1, contentMode: .fit)
@@ -133,7 +133,7 @@ struct AddFromPhotosView: View {
             else { out.append(Section(title: title, detail: detail, items: [id])) }
         }
         for photo in photos {
-            if filter == .unwritten, store.entry(photo.id)?.isDiary == true { continue }
+            if filter == .unwritten, store.entry(photo.id) != nil { continue }
             let date = photo.date ?? .distantPast
             if date >= startOfToday { add("今天", DiaryDates.short(DayStamp(now)), photo.id) }
             else if date >= startOfYesterday { add("昨天", nil, photo.id) }

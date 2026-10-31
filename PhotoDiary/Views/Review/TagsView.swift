@@ -15,7 +15,7 @@ struct TagsView: View {
     var body: some View {
         List(selection: $selection) {
             if store.tagCounts.isEmpty {
-                EmptyHint(symbol: "number", title: "还没有标签", message: "在日记里写 #话题#，标签会自动出现，也会同步成照片的关键词。")
+                EmptyHint(title: "还没有标签", message: "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词。")
                     .listRowBackground(Color.clear)
             }
             ForEach(store.tagCounts, id: \.name) { tag in
@@ -127,47 +127,9 @@ struct TagEntriesView: View {
             .padding(.vertical, 8)
         }
         .overlay {
-            if entries.isEmpty { EmptyHint(symbol: "number", title: "没有日记", message: "这个标签下已经没有日记了。") }
+            if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了", message: "可能已经改名或合并到别的标签。") }
         }
         .navigationTitle("#\(tag)#")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-/// 其他来源的说明：默认不进日记流；编辑后转为日记。
-struct ExternalCaptionsView: View {
-    @Environment(DiaryStore.self) private var store
-
-    var body: some View {
-        @Bindable var store = store
-        List {
-            Section {
-                Toggle("在日记里显示", isOn: $store.showExternal)
-            } footer: {
-                Text("这些说明没有写作日期行，例如 Lightroom 导入时带来的 IPTC 说明或以前手写的说明。在本 App 编辑后会成为日记。")
-            }
-            Section {
-                ForEach(store.externals) { entry in
-                    NavigationLink(value: Route.entry(entry.id)) {
-                        HStack(spacing: 12) {
-                            AssetImage(id: entry.id, pointSize: CGSize(width: 48, height: 48))
-                                .frame(width: 48, height: 48)
-                                .clipShape(.rect(cornerRadius: 8))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(entry.caption).font(.diary(15)).lineLimit(2)
-                                Text(DiaryDates.full(entry.day)).font(.caption).foregroundStyle(Color.meta)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        .overlay {
-            if store.externals.isEmpty {
-                EmptyHint(symbol: "doc.text", title: "没有其他来源的说明", message: "照片库里没有不属于日记的说明。")
-            }
-        }
-        .navigationTitle("其他来源的说明")
         .navigationBarTitleDisplayMode(.inline)
     }
 }

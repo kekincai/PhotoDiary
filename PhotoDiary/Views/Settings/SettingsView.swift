@@ -42,12 +42,6 @@ struct SettingsView: View {
                     .sensoryFeedback(.selection, trigger: brand)
                 }
 
-                Section {
-                    Toggle("在日记里显示其他来源的说明", isOn: $store.showExternal)
-                } footer: {
-                    Text("没有写作日期行的说明（例如导入时自带的）默认不进日记流。")
-                }
-
                 Section("照片访问") {
                     LabeledContent("权限", value: accessText)
                     if store.isLimited {

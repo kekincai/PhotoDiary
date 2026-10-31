@@ -21,7 +21,7 @@ struct EntryDetailView: View {
             if let entry = store.entry(id) {
                 content(entry)
             } else {
-                EmptyHint(symbol: "photo", title: "这张照片已不在照片库中", message: "可能已在照片 App 中删除，或说明被清空。")
+                EmptyHint(title: "这张照片已经不在了", message: "它可能在照片 App 里被删除，或者说明被清空了。")
             }
         }
         .modifier(ZoomDestination(id: id, namespace: namespace))
@@ -101,21 +101,24 @@ struct EntryDetailView: View {
                             DiaryText(text: split.rest, size: 18, color: Color.inkSecondary)
                                 .lineSpacing(11)
                         }
+                        // 写的日子和拍的日子不同时，才注明写于哪天。
+                        if let written = segment.date, written != entry.day {
+                            Text("写于 \(DiaryDates.full(written))")
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(Color.meta)
+                                .padding(.top, 2)
+                        }
                     }
                 } else {
                     if let day = segment.date {
-                        SegmentDivider(label: DiaryDates.gap(from: segments[index - 1].date, to: day))
+                        let gap = DiaryDates.gap(from: segments[index - 1].date, to: day)
+                        SegmentDivider(primary: gap.relative, secondary: gap.date)
                     } else {
-                        SegmentDivider(label: "未注明日期")
+                        SegmentDivider(primary: "未注明日期")
                     }
                     DiaryText(text: segment.text, size: 18, color: Color.inkSecondary)
                         .lineSpacing(11)
                 }
-            }
-            if !entry.isDiary {
-                Label("这段说明来自其他地方（如导入时自带），编辑后会成为日记。", systemImage: "info.circle")
-                    .font(.footnote)
-                    .foregroundStyle(Color.meta)
             }
         }
         .textSelection(.enabled)
@@ -124,8 +127,11 @@ struct EntryDetailView: View {
         .padding(.top, 26)
     }
 
+    @ViewBuilder
     private func bottomBar(_ entry: DiaryEntry) -> some View {
+        let hasMeta = entry.placeName != nil || !entry.tags.isEmpty
         HStack(spacing: 10) {
+            if hasMeta {
             ScrollView(.horizontal) {
                 HStack(spacing: 12) {
                     if let place = entry.placeName {
@@ -137,18 +143,17 @@ struct EntryDetailView: View {
                         Button("#\(tag)#") { router.push(.tag(tag)) }
                             .foregroundStyle(brand)
                     }
-                    if entry.placeName == nil && entry.tags.isEmpty {
-                        Text(entry.isDiary ? "没有地点和标签" : "其他来源的说明")
-                            .foregroundStyle(Color.meta)
-                    }
                 }
                 .font(.footnote.weight(.semibold))
                 .padding(.leading, 16)
             }
             .scrollIndicators(.hidden)
+            } else {
+                Spacer()
+            }
 
             Button {
-                router.editor = EditorRequest(assetID: entry.id, mode: entry.isDiary ? .append : .edit)
+                router.editor = EditorRequest(assetID: entry.id, mode: .append)
             } label: {
                 Label("追加", systemImage: "plus")
                     .font(.subheadline.weight(.semibold))
@@ -160,7 +165,8 @@ struct EntryDetailView: View {
             .padding(.trailing, 8)
         }
         .frame(height: 60)
-        .glassEffect(.regular, in: .capsule)
+        // 没有地点和标签时只留“追加”按钮，不铺一条空的玻璃底。
+        .glassEffect(hasMeta ? .regular : .identity, in: .capsule)
         .padding(.horizontal, 12)
         .padding(.bottom, 4)
     }

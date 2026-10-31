@@ -47,7 +47,7 @@ struct EditorView: View {
         VStack(alignment: .leading, spacing: 16) {
             if mode != .edit { context }
             if isShared { sharedWarning }
-            if mode != .edit { SegmentDivider(label: "今天 · \(DiaryDates.short(.today))") }
+            if mode != .edit { SegmentDivider(primary: "今天", secondary: DiaryDates.short(.today)) }
             DiaryTextView(controller: controller)
                 .overlay(alignment: .topLeading) {
                     if controller.text.isEmpty {
@@ -128,7 +128,7 @@ struct EditorView: View {
         switch mode {
         case .new: entry == nil ? "写日记" : "补写日记"
         case .append: "追加感想"
-        case .edit: entry?.isDiary == false ? "编辑说明" : "编辑"
+        case .edit: "编辑"
         }
     }
 
@@ -150,9 +150,7 @@ struct EditorView: View {
 
     private var contextText: String {
         guard let entry else {
-            var s = "还没有日记 · 拍摄于 " + DateFormatter.zh("yyyy年M月d日").string(from: photoDate)
-            if let place = store.entry(assetID)?.placeName { s += " · \(place)" }
-            return s
+            return "拍摄于 " + DateFormatter.zh("yyyy年M月d日").string(from: photoDate)
         }
         let segs = entry.displaySegments
         if segs.count > 1, let last = segs.last { return entry.title + "…… " + last.text }
