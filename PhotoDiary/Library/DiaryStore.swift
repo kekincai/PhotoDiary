@@ -408,6 +408,8 @@ final class DiaryStore {
 
     func entries(on day: DayStamp) -> [DiaryEntry] { byDay[day] ?? [] }
 
+    func entries(at place: String) -> [DiaryEntry] { diaries.filter { $0.placeName == place } }
+
     func search(text: String, tags: [String], range: ClosedRange<Date>?) -> [DiaryEntry] {
         let needle = text.trimmingCharacters(in: .whitespaces)
         return timeline.filter { e in

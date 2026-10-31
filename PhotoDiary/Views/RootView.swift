@@ -17,7 +17,8 @@ struct RootView: View {
     }
 }
 
-/// 三个标签页常驻（保留各自的滚动位置），底部浮动玻璃标签栏 + 主题色“+”按钮。
+/// 三个标签页（保留各自的滚动位置），底部浮动玻璃标签栏 + 主题色“+”按钮。
+/// 用系统 TabView 承载、隐藏系统标签栏：同一时间屏幕上只有当前标签的滚动视图，点状态栏回到顶部才有效。
 /// 日记在根页面时，标签栏上方多一条视图切换；搜索页用自己的底部搜索框代替标签栏。
 private struct MainTabs: View {
     @Environment(DiaryStore.self) private var store
@@ -32,15 +33,18 @@ private struct MainTabs: View {
 
     var body: some View {
         @Bindable var router = router
-        ZStack {
-            tab(.journal) {
+        TabView(selection: $router.tab) {
+            Tab(value: AppTab.journal) {
                 NavigationStack(path: $router.journalPath) { JournalView(mode: $mode).routes() }
+                    .toolbarVisibility(.hidden, for: .tabBar)
             }
-            tab(.review) {
+            Tab(value: AppTab.review) {
                 NavigationStack(path: $router.reviewPath) { ReviewView().routes() }
+                    .toolbarVisibility(.hidden, for: .tabBar)
             }
-            tab(.search) {
+            Tab(value: AppTab.search) {
                 NavigationStack(path: $router.searchPath) { SearchView().routes() }
+                    .toolbarVisibility(.hidden, for: .tabBar)
             }
         }
         .environment(\.zoomNamespace, zoom)
@@ -55,7 +59,9 @@ private struct MainTabs: View {
             if showsTabBar {
                 VStack(spacing: 16) {
                     if router.tab == .journal {
-                        GlassSegmented(options: JournalMode.allCases, selection: $mode, title: \.title)
+                        // 再点当前视图也回到顶部，和点标签一样。
+                        GlassSegmented(options: JournalMode.allCases, selection: $mode, title: \.title,
+                                       onReselect: { router.scrollToTop(.journal) })
                             .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottom)))
                     }
                     FloatingTabBar()
@@ -76,26 +82,22 @@ private struct MainTabs: View {
             SettingsView()
         }
     }
-
-    private func tab<Content: View>(_ tab: AppTab, @ViewBuilder content: () -> Content) -> some View {
-        let selected = router.tab == tab
-        return content()
-            .opacity(selected ? 1 : 0)
-            .allowsHitTesting(selected)
-            .accessibilityHidden(!selected)
-    }
 }
 
 extension View {
     /// 各标签页共用的导航目的地。
     func routes() -> some View {
         navigationDestination(for: Route.self) { route in
-            switch route {
-            case .entry(let id): EntryDetailView(id: id)
-            case .tag(let name): TagEntriesView(tag: name)
-            case .tags: TagsView()
-            case .day(let day): DayEntriesView(day: day)
+            Group {
+                switch route {
+                case .entry(let id): EntryDetailView(id: id)
+                case .tag(let name): TagEntriesView(tag: name)
+                case .tags: TagsView()
+                case .day(let day): DayEntriesView(day: day)
+                case .place(let name): PlaceEntriesView(place: name)
+                }
             }
+            .toolbarVisibility(.hidden, for: .tabBar)
         }
     }
 }
@@ -139,16 +141,8 @@ private struct FloatingTabBar: View {
     private func item(_ tab: AppTab) -> some View {
         let selected = router.tab == tab
         return Button {
-            if router.tab == tab {
-                // 再点一次当前标签：回到根页面
-                switch tab {
-                case .journal: router.journalPath.removeAll()
-                case .review: router.reviewPath.removeAll()
-                case .search: router.searchPath.removeAll()
-                }
-            }
-            // 内容立即切换，只有选中的滑块做动画。
-            router.tab = tab
+            // 内容立即切换，只有选中的滑块做动画；点当前标签回到根页面或顶部。
+            router.select(tab)
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: tab.symbol)

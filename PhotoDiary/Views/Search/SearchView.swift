@@ -45,8 +45,18 @@ struct SearchView: View {
                 }
             }
             .padding(.bottom, 40)
+            // 点空白处收起键盘。
+            .background {
+                Color.clear
+                    .contentShape(.rect)
+                    .onTapGesture { focused = false }
+            }
         }
         .scrollDismissesKeyboard(.immediately)
+        // 离开搜索页（切到别的标签、点开一篇日记）时收起键盘，不让键盘留在别的页面上。
+        .onChange(of: router.tab == .search && router.searchPath.isEmpty) { _, visible in
+            if !visible { focused = false }
+        }
         .navigationTitle("搜索")
         .toolbarTitleDisplayMode(.large)
         .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
@@ -63,7 +73,7 @@ struct SearchView: View {
                 groupTitle("标签").padding(.top, 16)
                 FlowLayout(spacing: 8) {
                     ForEach(store.tagCounts, id: \.name) { tag in
-                        Button { tags = [tag.name] } label: { tagChip(tag.name, count: tag.count) }
+                        Button { tags = [tag.name]; focused = false } label: { tagChip(tag.name, count: tag.count) }
                             .buttonStyle(.press)
                     }
                 }
@@ -76,7 +86,7 @@ struct SearchView: View {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 8) {
                         ForEach(places, id: \.name) { item in
-                            Button { place = item.name } label: { placeCard(item) }
+                            Button { place = item.name; focused = false } label: { placeCard(item) }
                                 .buttonStyle(.press)
                         }
                     }
@@ -91,6 +101,7 @@ struct SearchView: View {
                 ForEach([Range.month, .year, .onThisDay, .custom], id: \.self) { option in
                     Button {
                         range = option
+                        focused = false
                         if option == .custom { showCustom = true }
                     } label: {
                         Chip { Text(option.title) }
@@ -159,6 +170,7 @@ struct SearchView: View {
                 Button {
                     if !tags.contains(tag.name) { tags.append(tag.name) }
                     query = ""
+                    focused = false
                 } label: { tagChip(tag.name, count: tag.count) }
                     .buttonStyle(.press)
             }
@@ -283,9 +295,14 @@ struct SearchView: View {
                         .submitLabel(.search)
                         .onSubmit(submit)
                     if !query.isEmpty {
+                        // 清除只清空文字，键盘保留，方便接着输入（系统搜索框的做法）。
                         Button { query = "" } label: {
-                            Image(systemName: "xmark.circle.fill").foregroundStyle(Color(.tertiaryLabel))
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundStyle(Color(.tertiaryLabel))
+                                .frame(width: 44, height: 44)
+                                .contentShape(.rect)
                         }
+                        .padding(.trailing, -12)
                         .accessibilityLabel("清除")
                     }
                 }

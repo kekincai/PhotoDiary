@@ -3,16 +3,25 @@ import Photos
 
 /// 回顾：参照照片 App 的精选集。那年今日、本周写作、还没写的照片、标签。
 struct ReviewView: View {
+    @Environment(Router.self) private var router
+
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(alignment: .leading, spacing: 30) {
                 OnThisDaySection()
+                    .id("review-top")
                 WeekSection()
                 UnwrittenSection()
                 TagsSection()
             }
             .padding(.top, 8)
             .padding(.bottom, 150)
+        }
+        // 再点“回顾”标签时滚回顶部（大标题重新展开）。
+        .onChange(of: router.scrollToTopRequests[.review]) {
+            withAnimation(.move) { proxy.scrollTo("review-top", anchor: .top) }
+        }
         }
         .background(Color(.systemBackground))
         .navigationTitle("回顾")

@@ -178,12 +178,17 @@ struct EntryDetailView: View {
         if entry.placeName != nil || !entry.tags.isEmpty {
             FlowLayout(spacing: 8) {
                 if let place = entry.placeName {
-                    Chip(height: 34) {
-                        Image(systemName: "mappin").font(.system(size: 13, weight: .semibold))
-                        Text(place)
+                    // 点地点看同一地点的其他日记（只有一篇时不跳转）。
+                    Button { router.push(.place(place)) } label: {
+                        Chip(height: 34) {
+                            Image(systemName: "mappin").font(.system(size: 13, weight: .semibold))
+                            Text(place)
+                        }
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(Color.ink)
                     }
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.ink)
+                    .buttonStyle(.press)
+                    .disabled(store.entries(at: place).count < 2)
                     .accessibilityElement(children: .combine)
                 }
                 ForEach(entry.tags, id: \.self) { tag in

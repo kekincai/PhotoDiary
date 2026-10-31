@@ -41,6 +41,7 @@ struct JournalView: View {
         .transition(.opacity)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.16), value: mode)
         .onChange(of: mode) { pastTitle = false }
+
         .navigationTitle("日记")
         .navigationBarTitleDisplayMode(.inline)
         .toolbarColorScheme(mode == .media && !pastTitle ? .dark : nil, for: .navigationBar)
@@ -59,10 +60,16 @@ struct JournalView: View {
 
     // MARK: 列表、日历
 
+    /// 再点“日记”标签时滚回到这个元素：对齐到第一个元素，导航栏下面的边距由系统算。
+    /// 监听挂在滚动视图上，不挂在列表行里（滚远后行会被回收，收不到通知）。
+    private static let topID = "journal-top"
+
     private var scroll: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
                 TitleBlock(subtitle: subtitle)
+                    .id(Self.topID)
                 Section {
                     if mode == .calendar { CalendarContent() } else { ListContent() }
                 } header: {
@@ -77,14 +84,20 @@ struct JournalView: View {
         } action: { _, past in
             pastTitle = past
         }
+        .onChange(of: router.scrollToTopRequests[.journal]) {
+            withAnimation(.move) { proxy.scrollTo(Self.topID, anchor: .top) }
+        }
+        }
     }
 
     // MARK: 照片网格：铺到屏幕顶部，标题压在照片上
 
     private var mediaScroll: some View {
         GeometryReader { viewport in
+            ScrollViewReader { proxy in
             ScrollView {
                 MediaGridContent()
+                    .id(Self.topID)
                     .overlay(alignment: .top) {
                         ZStack(alignment: .top) {
                             LinearGradient(stops: [
@@ -103,11 +116,15 @@ struct JournalView: View {
             }
             .scrollIndicators(.hidden)
             .ignoresSafeArea(edges: .top)
+            .onChange(of: router.scrollToTopRequests[.journal]) {
+                withAnimation(.move) { proxy.scrollTo(Self.topID, anchor: .top) }
+            }
             .scrollEdgeEffectHidden(!pastTitle, for: .top)
             .onScrollGeometryChange(for: Bool.self) { geo in
                 geo.contentOffset.y > 120
             } action: { _, past in
                 pastTitle = past
+            }
             }
         }
     }

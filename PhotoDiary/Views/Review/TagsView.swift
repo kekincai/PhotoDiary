@@ -207,3 +207,30 @@ struct TagEntriesView: View {
         .toolbarTitleDisplayMode(.large)
     }
 }
+
+/// 某个地点的日记：从详情页的地点胶囊进来。
+struct PlaceEntriesView: View {
+    let place: String
+    @Environment(DiaryStore.self) private var store
+    @Environment(\.zoomNamespace) private var namespace
+
+    var body: some View {
+        let entries = store.entries(at: place)
+        ScrollView {
+            LazyVStack(spacing: 30) {
+                ForEach(entries) { entry in
+                    NavigationLink(value: Route.entry(entry.id)) {
+                        EntryCard(entry: entry, namespace: namespace)
+                    }
+                    .buttonStyle(.press)
+                }
+            }
+            .padding(.horizontal, 16)
+            .padding(.top, 12)
+            .padding(.bottom, 40)
+        }
+        .navigationTitle(place)
+        .navigationSubtitle(Text("\(entries.count) 篇"))
+        .toolbarTitleDisplayMode(.large)
+    }
+}

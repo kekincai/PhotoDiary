@@ -322,6 +322,8 @@ struct GlassSegmented<Value: Hashable>: View {
     let options: [Value]
     @Binding var selection: Value
     let title: (Value) -> String
+    /// 点已选中的那一段。
+    var onReselect: (() -> Void)? = nil
     @Namespace private var pill
 
     var body: some View {
@@ -329,7 +331,7 @@ struct GlassSegmented<Value: Hashable>: View {
             ForEach(options, id: \.self) { option in
                 let selected = option == selection
                 Button {
-                    selection = option
+                    if selected { onReselect?() } else { selection = option }
                 } label: {
                     Text(title(option))
                         .font(.system(size: 14, weight: selected ? .semibold : .medium))
