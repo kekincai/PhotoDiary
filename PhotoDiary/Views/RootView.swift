@@ -4,6 +4,8 @@ import Photos
 struct RootView: View {
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
+    /// 只在冷启动时出现一次；切换语言重建界面时不再出现。
+    @State private var splash = !LaunchSplash.finished
 
     var body: some View {
         Group {
@@ -14,6 +16,11 @@ struct RootView: View {
             }
         }
         .animation(.move, value: store.canRead)
+        .overlay {
+            if splash {
+                LaunchSplash(ready: store.hasLoaded || !store.canRead) { splash = false }
+            }
+        }
     }
 }
 

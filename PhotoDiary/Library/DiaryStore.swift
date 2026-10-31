@@ -87,6 +87,12 @@ final class DiaryStore {
     private let placeNamer = PlaceNamer()
 
     var isLimited: Bool { authorization == .limited }
+
+    /// 第一次全库读取进行中（没有本地索引时）。之后的启动走增量同步，不算。
+    var isFirstScan: Bool {
+        guard !hasSynced, case .scanning = syncState else { return false }
+        return true
+    }
     var canRead: Bool { authorization == .authorized || authorization == .limited }
 
     // MARK: 启动

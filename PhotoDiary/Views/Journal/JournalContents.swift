@@ -15,6 +15,10 @@ struct ListContent: View {
             if store.isLimited {
                 LimitedAccessBanner().padding(.horizontal, 16).padding(.top, 18)
             }
+            // 第一次读取照片库的整个过程都显示进度；读到的日记接在下面先显示出来。
+            if store.isFirstScan && !store.timeline.isEmpty {
+                FirstScanView(placeholders: false)
+            }
             if let memory = store.onThisDay.first {
                 OnThisDayBanner(entry: memory)
                     .padding(.horizontal, 16)
@@ -53,13 +57,16 @@ struct ListContent: View {
 
 /// 第一次读取照片库时：进度卡片 + 闪动的占位卡片，读到的日记会直接替换掉占位。
 struct FirstScanView: View {
+    var placeholders = true
     @Environment(DiaryStore.self) private var store
     @Environment(\.brand) private var brand
 
     var body: some View {
         VStack(alignment: .leading, spacing: 30) {
             progressCard
-            ForEach(0..<2, id: \.self) { _ in PlaceholderCard() }
+            if placeholders {
+                ForEach(0..<2, id: \.self) { _ in PlaceholderCard() }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.top, 18)

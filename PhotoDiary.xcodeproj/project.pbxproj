@@ -69,6 +69,7 @@
 		7571F7FC7477DFEB4D9E925E /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
 		8CBA724A865B13A243726AC0 /* PhotoDiaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoDiaryApp.swift; sourceTree = "<group>"; };
 		8E3388A1E4175CE442977C3A /* DiaryTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryTextView.swift; sourceTree = "<group>"; };
+		A6FA2FBA5391009D9B0C1D48 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		A75A525A2871ECE05D48BC62 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
 		B8E58B00A19A9C326B732AF7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		BF14C73D9699083B59092EFC /* EntryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EntryDetailView.swift; sourceTree = "<group>"; };
@@ -99,6 +100,7 @@
 			isa = PBXGroup;
 			children = (
 				20D4CA9968E5F215B51550F9 /* Assets.xcassets */,
+				A6FA2FBA5391009D9B0C1D48 /* Info.plist */,
 				49445CDAB3ADEAEB0D1F2878 /* App */,
 				474DD0F2B1347B950ACF11C7 /* Design */,
 				33D542DD3BACA7F58459E658 /* Library */,
@@ -588,13 +590,13 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				DEVELOPMENT_TEAM = B82CAW4M9Y;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PhotoDiary/Info.plist;
 				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
 				INFOPLIST_KEY_CFBundleDisplayName = "照片日记";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。";
 				INFOPLIST_KEY_PHPhotoLibraryPreventAutomaticLimitedAccessAlert = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -619,13 +621,13 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				DEVELOPMENT_TEAM = B82CAW4M9Y;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = PhotoDiary/Info.plist;
 				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
 				INFOPLIST_KEY_CFBundleDisplayName = "照片日记";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。";
 				INFOPLIST_KEY_PHPhotoLibraryPreventAutomaticLimitedAccessAlert = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
