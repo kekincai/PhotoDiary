@@ -69,6 +69,8 @@ nonisolated enum LibraryScanner {
             Log.sync.error("change token 无法解档（\(tokenData.count) 字节）")
             throw ScanError.tokenExpired
         }
+        let clock = ContinuousClock()
+        let begin = clock.now
         let library = PHPhotoLibrary.shared()
         let changes: PHPersistentChangeFetchResult
         do {
@@ -89,11 +91,13 @@ nonisolated enum LibraryScanner {
             deleted.formUnion(details.deletedLocalIdentifiers)
         }
         touched.subtract(deleted)
+        let listed = clock.now
 
         let updated = fetchEntries(ids: Array(touched))
         let withCaption = Set(updated.map(\.id))
         let removed = deleted.union(touched.subtracting(withCaption))
         let newToken = archive(lastToken ?? library.currentChangeToken)
+        Log.sync.debug("增量：列出变化 \(listed - begin, privacy: .public)（\(touched.count) 改 \(deleted.count) 删），读取条目 \(clock.now - listed, privacy: .public)")
         return IncrementalResult(updated: updated, removed: removed, token: newToken)
     }
 
@@ -184,9 +188,18 @@ nonisolated enum LibraryScanner {
     }
 
     private static func applyKeywords(tags: [String], current: [String], to request: PHAssetChangeRequest) {
+        let change = keywordChange(tags: tags, current: current)
+        for keyword in change.remove { request.removeKeyword(keyword) }
+        for keyword in change.add { request.addKeyword(keyword) }
+    }
+
+    /// 让关键词等于说明里的标签：要删掉哪些、要加上哪些（按出现顺序，不重复）。
+    static func keywordChange(tags: [String], current: [String]) -> (remove: [String], add: [String]) {
         let target = Set(tags)
-        for keyword in current where !target.contains(keyword) { request.removeKeyword(keyword) }
-        for tag in tags where !current.contains(tag) { request.addKeyword(tag) }
+        var added = Set(current)
+        let remove = current.filter { !target.contains($0) }
+        let add = tags.filter { added.insert($0).inserted }
+        return (remove, add)
     }
 
     @concurrent

@@ -36,12 +36,28 @@ func isolatedDefaults() -> UserDefaults {
     UserDefaults(suiteName: "PhotoDiaryTests-\(UUID().uuidString)")!
 }
 
+/// 可以拨动的时钟，测试跨天。
+final class TestClock {
+    var now: Date
+    init(_ now: Date = fixedNow) { self.now = now }
+}
+
 func makeStore(library: FakeLibrary, places: FakePlaceNamer = FakePlaceNamer(),
                directory: URL = temporaryDirectory(), defaults: UserDefaults = isolatedDefaults(),
-               now: Date = fixedNow) -> DiaryStore {
+               clock: TestClock = TestClock(), saveDelay: Duration = .zero) -> DiaryStore {
     DiaryStore(.init(library: library, index: IndexStore(directory: directory), placeNamer: places,
-                     defaults: defaults, now: { now }, saveDelay: .zero, changeDelay: .zero,
+                     defaults: defaults, now: { clock.now }, saveDelay: saveDelay, changeDelay: .zero,
                      geocodeInterval: .zero))
+}
+
+/// 启动并等第一次同步结束。
+func startedStore(_ library: FakeLibrary, places: FakePlaceNamer = FakePlaceNamer(),
+                  directory: URL = temporaryDirectory(), defaults: UserDefaults = isolatedDefaults(),
+                  clock: TestClock = TestClock()) async -> DiaryStore {
+    let store = makeStore(library: library, places: places, directory: directory, defaults: defaults, clock: clock)
+    await store.start()
+    _ = await eventually { store.hasSynced && store.syncState == .idle }
+    return store
 }
 
 /// 同步、保存都在后台任务里，等条件成立（最多 2 秒）。

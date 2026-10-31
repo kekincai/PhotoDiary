@@ -130,12 +130,24 @@ final class DiaryStore {
         authorization = library.authorizationStatus()
         Log.app.notice("启动，照片权限 \(self.authorization.rawValue, privacy: .public)")
         guard canRead else { return }
-        if !hasLoaded, let snapshot = await deps.index.load() {
-            writtenInApp = snapshot.writtenInApp
-            placeCache = snapshot.placeCache
-            timeZoneCache = snapshot.timeZoneCache ?? [:]
-            changeToken = snapshot.changeToken
-            entries = Dictionary(snapshot.entries.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
+        if !hasLoaded {
+            // 两个文件同时读：每次 await 回到主线程都要等启动时的界面绘制让出来。
+            async let loadedSnapshot = deps.index.load()
+            async let loadedPlaces = deps.index.loadPlaces()
+            let (snapshot, places) = await (loadedSnapshot, loadedPlaces)
+            // 地名缓存不随索引作废；没有单独的文件时，从旧版本索引里迁移过来。
+            if let places {
+                placeCache = places.names
+                timeZoneCache = places.timeZones
+            } else if let snapshot {
+                placeCache = snapshot.placeCache
+                timeZoneCache = snapshot.timeZoneCache ?? [:]
+            }
+            if let snapshot {
+                writtenInApp = snapshot.writtenInApp
+                changeToken = snapshot.changeToken
+                entries = Dictionary(snapshot.entries.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
+            }
         }
         hasLoaded = true
         registerObserver()
@@ -163,25 +175,31 @@ final class DiaryStore {
 
     // MARK: 同步
 
-    /// 有 token 走增量，否则（或 token 失效）全库重建。
+    /// 有 token 走增量，否则（或 token 失效）全库重建。同一时刻只有一个同步任务；
+    /// 进行中再调用只记下“结束后再增量一次”。
     func sync() {
         guard syncTask == nil else { pendingIncremental = true; return }
         syncTask = Task {
             if let token = changeToken {
+                Log.sync.debug("增量同步开始")
                 let state = Log.signposter.beginInterval("sync.incremental")
                 do {
                     let result = try await library.incremental(since: token)
                     Log.signposter.endInterval("sync.incremental", state)
+                    guard !Task.isCancelled else { return }
                     Log.sync.info("增量同步：更新 \(result.updated.count)，移除 \(result.removed.count)")
                     apply(result)
                 } catch {
                     Log.signposter.endInterval("sync.incremental", state)
+                    guard !Task.isCancelled else { return }
                     Log.sync.notice("增量同步失败，改为全量读取：\(error, privacy: .public)")
                     await fullScan()
                 }
             } else {
                 await fullScan()
             }
+            // 被 rebuildIndex 取消的任务已经被新任务取代，不能再动任何状态（包括 syncTask）。
+            guard !Task.isCancelled else { return }
             syncTask = nil
             hasSynced = true
             if pendingIncremental {
@@ -238,10 +256,13 @@ final class DiaryStore {
                     Log.sync.info("全量读取完成：\(fresh.count) 篇日记")
                     entries = fresh
                     changeToken = token
-                } else {
-                    Log.sync.notice("全量读取被取消，已读到 \(fresh.count) 篇")
                 }
             }
+        }
+        // 被取消：读到一半的结果不保存、不改写关键词，进度由接手的新任务更新。
+        guard !Task.isCancelled else {
+            Log.sync.notice("全量读取被取消，已读到 \(fresh.count) 篇")
+            return
         }
         syncState = .idle
         scheduleSave()
@@ -255,9 +276,11 @@ final class DiaryStore {
             decorate(&entry)
             copy[entry.id] = entry
         }
+        // 没有变化时不重写索引（每次启动都会走一遍增量）；地名补查照常进行。
+        let changed = copy != entries || result.token != changeToken
         if copy != entries { entries = copy }
         changeToken = result.token
-        scheduleSave()
+        if changed { scheduleSave() }
         afterSync(ids: result.updated.map(\.id))
     }
 
@@ -492,9 +515,13 @@ final class DiaryStore {
             if !tags.allSatisfy(e.tags.contains) { return false }
             if let range, !range.contains(e.sortDate) { return false }
             if needle.isEmpty { return true }
-            return e.caption.localizedStandardContains(needle)
-                || (e.placeName?.localizedStandardContains(needle) ?? false)
+            return Self.matches(e.caption, needle) || e.placeName.map { Self.matches($0, needle) } == true
         }
+    }
+
+    /// 不分大小写、重音和全角半角（输入法打出的 ＫＡＭＡＫＵＲＡ 也能搜到 Kamakura）。
+    private static func matches(_ text: String, _ needle: String) -> Bool {
+        text.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive, .widthInsensitive], locale: .current) != nil
     }
 
     // MARK: 地点
@@ -520,14 +547,16 @@ final class DiaryStore {
             // 查到的地名攒一批再写回：每写一次 entries，所有界面都会重算。
             var resolved: [String: (name: String, timeZone: String?)] = [:]
             var lastFlush = ContinuousClock.now
-            var looked = 0, failures = 0
+            var looked = 0, failures = 0, filled = 0
             if !order.isEmpty { Log.places.info("待解析地名：\(order.count) 个坐标") }
             for key in order {
                 guard !Task.isCancelled else { break }
                 if let cached = placeCache[key] {
+                    filled += 1
                     resolved[key] = (cached, timeZoneCache[key])
                 } else if let coordinate = pending[key], let place = await deps.placeNamer.place(for: coordinate), let name = place.name {
                     looked += 1
+                    filled += 1
                     placeCache[key] = name
                     timeZoneCache[key] = place.timeZone
                     resolved[key] = (name, place.timeZone)
@@ -547,7 +576,8 @@ final class DiaryStore {
             applyPlaces(resolved)
             if looked > 0 { Log.places.info("地名解析结束：查询 \(looked) 次，失败 \(failures) 次") }
             placeTask = nil
-            scheduleSave()
+            // 有条目补上了地名才需要保存。
+            if filled > 0 { scheduleSave() }
         }
     }
 
@@ -569,11 +599,23 @@ final class DiaryStore {
         saveTask = Task {
             try? await Task.sleep(for: deps.saveDelay)
             guard !Task.isCancelled else { return }
-            let snapshot = IndexSnapshot(entries: Array(entries.values), changeToken: changeToken,
-                                         writtenInApp: writtenInApp, placeCache: placeCache,
-                                         timeZoneCache: timeZoneCache)
-            await deps.index.save(snapshot)
+            await persist()
         }
+    }
+
+    /// 不等防抖立即保存。进入后台时调用：之后随时可能被系统结束。
+    func saveNow() async {
+        guard hasLoaded else { return }
+        saveTask?.cancel()
+        saveTask = nil
+        await persist()
+    }
+
+    private func persist() async {
+        let snapshot = IndexSnapshot(entries: Array(entries.values), changeToken: changeToken, writtenInApp: writtenInApp)
+        let places = PlaceCache(names: placeCache, timeZones: timeZoneCache)
+        await deps.index.save(snapshot)
+        await deps.index.savePlaces(places)
     }
 
     // MARK: 导出

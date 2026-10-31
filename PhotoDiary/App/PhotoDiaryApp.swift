@@ -35,7 +35,28 @@ struct PhotoDiaryApp: App {
                 .onChange(of: scenePhase) { _, phase in
                     Log.app.debug("scenePhase → \(String(describing: phase), privacy: .public)")
                     if phase == .active { store.refreshAuthorization() }
+                    if phase == .background { saveInBackground() }
                 }
         }
+    }
+
+    /// 进入后台时立即保存索引，并向系统要一点时间保证写完。
+    private func saveInBackground() {
+        let task = BackgroundTask()
+        task.id = UIApplication.shared.beginBackgroundTask(withName: "保存索引") { task.end() }
+        Task {
+            await store.saveNow()
+            task.end()
+        }
+    }
+}
+
+private final class BackgroundTask {
+    var id = UIBackgroundTaskIdentifier.invalid
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
     }
 }

@@ -30,6 +30,9 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
         var writes: [[String: String?]] = []
         var reconciled: [[String]] = []
         var deleted: [[String]] = []
+        /// 打开后，全量读取交出第一批就停住，等 `releaseScans()`。
+        var holdScans = false
+        var scanWaiters: [CheckedContinuation<Void, Never>] = []
     }
 
     let state = Mutex(State())
@@ -53,20 +56,52 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
     /// `notify: false` 模拟本 App 没在运行时发生的修改。
     @MainActor
     func externalEdit(_ id: String, caption: String?, notify: Bool = true) {
+        if let caption {
+            externalUpdate(id, notify: notify) { $0.caption = caption }
+            return
+        }
         let handler = state.withLock { s in
-            if let caption {
-                s.assets[id, default: Asset()].caption = caption
-                s.recordChange(touched: [id])
-            } else {
-                s.assets.removeValue(forKey: id)
-                s.recordChange(deleted: [id])
-            }
+            s.assets.removeValue(forKey: id)
+            s.recordChange(deleted: [id])
+            return notify ? s.onChange : nil
+        }
+        handler?()
+    }
+
+    /// 在别的 App 里改了照片的任意属性（位置、关键词等）。
+    @MainActor
+    func externalUpdate(_ id: String, notify: Bool = true, _ change: (inout Asset) -> Void) {
+        let handler = state.withLock { s in
+            change(&s.assets[id, default: Asset()])
+            s.recordChange(touched: [id])
             return notify ? s.onChange : nil
         }
         handler?()
     }
 
     /// 让手里所有的 token 失效（例如系统清理了变更历史）。
+    /// 让之后的全量读取停在第一批之后，用来在读取中途插入操作。
+    func holdScans() { state.withLock { $0.holdScans = true } }
+
+    func releaseScans() {
+        let waiters = state.withLock { s in
+            s.holdScans = false
+            defer { s.scanWaiters = [] }
+            return s.scanWaiters
+        }
+        for waiter in waiters { waiter.resume() }
+    }
+
+    private func waitIfHeld() async {
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let held = state.withLock { s in
+                if s.holdScans { s.scanWaiters.append(c) }
+                return s.holdScans
+            }
+            if !held { c.resume() }
+        }
+    }
+
     func expireTokens() {
         state.withLock { $0.oldestValidToken = $0.token + 1 }
     }
@@ -74,6 +109,8 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
     var fullScans: Int { state.withLock { $0.fullScans } }
     var incrementals: Int { state.withLock { $0.incrementals } }
     var writes: [[String: String?]] { state.withLock { $0.writes } }
+    var reconciled: [[String]] { state.withLock { $0.reconciled } }
+    var deletions: [[String]] { state.withLock { $0.deleted } }
 
     func caption(of id: String) -> String? { state.withLock { $0.assets[id]?.caption } }
     func keywords(of id: String) -> [String]? { state.withLock { $0.assets[id]?.keywords } }
@@ -102,16 +139,22 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
         }
         let total = state.withLock { $0.assets.count }
         let batchSize = batchSize
+        // 和 LibraryScanner.fullScan 一样：在后台任务里分批交出，消费方取消时停止，被取消就不给 token。
         return AsyncStream { continuation in
-            continuation.yield(.started(total: total))
-            var processed = 0
-            for start in stride(from: 0, to: max(entries.count, 1), by: batchSize) {
-                let batch = Array(entries[start..<min(start + batchSize, entries.count)])
-                processed = min(processed + batchSize, total)
-                continuation.yield(.batch(processed: processed, entries: batch))
+            let task = Task {
+                continuation.yield(.started(total: total))
+                var processed = 0
+                for (i, start) in stride(from: 0, to: max(entries.count, 1), by: batchSize).enumerated() {
+                    if Task.isCancelled { break }
+                    let batch = Array(entries[start..<min(start + batchSize, entries.count)])
+                    processed = min(processed + batchSize, total)
+                    continuation.yield(.batch(processed: processed, entries: batch))
+                    if i == 0 { await self.waitIfHeld() }
+                }
+                continuation.yield(.finished(token: Task.isCancelled ? nil : Self.archive(token)))
+                continuation.finish()
             }
-            continuation.yield(.finished(token: Self.archive(token)))
-            continuation.finish()
+            continuation.onTermination = { _ in task.cancel() }
         }
     }
 

@@ -9,9 +9,14 @@ final class AssetImages {
     static let shared = AssetImages()
 
     private let manager = PHCachingImageManager()
+    /// PHAsset 是取出那一刻的快照，照片库一变（删除、改说明、iCloud 下载完）就整个作废重取。
     private var assets: [String: PHAsset] = [:]
+    private var observer: AnyObject?
 
     func asset(_ id: String) -> PHAsset? {
+        if observer == nil {
+            observer = PhotoKitLibrary().observeChanges { [weak self] in self?.assets.removeAll() }
+        }
         if let cached = assets[id] { return cached }
         let options = PHFetchOptions()
         options.includeAssetSourceTypes = LibraryScanner.sourceTypes
@@ -19,8 +24,6 @@ final class AssetImages {
         assets[id] = asset
         return asset
     }
-
-    func forget(_ id: String) { assets.removeValue(forKey: id) }
 
     /// 先给低清图，再给清晰图。
     func images(for id: String, pixelSize: CGSize, contentMode: PHImageContentMode = .aspectFill,
