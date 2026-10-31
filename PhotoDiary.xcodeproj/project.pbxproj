@@ -29,6 +29,7 @@
 		A11502F6F42EF7E6EC2C3A9C /* DiaryTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E3388A1E4175CE442977C3A /* DiaryTextView.swift */; };
 		A7B79479B499A9A56A9B9322 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC86DB655F0D0581DE7737A2 /* RootView.swift */; };
 		AB4027446D0AD16E590ABF44 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B47E414F8D62CAECDEE565 /* EditorView.swift */; };
+		B4B3F4E23CAF87B7F7871FFC /* LaunchSplash.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425D5F94956F03D044C6F6EB /* LaunchSplash.swift */; };
 		BF43DDEE7C54E82DC5893C79 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F202B0EAECA1270EB7D3A645 /* SearchView.swift */; };
 		C3EB5491C0AF343C346F4761 /* CaptionFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E2AEA793B072D928C00259F /* CaptionFilter.swift */; };
 		D1DD86839133DDEAFE5F2AC8 /* AddFromPhotosView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCF63237BB0BE0376576B2EB /* AddFromPhotosView.swift */; };
@@ -62,6 +63,7 @@
 		371C3D48B1FCCC39EB09C891 /* DiaryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryStore.swift; sourceTree = "<group>"; };
 		3F5E4F85765B748ADDEFB14E /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		42108EFF2BA086AE31997163 /* PermissionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PermissionView.swift; sourceTree = "<group>"; };
+		425D5F94956F03D044C6F6EB /* LaunchSplash.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchSplash.swift; sourceTree = "<group>"; };
 		4681745521BEBD7BBD625B2B /* Router.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Router.swift; sourceTree = "<group>"; };
 		4E2AEA793B072D928C00259F /* CaptionFilter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionFilter.swift; sourceTree = "<group>"; };
 		64B6A85E563CE8518F5E7D90 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				E58A105D86E777CC0BA45B89 /* Detail */,
 				727AA2516DC8AE3995993816 /* Editor */,
 				8A8B076383C57BFC499BE833 /* Journal */,
+				67AC5EAFFD8BA697CD795A52 /* Launch */,
 				4FC6147BFC90D32B9C14886D /* Onboarding */,
 				26E6E3E6316C9E3F5CC729B2 /* Review */,
 				15B67DB55BAD85BFD089CD65 /* Search */,
@@ -218,6 +221,14 @@
 				CCF63237BB0BE0376576B2EB /* AddFromPhotosView.swift */,
 			);
 			path = AddFromPhotos;
+			sourceTree = "<group>";
+		};
+		67AC5EAFFD8BA697CD795A52 /* Launch */ = {
+			isa = PBXGroup;
+			children = (
+				425D5F94956F03D044C6F6EB /* LaunchSplash.swift */,
+			);
+			path = Launch;
 			sourceTree = "<group>";
 		};
 		727AA2516DC8AE3995993816 /* Editor */ = {
@@ -384,6 +395,7 @@
 				E20147D6183094AB13594D2F /* JournalContents.swift in Sources */,
 				639A8EA5FE0F0B0305F18824 /* JournalView.swift in Sources */,
 				3E176B1089B2361155F8B4AB /* Language.swift in Sources */,
+				B4B3F4E23CAF87B7F7871FFC /* LaunchSplash.swift in Sources */,
 				5BBF21603730ABFD9F9CB04A /* LibraryScanner.swift in Sources */,
 				069DF4B61CABDA96E2BBDFDB /* PermissionView.swift in Sources */,
 				E73E79AB359071C6ADD5A40A /* PhotoDiaryApp.swift in Sources */,
@@ -588,7 +600,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
-				DEVELOPMENT_TEAM = B82CAW4M9Y;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
 				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
@@ -619,7 +630,6 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
-				DEVELOPMENT_TEAM = B82CAW4M9Y;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
 				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";

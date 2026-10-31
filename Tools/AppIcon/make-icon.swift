@@ -86,6 +86,15 @@ func render(_ variant: Variant, to file: String) {
     CGImageDestinationFinalize(dest)
 }
 
+/// 系统生成启动画面快照时，把颜色分量当成 Display P3 用，画出来比原色艳。
+/// 启动画面用的颜色先换成 P3 坐标再当 sRGB 存，快照里正好是原色。
+/// 快照按版本号缓存：改了颜色要升 CURRENT_PROJECT_VERSION（模拟器上重启设备）才看得到。
+/// LaunchBackground 颜色集也是这么算的：#2F6690 → (0.240, 0.395, 0.551)，#0E151C → (0.061, 0.082, 0.107)。
+func launchCompensated(_ hex: UInt32) -> CGColor {
+    let p3 = rgb(hex).converted(to: CGColorSpace(name: CGColorSpace.displayP3)!, intent: .defaultIntent, options: nil)!
+    return CGColor(colorSpace: space, components: p3.components!)!
+}
+
 /// 启动画面的书签：只画图形本身，宽 64pt，背景色由 LaunchBackground 提供。
 func renderMark(dark: Bool, scale: Int, to url: URL) {
     let bounds = bookmark().boundingBox
@@ -101,7 +110,7 @@ func renderMark(dark: Bool, scale: Int, to url: URL) {
     shape.addPath(bookmark())
     shape.addPath(cutout())
     ctx.addPath(shape)
-    ctx.setFillColor(dark ? rgb(0x8EC0E6) : rgb(0xFFFFFF))
+    ctx.setFillColor(dark ? launchCompensated(0x8EC0E6) : rgb(0xFFFFFF))
     ctx.fillPath(using: .evenOdd)
     let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
     CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
