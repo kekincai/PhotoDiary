@@ -3,7 +3,7 @@ import Foundation
 import SwiftData
 @testable import PhotoDiary
 
-/// 1 万篇日记下各步的耗时，只打印不断言，用来比较存储方式。默认不跑：
+/// 1 万篇日记下索引数据库各步的耗时，只打印不断言。默认不跑：
 ///
 ///     TEST_RUNNER_PERF=1 xcodebuild test -configuration Release ENABLE_TESTABILITY=YES \
 ///       -only-testing:PhotoDiaryTests/PerformanceTests ...
@@ -29,16 +29,6 @@ nonisolated struct PerformanceTests {
         let start = ContinuousClock.now
         try await body()
         print("⏱ \(label)：\(ContinuousClock.now - start)")
-    }
-
-    @Test func jsonIndexAt10k() async throws {
-        let entries = Self.entries(10_000)
-        let snapshot = IndexSnapshot(entries: entries, changeToken: Data("1".utf8))
-        var data = Data()
-        try Self.measure("JSON 编码 1 万条") { data = try JSONEncoder().encode(snapshot) }
-        print("⏱ JSON 大小：\(data.count / 1024) KB")
-        try Self.measure("JSON 解码 + 重新解析 1 万条") { _ = try JSONDecoder().decode(IndexSnapshot.self, from: data) }
-        Self.measure("只解析 1 万条说明") { for e in entries { _ = CaptionFormat.parse(e.caption) } }
     }
 
     @Test func databaseIndexAt10k() async throws {
