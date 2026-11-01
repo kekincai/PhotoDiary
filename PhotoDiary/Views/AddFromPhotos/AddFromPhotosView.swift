@@ -24,7 +24,10 @@ struct AddFromPhotosView: View {
     @State private var path: [String] = []
     @Namespace private var zoom
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 4)
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    private var columns: [GridItem] {
+        sizeClass == .regular ? [GridItem(.adaptive(minimum: 120), spacing: 2)] : Array(repeating: GridItem(.flexible(), spacing: 2), count: 4)
+    }
     nonisolated static let limit = 6000
 
     var body: some View {

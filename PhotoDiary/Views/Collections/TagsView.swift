@@ -12,7 +12,10 @@ struct TagsView: View {
     @State private var working = false
     @State private var errorMessage: String?
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+    @Environment(\.isWide) private var wide
+    private var columns: [GridItem] {
+        wide ? [GridItem(.adaptive(minimum: 200), spacing: 16)] : Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+    }
 
     var body: some View {
         ScrollView {
@@ -182,22 +185,11 @@ struct TagCover: View {
 struct TagEntriesView: View {
     let tag: String
     @Environment(DiaryStore.self) private var store
-    @Environment(\.zoomNamespace) private var namespace
 
     var body: some View {
         let entries = store.entries(tagged: tag)
         ScrollView {
-            LazyVStack(spacing: 32) {
-                ForEach(entries) { entry in
-                    NavigationLink(value: Route.entry(entry.id)) {
-                        EntryCard(entry: entry, namespace: namespace)
-                    }
-                    .buttonStyle(.press)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 40)
+            EntryCardGrid(entries: entries)
         }
         .overlay {
             if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了", message: "可能已经改名或合并到别的标签") }
@@ -212,25 +204,41 @@ struct TagEntriesView: View {
 struct PlaceEntriesView: View {
     let place: String
     @Environment(DiaryStore.self) private var store
-    @Environment(\.zoomNamespace) private var namespace
 
     var body: some View {
         let entries = store.entries(at: place)
         ScrollView {
-            LazyVStack(spacing: 32) {
-                ForEach(entries) { entry in
-                    NavigationLink(value: Route.entry(entry.id)) {
-                        EntryCard(entry: entry, namespace: namespace)
-                    }
-                    .buttonStyle(.press)
-                }
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 12)
-            .padding(.bottom, 40)
+            EntryCardGrid(entries: entries)
         }
         .navigationTitle(place)
         .navigationSubtitle(Text("\(entries.count) 篇"))
         .toolbarTitleDisplayMode(.large)
+    }
+}
+
+/// 大照片卡片的列表：iPhone 一栏，iPad 自适应多栏。标签、地点、搜索结果都用。
+struct EntryCardGrid: View {
+    let entries: [DiaryEntry]
+    @Environment(\.zoomNamespace) private var namespace
+    @Environment(\.isWide) private var wide
+
+    private var columns: [GridItem] {
+        wide ? [GridItem(.adaptive(minimum: 340, maximum: 520), spacing: Metrics.Spacing.xl, alignment: .top)]
+             : [GridItem(.flexible())]
+    }
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: Metrics.Spacing.xxl) {
+            ForEach(entries) { entry in
+                NavigationLink(value: Route.entry(entry.id)) {
+                    EntryCard(entry: entry, namespace: namespace)
+                }
+                .buttonStyle(.press)
+                .entryContextMenu(entry)
+            }
+        }
+        .padding(.horizontal, Metrics.page)
+        .padding(.top, Metrics.Spacing.m)
+        .padding(.bottom, 40)
     }
 }

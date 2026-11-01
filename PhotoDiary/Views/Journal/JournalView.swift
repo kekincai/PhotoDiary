@@ -54,6 +54,7 @@ struct JournalView: View {
                     .animation(.easeOut(duration: 0.15), value: pastTitle)
                     .accessibilityHidden(!(pastTitle || mode == .map))
             }
+            WideAddButton()
             ToolbarItem(placement: .topBarTrailing) { moreMenu }
         }
     }
@@ -79,6 +80,7 @@ struct JournalView: View {
             .padding(.bottom, 170)
         }
         .scrollIndicators(.hidden)
+        .collapsesTabBarOnScroll()
         .onScrollGeometryChange(for: Bool.self) { geo in
             geo.contentOffset.y + geo.contentInsets.top > 46
         } action: { _, past in
@@ -115,6 +117,7 @@ struct JournalView: View {
                     .padding(.bottom, 170)
             }
             .scrollIndicators(.hidden)
+            .collapsesTabBarOnScroll()
             .ignoresSafeArea(edges: .top)
             .onChange(of: router.scrollToTopRequests[.journal]) {
                 withAnimation(.move) { proxy.scrollTo(Self.topID, anchor: .top) }
@@ -143,7 +146,7 @@ struct JournalView: View {
 
     private var moreMenu: some View {
         Menu {
-            Button("标签", systemImage: "number") { router.push(.tags) }
+            Button("标签", systemImage: "tag") { router.push(.tags) }
             Divider()
             Button("设置", systemImage: "gearshape") { router.showSettings = true }
         } label: {

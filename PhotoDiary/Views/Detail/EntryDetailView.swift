@@ -47,7 +47,7 @@ struct EntryDetailView: View {
                     .accessibilityHidden(!pastPhoto)
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button("编辑", systemImage: "pencil") {
+                    Button("编辑", systemImage: "square.and.pencil") {
                         router.editor = EditorRequest(assetID: id, mode: .edit)
                     }
                     Menu {
@@ -79,7 +79,8 @@ struct EntryDetailView: View {
         GeometryReader { viewport in
             let topInset = viewport.safeAreaInsets.top
             let width = viewport.size.width
-            let natural = width / min(max(entry.aspectRatio, 0.8), 1.25)
+            // iPad 上照片不按屏宽算高度，最多占到视口的六成。
+            let natural = min(width / min(max(entry.aspectRatio, 0.8), 1.25), viewport.size.height * 0.62)
             let available = viewport.size.height + topInset
             let height = max(natural, available - articleHeight - Self.articleBottomPadding)
             ScrollView {
@@ -87,10 +88,10 @@ struct EntryDetailView: View {
                     MediaHeader(entry: entry, height: height, topInset: topInset)
                         .overlay(alignment: .top) {
                             // 让浮在照片上的按钮和状态栏看得清。
-                            LinearGradient(colors: [.black.opacity(0.28), .black.opacity(0)], startPoint: .top, endPoint: .bottom)
-                                .frame(height: 120)
-                                .allowsHitTesting(false)
+                            PhotoScrim(edge: .top, strength: 0.28).frame(height: 120)
                         }
+                        // 下拉时照片跟着拉伸。
+                        .stretchyHeader()
                         .onTapGesture { if entry.mediaKind != .video { showViewer = true } }
                         .matchedTransitionSource(id: "viewer", in: viewerNamespace)
                     article(entry)
@@ -160,9 +161,10 @@ struct EntryDetailView: View {
             chips(entry)
         }
         .textSelection(.enabled)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 24)
-        .padding(.top, 24)
+        .frame(maxWidth: 720, alignment: .leading)
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, Metrics.reading)
+        .padding(.top, Metrics.reading)
     }
 
     /// 2023年10月31日 周二 · 3 年前
@@ -181,7 +183,7 @@ struct EntryDetailView: View {
                     // 点地点看同一地点的其他日记（只有一篇时不跳转）。
                     Button { router.push(.place(place)) } label: {
                         Chip(height: 34) {
-                            Image(systemName: "mappin").font(.system(size: 13, weight: .semibold))
+                            Image(systemName: "mappin.and.ellipse").font(.system(size: 13, weight: .semibold))
                             Text(place)
                         }
                         .font(.system(size: 14, weight: .semibold))

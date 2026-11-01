@@ -9,6 +9,10 @@ struct ListContent: View {
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.zoomNamespace) private var namespace
+    @Environment(\.isWide) private var wide
+
+    /// iPad 上卡片排成两三栏。
+    private var columns: [GridItem] { [GridItem(.adaptive(minimum: 340, maximum: 520), spacing: Metrics.Spacing.xl, alignment: .top)] }
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
@@ -32,16 +36,29 @@ struct ListContent: View {
                     .padding(.horizontal, 20)
                     .padding(.top, index == 0 ? 26 : 4)
                     .padding(.bottom, 12)
-                ForEach(month.entries) { entry in
-                    NavigationLink(value: Route.entry(entry.id)) {
-                        EntryCard(entry: entry, namespace: namespace)
+                if wide {
+                    LazyVGrid(columns: columns, alignment: .leading, spacing: Metrics.Spacing.xxl) {
+                        ForEach(month.entries) { entry in card(entry) }
                     }
-                    .buttonStyle(.press)
-                    .padding(.horizontal, 16)
-                    .padding(.bottom, 32)
+                    .padding(.horizontal, Metrics.page)
+                    .padding(.bottom, Metrics.Spacing.xxl)
+                } else {
+                    ForEach(month.entries) { entry in
+                        card(entry)
+                            .padding(.horizontal, Metrics.page)
+                            .padding(.bottom, Metrics.Spacing.xxl)
+                    }
                 }
             }
         }
+    }
+
+    private func card(_ entry: DiaryEntry) -> some View {
+        NavigationLink(value: Route.entry(entry.id)) {
+            EntryCard(entry: entry, namespace: namespace)
+        }
+        .buttonStyle(.press)
+        .entryContextMenu(entry)
     }
 
     @ViewBuilder private var emptyState: some View {
@@ -232,6 +249,9 @@ struct CalendarContent: View {
                     .padding(.top, index == 0 ? 20 : 30)
             }
         }
+        // iPad 上日历不铺满整屏，格子太大反而难看。
+        .frame(maxWidth: 760)
+        .frame(maxWidth: .infinity)
     }
 }
 
@@ -298,6 +318,7 @@ private struct MonthGrid: View {
                     .modifier(TransitionSource(id: first.id, namespace: entries.count == 1 ? namespace : nil, cornerRadius: 8))
             }
             .buttonStyle(.press)
+            .modifier(OptionalEntryMenu(entry: entries.count == 1 ? first : nil))
             .accessibilityLabel("\(DiaryDates.full(day))，\(entries.count) 篇")
         } else if day == today {
             Text("\(day.day)")
@@ -325,7 +346,11 @@ private struct MonthGrid: View {
 struct MediaGridContent: View {
     @Environment(DiaryStore.self) private var store
     @Environment(\.zoomNamespace) private var namespace
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
+    @Environment(\.isWide) private var wide
+    /// iPhone 3 列；iPad 按宽度自适应，格子 150pt 左右。
+    private var columns: [GridItem] {
+        wide ? [GridItem(.adaptive(minimum: 150), spacing: 2)] : Array(repeating: GridItem(.flexible(), spacing: 2), count: 3)
+    }
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {
@@ -342,6 +367,7 @@ struct MediaGridContent: View {
                         .modifier(TransitionSource(id: entry.id, namespace: namespace, cornerRadius: 0))
                 }
                 .buttonStyle(.press)
+                .entryContextMenu(entry)
                 .accessibilityLabel("\(DiaryDates.dayTitle(entry.displayDate))：\(entry.title)")
             }
         }
@@ -401,11 +427,20 @@ struct DayEntriesView: View {
                         EntryRow(entry: entry, showsSeparator: entry.id != entries.last?.id)
                     }
                     .buttonStyle(.row())
+                    .entryContextMenu(entry)
                 }
             }
             .padding(.vertical, 8)
         }
         .navigationTitle(DiaryDates.full(day))
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// 日历格子只有一篇日记时才挂上下文菜单；多篇时点进去是当天的列表。
+private struct OptionalEntryMenu: ViewModifier {
+    let entry: DiaryEntry?
+    func body(content: Content) -> some View {
+        if let entry { content.entryContextMenu(entry) } else { content }
     }
 }

@@ -12,10 +12,11 @@ enum AppTab: Hashable, CaseIterable {
         }
     }
 
+    /// 标签栏图标。选中时用实心变体（系统标签栏的惯例）。
     var symbol: String {
         switch self {
         case .journal: "book.pages"
-        case .review: "clock"
+        case .review: "sparkles.rectangle.stack"
         case .search: "magnifyingglass"
         }
     }
@@ -38,13 +39,18 @@ struct EditorRequest: Identifiable, Hashable {
 /// 每个标签页各自一条导航路径；推入详情时隐藏底部标签栏。
 @Observable
 final class Router {
-    var tab: AppTab = .journal
+    var tab: AppTab = .journal {
+        didSet { if tab != oldValue { tabBarCollapsed = false } }
+    }
     var journalPath: [Route] = []
     var reviewPath: [Route] = []
     var searchPath: [Route] = []
 
     /// 再点一次已在根页面的当前标签时加一；对应页面据此滚回顶部。
     private(set) var scrollToTopRequests: [AppTab: Int] = [:]
+
+    /// 往下滚时标签栏收起成只剩当前标签的小胶囊（系统标签栏的做法），往上滚或回到顶部时展开。
+    private(set) var tabBarCollapsed = false
 
     var showAddFromPhotos = false
     var showSettings = false
@@ -66,6 +72,7 @@ final class Router {
 
     func scrollToTop(_ tab: AppTab) {
         scrollToTopRequests[tab, default: 0] += 1
+        tabBarCollapsed = false
     }
 
     func popToRoot() {
@@ -97,4 +104,42 @@ final class Router {
         case .search: _ = searchPath.popLast()
         }
     }
+
+    // MARK: 标签栏收起
+
+    /// 根页面的滚动视图每次滚动都来报一下：往下滚过一段就收起，往上滚一点就展开，靠近顶部一定展开。
+    func scrolled(from old: CGFloat, to new: CGFloat) {
+        let delta = new - old
+        if new < 48 {
+            setCollapsed(false)
+        } else if delta > 4 {
+            setCollapsed(true)
+        } else if delta < -4 {
+            setCollapsed(false)
+        }
+    }
+
+    func expandTabBar() { setCollapsed(false) }
+
+    private func setCollapsed(_ collapsed: Bool) {
+        guard collapsed != tabBarCollapsed else { return }
+        tabBarCollapsed = collapsed
+    }
+}
+
+/// 挂在根页面的滚动视图上，把滚动方向交给 Router，标签栏据此收起、展开。
+struct TabBarScrollReporter: ViewModifier {
+    @Environment(Router.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
+        content.onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { old, new in
+            guard !reduceMotion else { return }
+            router.scrolled(from: old, to: new)
+        }
+    }
+}
+
+extension View {
+    func collapsesTabBarOnScroll() -> some View { modifier(TabBarScrollReporter()) }
 }

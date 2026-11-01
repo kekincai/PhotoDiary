@@ -12,7 +12,7 @@ struct EntryContextMenu: ViewModifier {
             Button("追加感想", systemImage: "plus.bubble") {
                 router.editor = EditorRequest(assetID: entry.id, mode: .append)
             }
-            Button("编辑", systemImage: "pencil") {
+            Button("编辑", systemImage: "square.and.pencil") {
                 router.editor = EditorRequest(assetID: entry.id, mode: .edit)
             }
             Divider()

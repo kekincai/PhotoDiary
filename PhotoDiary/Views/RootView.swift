@@ -24,61 +24,75 @@ struct RootView: View {
     }
 }
 
-/// 三个标签页（保留各自的滚动位置），底部浮动玻璃标签栏 + 主题色“+”按钮。
-/// 用系统 TabView 承载、隐藏系统标签栏：同一时间屏幕上只有当前标签的滚动视图，点状态栏回到顶部才有效。
-/// 日记在根页面时，标签栏上方多一条视图切换；搜索页用自己的底部搜索框代替标签栏。
+extension EnvironmentValues {
+    /// 宽屏（iPad、横屏大 iPhone）：用系统标签栏，列表多栏。
+    @Entry var isWide = false
+}
+
+/// 三个标签页（保留各自的滚动位置）。
+///
+/// - iPhone：隐藏系统标签栏，底部是自己的浮动玻璃标签栏 + 主题色“+”按钮；往下滚时收起成小胶囊。
+///   日记在根页面时，标签栏上方多一条视图切换；搜索页用自己的底部搜索框代替标签栏。
+/// - iPad（宽屏）：系统标签栏（顶部，可展开成侧栏），搜索是独立的搜索标签；“+”在导航栏右上角。
 private struct MainTabs: View {
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @SceneStorage("journalMode") private var mode: JournalMode = .list
     @Namespace private var zoom
 
-    private var showsTabBar: Bool { router.isAtRoot && router.tab != .search }
+    private var wide: Bool { sizeClass == .regular }
+    private var showsTabBar: Bool { !wide && router.isAtRoot && router.tab != .search }
     /// 搜索页的搜索框自己画渐隐；放在这里会盖在搜索框上面，看起来发灰。
-    private var showsFade: Bool { showsTabBar && !(router.tab == .journal && mode == .map) }
+    private var showsFade: Bool { (showsTabBar || (wide && router.isAtRoot && router.tab == .journal)) && !(router.tab == .journal && mode == .map) }
+    private var showsModeSwitcher: Bool { router.tab == .journal && router.isAtRoot && (wide || !router.tabBarCollapsed) }
 
     var body: some View {
         @Bindable var router = router
         TabView(selection: $router.tab) {
-            Tab(value: AppTab.journal) {
+            Tab(AppTab.journal.title, systemImage: AppTab.journal.symbol, value: AppTab.journal) {
                 NavigationStack(path: $router.journalPath) { JournalView(mode: $mode).routes() }
-                    .toolbarVisibility(.hidden, for: .tabBar)
+                    .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
             }
-            Tab(value: AppTab.review) {
+            Tab(AppTab.review.title, systemImage: AppTab.review.symbol, value: AppTab.review) {
                 NavigationStack(path: $router.reviewPath) { ReviewView().routes() }
-                    .toolbarVisibility(.hidden, for: .tabBar)
+                    .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
             }
-            Tab(value: AppTab.search) {
+            Tab(value: AppTab.search, role: .search) {
                 NavigationStack(path: $router.searchPath) { SearchView().routes() }
-                    .toolbarVisibility(.hidden, for: .tabBar)
+                    .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
             }
         }
+        .tabViewStyle(.sidebarAdaptable)
         .environment(\.zoomNamespace, zoom)
+        .environment(\.isWide, wide)
         .overlay(alignment: .bottom) {
             if showsFade {
-                BottomFade()
+                BottomFade(height: router.tabBarCollapsed || wide ? 120 : 190)
                     .ignoresSafeArea(edges: .bottom)
                     .transition(.opacity)
             }
         }
         .overlay(alignment: .bottom) {
-            if showsTabBar {
-                VStack(spacing: 16) {
-                    if router.tab == .journal {
-                        // 再点当前视图也回到顶部，和点标签一样。
-                        GlassSegmented(options: JournalMode.allCases, selection: $mode, title: \.title,
-                                       onReselect: { router.scrollToTop(.journal) })
-                            .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottom)))
-                    }
-                    FloatingTabBar()
+            VStack(spacing: Metrics.Spacing.l) {
+                if showsModeSwitcher {
+                    // 再点当前视图也回到顶部，和点标签一样。
+                    GlassSegmented(options: JournalMode.allCases, selection: $mode, title: \.title,
+                                   onReselect: { router.scrollToTop(.journal) })
+                        .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottom)))
                 }
-                .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                if showsTabBar {
+                    FloatingTabBar()
+                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
+                }
             }
+            .padding(.bottom, wide ? Metrics.Spacing.l : 0)
         }
         .animation(.move, value: router.isAtRoot)
         .animation(.move, value: router.tab == .search)
         .animation(.snappy, value: router.tab == .journal)
+        .animation(.move, value: router.tabBarCollapsed)
         .sheet(isPresented: $router.showAddFromPhotos) {
             AddFromPhotosView()
         }
@@ -94,7 +108,15 @@ private struct MainTabs: View {
 extension View {
     /// 各标签页共用的导航目的地。
     func routes() -> some View {
-        navigationDestination(for: Route.self) { route in
+        modifier(Routes())
+    }
+}
+
+private struct Routes: ViewModifier {
+    @Environment(\.isWide) private var wide
+
+    func body(content: Content) -> some View {
+        content.navigationDestination(for: Route.self) { route in
             Group {
                 switch route {
                 case .entry(let id): EntryDetailView(id: id)
@@ -104,46 +126,85 @@ extension View {
                 case .place(let name): PlaceEntriesView(place: name)
                 }
             }
-            .toolbarVisibility(.hidden, for: .tabBar)
+            .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
         }
     }
 }
 
+/// iPad 上导航栏右上角的“+”；iPhone 上在底部标签栏旁边。
+struct WideAddButton: ToolbarContent {
+    @Environment(Router.self) private var router
+    @Environment(\.isWide) private var wide
+    @Environment(\.brand) private var brand
+
+    var body: some ToolbarContent {
+        if wide {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("从照片写日记", systemImage: "plus") { router.showAddFromPhotos = true }
+                    .buttonStyle(.glassProminent)
+                    .tint(brand)
+            }
+        }
+    }
+}
+
+/// 玻璃胶囊［日记 · 回顾 · 搜索］+ 主题色“+”。收起时只剩当前标签的小胶囊，两个玻璃体之间会融合过渡。
 private struct FloatingTabBar: View {
     @Environment(Router.self) private var router
     @Environment(\.brand) private var brand
     @Namespace private var selection
+    @Namespace private var glass
+
+    private var collapsed: Bool { router.tabBarCollapsed }
 
     var body: some View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
-                HStack(spacing: 0) {
-                    ForEach(AppTab.allCases, id: \.self) { tab in
-                        item(tab)
+                Group {
+                    if collapsed {
+                        Button { router.expandTabBar() } label: {
+                            compactItem(router.tab)
+                        }
+                        .buttonStyle(.press)
+                        .accessibilityLabel(Text("展开标签栏，当前是\(router.tab.title)"))
+                    } else {
+                        HStack(spacing: 0) {
+                            ForEach(AppTab.allCases, id: \.self) { tab in
+                                item(tab)
+                            }
+                        }
+                        .padding(Metrics.Spacing.xs)
+                        .animation(.snappy, value: router.tab)
                     }
                 }
-                .padding(4)
-                .animation(.snappy, value: router.tab)
                 .glassEffect(.regular.interactive(), in: .capsule)
+                .glassEffectID("tabs", in: glass)
                 .sensoryFeedback(.selection, trigger: router.tab)
+
+                // 收起时小胶囊留在左边，“+”留在右边，和系统标签栏收起后的布局一样。
+                if collapsed { Spacer(minLength: 0) }
 
                 Button {
                     router.showAddFromPhotos = true
                 } label: {
                     Image(systemName: "plus")
-                        .font(.system(size: 24, weight: .semibold))
+                        .font(.system(size: collapsed ? 20 : 24, weight: .semibold))
                         .foregroundStyle(.white)
-                        .frame(width: 62, height: 62)
+                        .frame(width: plusSize, height: plusSize)
+                        .contentShape(.circle)
                 }
                 .buttonStyle(.press)
                 .glassEffect(.regular.tint(brand).interactive(), in: .circle)
+                .glassEffectID("plus", in: glass)
                 .accessibilityLabel("从照片写日记")
                 .sensoryFeedback(.impact(weight: .light), trigger: router.showAddFromPhotos) { _, new in new }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.bottom, 6)
     }
+
+    private var plusSize: CGFloat { collapsed ? 48 : Metrics.primaryAction }
 
     private func item(_ tab: AppTab) -> some View {
         let selected = router.tab == tab
@@ -153,14 +214,16 @@ private struct FloatingTabBar: View {
         } label: {
             VStack(spacing: 2) {
                 Image(systemName: tab.symbol)
+                    .symbolVariant(selected ? .fill : .none)
                     .font(.system(size: 20, weight: .medium))
                     .frame(height: 26)
+                    .symbolEffect(.bounce.down.byLayer, value: selected)
                 Text(tab.title)
                     .font(.caption2.weight(.semibold))
             }
             .foregroundStyle(selected ? brand : Color.ink)
             .frame(maxWidth: .infinity)
-            .frame(height: 52)
+            .frame(height: Metrics.control)
             .background {
                 if selected {
                     Capsule()
@@ -171,5 +234,20 @@ private struct FloatingTabBar: View {
         }
         .buttonStyle(.press)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// 收起时的小胶囊：当前标签的实心图标 + 名字。
+    private func compactItem(_ tab: AppTab) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: tab.symbol)
+                .symbolVariant(.fill)
+                .font(.system(size: 17, weight: .medium))
+            Text(tab.title)
+                .font(.subheadline.weight(.semibold))
+        }
+        .foregroundStyle(brand)
+        .padding(.horizontal, Metrics.Spacing.l)
+        .frame(height: 48)
+        .contentShape(.capsule)
     }
 }

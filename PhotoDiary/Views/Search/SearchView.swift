@@ -28,6 +28,7 @@ struct SearchView: View {
     @State private var customTo = Date.now
     @State private var showCustom = false
     @FocusState private var focused: Bool
+    @Environment(\.isWide) private var wide
 
     private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
     private var isTypingTag: Bool { trimmed.hasPrefix("#") || trimmed.hasPrefix("＃") }
@@ -209,6 +210,7 @@ struct SearchView: View {
                     EntryRow(entry: entry, showsSeparator: entry.id != results.last?.id)
                 }
                 .buttonStyle(.row())
+                .entryContextMenu(entry)
             }
         }
     }
@@ -224,7 +226,7 @@ struct SearchView: View {
                 }
                 if let place {
                     removable(fill: .tile, color: .ink) {
-                        Label(place, systemImage: "mappin")
+                        Label(place, systemImage: "mappin.and.ellipse")
                     } remove: { self.place = nil }
                 }
                 if range != .any {
@@ -274,16 +276,19 @@ struct SearchView: View {
     private var searchBar: some View {
         GlassEffectContainer(spacing: 10) {
             HStack(spacing: 10) {
-                Button { router.tab = .journal } label: {
-                    Image(systemName: AppTab.journal.symbol)
-                        .font(.system(size: 20, weight: .medium))
-                        .foregroundStyle(Color.ink)
-                        .frame(width: 54, height: 54)
-                        .contentShape(.circle)
+                // iPad 有系统标签栏，不需要“回到日记”。
+                if !wide {
+                    Button { router.tab = .journal } label: {
+                        Image(systemName: AppTab.journal.symbol)
+                            .font(.system(size: 20, weight: .medium))
+                            .foregroundStyle(Color.ink)
+                            .frame(width: 54, height: 54)
+                            .contentShape(.circle)
+                    }
+                    .buttonStyle(.press)
+                    .glassEffect(.regular.interactive(), in: .circle)
+                    .accessibilityLabel("回到日记")
                 }
-                .buttonStyle(.press)
-                .glassEffect(.regular.interactive(), in: .circle)
-                .accessibilityLabel("回到日记")
 
                 HStack(spacing: 10) {
                     Image(systemName: "magnifyingglass")
@@ -312,8 +317,10 @@ struct SearchView: View {
                 .onTapGesture { focused = true }
             }
         }
+        .frame(maxWidth: 640)
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
+        .frame(maxWidth: .infinity)
         .background(alignment: .bottom) {
             BottomFade(height: 140).ignoresSafeArea(edges: .bottom)
         }

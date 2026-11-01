@@ -18,6 +18,7 @@ struct ReviewView: View {
             .padding(.top, 8)
             .padding(.bottom, 150)
         }
+        .collapsesTabBarOnScroll()
         // 再点“回顾”标签时滚回顶部（大标题重新展开）。
         .onChange(of: router.scrollToTopRequests[.review]) {
             withAnimation(.move) { proxy.scrollTo("review-top", anchor: .top) }
@@ -26,6 +27,7 @@ struct ReviewView: View {
         .background(Color(.systemBackground))
         .navigationTitle("回顾")
         .toolbarTitleDisplayMode(.large)
+        .toolbar { WideAddButton() }
     }
 }
 
@@ -59,7 +61,7 @@ private struct OnThisDaySection: View {
                         ForEach(memories) { entry in
                             card(entry)
                                 .containerRelativeFrame(.horizontal) { width, _ in
-                                    memories.count > 1 ? width - 60 : width - 32
+                                    min(memories.count > 1 ? width - 60 : width - 32, 480)
                                 }
                                 .frame(height: 420)
                                 .id(entry.id)
@@ -296,7 +298,10 @@ private struct UnwrittenSection: View {
 
 private struct TagsSection: View {
     @Environment(DiaryStore.self) private var store
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+    @Environment(\.isWide) private var wide
+    private var columns: [GridItem] {
+        wide ? [GridItem(.adaptive(minimum: 200), spacing: 16)] : Array(repeating: GridItem(.flexible(), spacing: 16), count: 2)
+    }
 
     var body: some View {
         let tags = store.tagCounts

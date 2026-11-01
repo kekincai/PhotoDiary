@@ -34,13 +34,19 @@ struct PhotoDiaryApp: App {
                     // 作为单元测试宿主启动时不读照片库：测试用自己的假照片库，不能改到模拟器里的照片。
                     guard !Self.isHostingUnitTests else { return }
                     DiaryFonts.shared.prepare()
+                    WatchBridge.shared.start(store: store)
                     await store.start()
                 }
                 .onChange(of: scenePhase) { _, phase in
                     Log.app.debug("scenePhase → \(String(describing: phase), privacy: .public)")
-                    if phase == .active { store.refreshAuthorization() }
+                    if phase == .active {
+                        store.refreshAuthorization()
+                        WatchBridge.shared.resume()
+                    }
                     if phase == .background { saveInBackground() }
                 }
+                // 日记一变就把快照发给 Apple Watch（防抖）。
+                .onChange(of: store.diaries) { WatchBridge.shared.scheduleSync() }
         }
     }
 
