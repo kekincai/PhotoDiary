@@ -97,7 +97,7 @@ nonisolated struct WatchWrite: Codable, Sendable, Equatable, Identifiable {
 }
 
 /// 两边来回的消息，统一 JSON 编码后用 sendMessageData / transferUserInfo 传。
-nonisolated enum WatchMessage: Codable, Sendable {
+nonisolated enum WatchMessage: Codable, Sendable, Equatable {
     /// Watch 请求 iPhone 重发快照。
     case refresh
     /// Watch 向 iPhone 要这些照片的缩略图。

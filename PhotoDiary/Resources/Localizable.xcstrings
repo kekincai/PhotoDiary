@@ -447,6 +447,38 @@
         }
       }
     },
+    "Apple Watch": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Watch"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Watch"
+          }
+        }
+      }
+    },
+    "iPhone 收到后会自动写入": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your iPhone will write it in when it receives it"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone が受信すると自動的に書き込まれます"
+          }
+        }
+      }
+    },
     "不复制照片": {
       "localizations": {
         "en": {
@@ -539,6 +571,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "今日書いたことは、来年の今日ここに表示されます"
+          }
+        }
+      }
+    },
+    "今天的照片": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today’s photo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の写真"
           }
         }
       }
@@ -735,6 +783,22 @@
         }
       }
     },
+    "写下当时的感受": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write how it felt"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "そのときの気持ちを書く"
+          }
+        }
+      }
+    },
     "写下当时的感受，用 #话题# 加标签": {
       "localizations": {
         "en": {
@@ -927,6 +991,22 @@
         }
       }
     },
+    "刷新": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "更新"
+          }
+        }
+      }
+    },
     "前往“设置”允许访问照片": {
       "localizations": {
         "en": {
@@ -955,6 +1035,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "口述感想": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictate a Reflection"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "感想を口述"
+          }
+        }
+      }
+    },
+    "口述日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictate an Entry"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日記を口述"
           }
         }
       }
@@ -1099,6 +1211,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "振り返り"
+          }
+        }
+      }
+    },
+    "在 iPhone 上打开照片日记重新同步": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Photo Diary on your iPhone to sync again"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone で写真日記を開いて再同期してください"
+          }
+        }
+      }
+    },
+    "在 iPhone 上打开照片日记，最近的日记会自动同步到手表": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Photo Diary on your iPhone and recent entries will sync to your watch"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone で写真日記を開くと、最近の日記が Watch に同期されます"
+          }
+        }
+      }
+    },
+    "在 iPhone 的 Watch App 里安装“照片日记”，就能在手表上回看日记、口述感想。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Install Photo Diary from the Watch app on your iPhone to look back at entries and dictate reflections on your wrist."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone の Watch App で「写真日記」をインストールすると、手首で日記を読み返したり感想を口述したりできます。"
           }
         }
       }
@@ -1327,6 +1487,22 @@
         }
       }
     },
+    "展开标签栏，当前是%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expand tab bar, currently %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タブバーを展開、現在は%@"
+          }
+        }
+      }
+    },
     "已写日记的照片": {
       "localizations": {
         "en": {
@@ -1339,6 +1515,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記を書いた写真"
+          }
+        }
+      }
+    },
+    "已写进照片说明": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Written into the caption"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "説明に書き込みました"
+          }
+        }
+      }
+    },
+    "已发到 iPhone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sent to iPhone"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone に送信しました"
+          }
+        }
+      }
+    },
+    "已同步 · %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Synced · %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "同期済み · %@"
           }
         }
       }
@@ -1377,6 +1601,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%1$lld / %2$lld枚を確認 · %3$lld件の日記"
+          }
+        }
+      }
+    },
+    "已连接": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Connected"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "接続済み"
           }
         }
       }
@@ -1797,6 +2037,22 @@
         }
       }
     },
+    "最近": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近"
+          }
+        }
+      }
+    },
     "最近 30 天": {
       "localizations": {
         "en": {
@@ -1825,6 +2081,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "過去1年間"
+          }
+        }
+      }
+    },
+    "最近的日记、那年今日和还没写的照片会自动发到手表上；在手表上口述的感想会写进照片说明。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent entries, On This Day and unwritten photos are sent to your watch automatically. Reflections dictated on the watch are written into the photo caption."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最近の日記、あの日の今日、まだ書いていない写真は自動的に Watch に送られます。Watch で口述した感想は写真の説明に書き込まれます。"
           }
         }
       }
@@ -1877,6 +2149,22 @@
         }
       }
     },
+    "未安装": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Installed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未インストール"
+          }
+        }
+      }
+    },
     "未注明日期": {
       "localizations": {
         "en": {
@@ -1905,6 +2193,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "未設定"
+          }
+        }
+      }
+    },
+    "未配对": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Paired"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未ペアリング"
           }
         }
       }
@@ -2061,6 +2365,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "タグ名"
+          }
+        }
+      }
+    },
+    "正在发送…": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sending…"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "送信中…"
           }
         }
       }
@@ -2321,6 +2641,22 @@
         }
       }
     },
+    "版本": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Version"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "バージョン"
+          }
+        }
+      }
+    },
     "用过的标签": {
       "localizations": {
         "en": {
@@ -2365,6 +2701,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
+          }
+        }
+      }
+    },
+    "立即同步到手表": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sync to Watch Now"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今すぐ Watch に同期"
           }
         }
       }
@@ -2417,6 +2769,22 @@
         }
       }
     },
+    "等待 iPhone": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Waiting for iPhone"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "iPhone を待っています"
+          }
+        }
+      }
+    },
     "给%@的照片写日记": {
       "localizations": {
         "en": {
@@ -2433,6 +2801,22 @@
         }
       }
     },
+    "给%@的照片口述": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictate about the photo from %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@の写真に口述"
+          }
+        }
+      }
+    },
     "给这张照片写日记": {
       "localizations": {
         "en": {
@@ -2445,6 +2829,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "この写真について書く"
+          }
+        }
+      }
+    },
+    "给这张照片口述": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dictate about this photo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この写真に口述"
           }
         }
       }
@@ -2541,6 +2941,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "言語"
+          }
+        }
+      }
+    },
+    "说完会发到 iPhone，写进这张照片的说明": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When you’re done it’s sent to your iPhone and written into this photo’s caption"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "話し終えると iPhone に送られ、この写真の説明に書き込まれます"
           }
         }
       }
@@ -2841,6 +3257,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "この写真はもうありません"
+          }
+        }
+      }
+    },
+    "这篇不在手表上": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This entry isn’t on your watch"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この日記は Watch にありません"
           }
         }
       }

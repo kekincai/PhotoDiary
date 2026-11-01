@@ -28,6 +28,9 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 - **回顾**：那年今日、本周写作、还没写日记的照片
 - **标签**：标签自动同步为照片关键词；支持批量改名、合并
 - **搜索**：全文、标签、日期范围
+- **长按预览**：列表、日历、网格里长按一篇，预览照片并直接追加感想、分享、在照片 App 里打开
+- **Apple Watch**：最近的日记、那年今日、本周写作和还没写的照片同步到手表；在表上口述一段，由 iPhone 写进照片说明
+- **iPad**：系统标签栏（可展开成侧栏）、多栏卡片、自适应网格、正文限宽
 - 照片、视频、实况照片都可以写；支持“有限访问”；全部日记可导出为 Markdown
 
 ## 说明格式
@@ -55,7 +58,26 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 - 首次启动后台分批遍历照片库，建好的部分先显示；之后用 `PHPhotoLibraryChangeObserver` 和 `fetchPersistentChanges(since:)` 增量同步，只重读变化的照片，也只写变化的行
 - 日志用 `os.Logger`，subsystem 为 `com.kejincai.photodiary`；设置里可以导出本次运行的诊断日志（不含日记正文）
 - 照片日期按拍摄地当地时区计算，和照片 App 一致
-- 界面遵循 Apple 的设计原则：Liquid Glass 浮动标签栏、临界阻尼弹簧动画、zoom 转场、日记正文用宋体（系统按需下载）；适配深色模式、动态字体、“减少动态效果”和“降低透明度”
+- 界面遵循 Apple 的设计原则：Liquid Glass 浮动标签栏（往下滚收起成小胶囊）、临界阻尼弹簧动画、zoom 转场、下拉拉伸照片、日记正文用宋体（系统按需下载）；适配深色模式、动态字体、“减少动态效果”和“降低透明度”
+- Apple Watch 通过 WatchConnectivity 同步：快照（不含图）走 applicationContext，缩略图按需逐张拉取并缓存在表上；表上口述的段落可达时直接送达，否则排队
+- 图标和开屏是同一个图形：一张正在显影的拍立得，白边上写着一行字。开屏动画里照片慢慢显影、字自己写出来；首次读取照片库时，读取进度就是显影进度（`Tools/AppIcon/make-icon.swift` 生成图标和启动画面，几何和 `Shared/Design/Mark.swift` 一致）
+
+## 工程结构
+
+```
+Shared/          iPhone 和 Apple Watch 共用：说明格式、日期、条目模型、品牌图形、同步数据结构
+PhotoDiary/      iPhone/iPad App
+  App/           入口、路由、日志、Watch 连接
+  Design/Theme   主题色、字体、动效、尺寸（Metrics）
+  Design/Components  可复用组件：卡片、行、胶囊、分段控件、上下文菜单、效果
+  Library/       照片库读写、索引数据库、地名
+  Views/         按页面分组
+PhotoDiaryWatch/ Apple Watch App
+PhotoDiaryTests/ 单元测试（假照片库）
+Tools/           图标生成、测试照片导入
+```
+
+用 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 生成工程：`xcodegen generate`。开屏动画可以用 `-holdSplash` 启动参数多停几秒，方便截图。
 
 ```
 PhotoDiary/

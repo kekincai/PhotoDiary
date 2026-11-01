@@ -22,6 +22,7 @@
 		43596D3724AF034030005F2E /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6D263197946BC1AC0CC66F /* DiaryEntry.swift */; };
 		4EF0726700A145FDF1FBA8AD /* Badges.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B823EE6387B56A51B3E23DA /* Badges.swift */; };
 		51BCE91DE8C0DA47D0646FF3 /* AssetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C8C4E6ED8555AF56B1D7E2 /* AssetImage.swift */; };
+		54406E6A936B7EB3F2CC8B17 /* WatchSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EFCB1FD1E4B7C5D9890945 /* WatchSyncTests.swift */; };
 		580E93B09180FDDD409882A8 /* WatchComposeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3005743011DE482C2E500259 /* WatchComposeView.swift */; };
 		59BA60E2C94D1FE747C7A057 /* WatchHomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7526DDAC5D00B237445FE8A6 /* WatchHomeView.swift */; };
 		5BBF21603730ABFD9F9CB04A /* LibraryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7571F7FC7477DFEB4D9E925E /* LibraryScanner.swift */; };
@@ -122,6 +123,7 @@
 		1B823EE6387B56A51B3E23DA /* Badges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Badges.swift; sourceTree = "<group>"; };
 		1F31CB92006521A42AFCA8FC /* DiaryDates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDates.swift; sourceTree = "<group>"; };
 		20D4CA9968E5F215B51550F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		24EFCB1FD1E4B7C5D9890945 /* WatchSyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncTests.swift; sourceTree = "<group>"; };
 		27159AEC97DEC9667C365D6D /* Effects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Effects.swift; sourceTree = "<group>"; };
 		27E4422BB8D41E715150A70D /* InfoPlist.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = InfoPlist.xcstrings; sourceTree = "<group>"; };
 		2AFE1BB90B9A08FC23F3D15B /* PlaceNamer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlaceNamer.swift; sourceTree = "<group>"; };
@@ -339,6 +341,7 @@
 				3BF4159F7A7201518B0DEFA0 /* LogTests.swift */,
 				FF02476A073CF0251400A9B6 /* PerformanceTests.swift */,
 				CD3511816DF16328D71510DC /* SyncTests.swift */,
+				24EFCB1FD1E4B7C5D9890945 /* WatchSyncTests.swift */,
 				3378394595BC1E1591A2C521 /* Support */,
 			);
 			path = PhotoDiaryTests;
@@ -610,6 +613,7 @@
 				B0D838C94FE92F3BEEE5E8C4 /* PerformanceTests.swift in Sources */,
 				0FC00E539542206D01010797 /* SyncTests.swift in Sources */,
 				C09C8C809A09814025B3DC9A /* TestSupport.swift in Sources */,
+				54406E6A936B7EB3F2CC8B17 /* WatchSyncTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -738,7 +742,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
@@ -746,7 +750,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.kejincai.photodiary;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kejincai.photodiary.watchkitapp;
 				PRODUCT_NAME = PhotoDiaryWatch;
 				SDKROOT = watchos;
@@ -896,7 +900,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
@@ -904,7 +908,7 @@
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.kejincai.photodiary;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kejincai.photodiary.watchkitapp;
 				PRODUCT_NAME = PhotoDiaryWatch;
 				SDKROOT = watchos;
@@ -920,7 +924,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
@@ -936,7 +940,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kejincai.photodiary;
 				PRODUCT_NAME = PhotoDiary;
 				SDKROOT = iphoneos;
@@ -951,7 +955,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
@@ -967,7 +971,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kejincai.photodiary;
 				PRODUCT_NAME = PhotoDiary;
 				SDKROOT = iphoneos;

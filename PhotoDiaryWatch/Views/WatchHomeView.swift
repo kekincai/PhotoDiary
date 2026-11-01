@@ -62,11 +62,17 @@ struct WatchHomeView: View {
     }
 
     private var waiting: some View {
-        ContentUnavailableView {
-            Label("等待 iPhone", systemImage: "iphone.and.arrow.right.outward")
-        } description: {
+        VStack(spacing: 10) {
+            BrandMark(width: 56, palette: .dark, developed: 0.35, written: 0)
+                .padding(.bottom, 6)
+            Text("等待 iPhone")
+                .font(.headline)
             Text("在 iPhone 上打开照片日记，最近的日记会自动同步到手表")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
         }
+        .padding(.horizontal, 6)
     }
 }
 

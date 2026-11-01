@@ -94,13 +94,15 @@ struct FirstScanView: View {
         return nil
     }
 
+    /// 读取进度就是显影进度：读完一半，照片显影一半；字在最后一成里写出来。
     private var progressCard: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "photo.stack")
-                .font(.system(size: 26, weight: .medium))
-                .foregroundStyle(brand)
-                .frame(width: 44, height: 44)
-                .background(brand.soft(), in: .rect(cornerRadius: 8, style: .continuous))
+        let fraction = progress.map { Double($0.done) / Double(max($0.total, 1)) } ?? 0
+        return HStack(alignment: .top, spacing: Metrics.Spacing.l) {
+            BrandMark(width: 52, palette: .light, developed: min(1, fraction / 0.9),
+                      written: max(0, (fraction - 0.85) / 0.15), shadow: false)
+                .animation(.easeOut(duration: 0.6), value: fraction)
+                .frame(width: 72, height: 80)
+                .background(brand.gradient, in: .rect(cornerRadius: Metrics.Radius.card, style: .continuous))
             VStack(alignment: .leading, spacing: 6) {
                 Text("正在读取照片说明")
                     .font(.headline)
@@ -127,8 +129,8 @@ struct FirstScanView: View {
                     .padding(.top, 2)
             }
         }
-        .padding(16)
-        .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
+        .padding(Metrics.Spacing.l)
+        .background(Color.tile, in: .rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
         .accessibilityElement(children: .combine)
     }
 }
