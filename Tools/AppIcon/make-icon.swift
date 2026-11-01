@@ -1,5 +1,6 @@
 // 生成 App 图标：主题蓝底 + 白色书签，书签上镂空出山和太阳（“写在照片上的日记”）。
-// 用法：swift Tools/AppIcon/make-icon.swift PhotoDiary/Assets.xcassets/AppIcon.appiconset
+// 用法：swift Tools/AppIcon/make-icon.swift PhotoDiary/Assets.xcassets/AppIcon.appiconset [PhotoDiary/Assets.xcassets/LaunchMark.imageset]
+// 给了第二个目录时，同时生成启动画面中间的书签（和图标同一个图形，透明底）。
 import Foundation
 import CoreGraphics
 import ImageIO
@@ -85,7 +86,47 @@ func render(_ variant: Variant, to file: String) {
     CGImageDestinationFinalize(dest)
 }
 
+/// 系统生成启动画面快照时，把颜色分量当成 Display P3 用，画出来比原色艳。
+/// 启动画面用的颜色先换成 P3 坐标再当 sRGB 存，快照里正好是原色。
+/// 快照按版本号缓存：改了颜色要升 CURRENT_PROJECT_VERSION（模拟器上重启设备）才看得到。
+/// LaunchBackground 颜色集也是这么算的：#2F6690 → (0.240, 0.395, 0.551)，#0E151C → (0.061, 0.082, 0.107)。
+func launchCompensated(_ hex: UInt32) -> CGColor {
+    let p3 = rgb(hex).converted(to: CGColorSpace(name: CGColorSpace.displayP3)!, intent: .defaultIntent, options: nil)!
+    return CGColor(colorSpace: space, components: p3.components!)!
+}
+
+/// 启动画面的书签：只画图形本身，宽 64pt，背景色由 LaunchBackground 提供。
+func renderMark(dark: Bool, scale: Int, to url: URL) {
+    let bounds = bookmark().boundingBox
+    let points: CGFloat = 64
+    let s = points * CGFloat(scale) / bounds.width
+    let w = Int((bounds.width * s).rounded()), h = Int((bounds.height * s).rounded())
+    let ctx = CGContext(data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+                        space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+    ctx.translateBy(x: 0, y: CGFloat(h))
+    ctx.scaleBy(x: s, y: -s)
+    ctx.translateBy(x: -bounds.minX, y: -bounds.minY)
+    let shape = CGMutablePath()
+    shape.addPath(bookmark())
+    shape.addPath(cutout())
+    ctx.addPath(shape)
+    ctx.setFillColor(dark ? launchCompensated(0x8EC0E6) : rgb(0xFFFFFF))
+    ctx.fillPath(using: .evenOdd)
+    let dest = CGImageDestinationCreateWithURL(url as CFURL, UTType.png.identifier as CFString, 1, nil)!
+    CGImageDestinationAddImage(dest, ctx.makeImage()!, nil)
+    CGImageDestinationFinalize(dest)
+}
+
 render(.light, to: "icon.png")
 render(.dark, to: "icon-dark.png")
 render(.tinted, to: "icon-tinted.png")
 print("icons written to \(outDir)")
+
+if CommandLine.arguments.count > 2 {
+    let markDir = URL(fileURLWithPath: CommandLine.arguments[2])
+    for scale in 1...3 {
+        renderMark(dark: false, scale: scale, to: markDir.appending(path: "mark@\(scale)x.png"))
+        renderMark(dark: true, scale: scale, to: markDir.appending(path: "mark-dark@\(scale)x.png"))
+    }
+    print("launch mark written to \(markDir.path)")
+}

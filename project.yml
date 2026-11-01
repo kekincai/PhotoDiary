@@ -12,7 +12,9 @@ settings:
     SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY: YES
     ENABLE_USER_SCRIPT_SANDBOXING: YES
     STRING_CATALOG_GENERATE_SYMBOLS: YES
-    DEVELOPMENT_TEAM: ""
+    SWIFT_EMIT_LOC_STRINGS: YES
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    DEVELOPMENT_TEAM: B82CAW4M9Y
 targets:
   PhotoDiary:
     type: application
@@ -27,10 +29,10 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: PhotoDiary/Info.plist
         INFOPLIST_KEY_CFBundleDisplayName: 照片日记
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.lifestyle
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: 日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         INFOPLIST_KEY_CFBundleDevelopmentRegion: zh-Hans

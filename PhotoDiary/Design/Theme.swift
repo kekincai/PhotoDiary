@@ -13,16 +13,21 @@ enum BrandColor: String, CaseIterable, Identifiable {
     var color: Color { Color(hex: rawValue) }
     var name: String {
         switch self {
-        case .lake: "湖蓝"
-        case .pine: "松绿"
-        case .ochre: "赭石"
-        case .dusk: "暮紫"
+        case .lake: String(localized: "湖蓝")
+        case .pine: String(localized: "松绿")
+        case .ochre: String(localized: "赭石")
+        case .dusk: String(localized: "暮紫")
         }
     }
 }
 
 extension EnvironmentValues {
     @Entry var brand: Color = BrandColor.lake.color
+}
+
+extension Color {
+    /// 标签胶囊等浅色底：主题色 10%。
+    func soft() -> Color { opacity(0.1) }
 }
 
 extension Color {
@@ -37,6 +42,8 @@ extension Color {
     static let meta = Color(.secondaryLabel)
     static let hairline = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.12) : UIColor(red: 0.925, green: 0.925, blue: 0.937, alpha: 1) })
     static let card = Color(.secondarySystemGroupedBackground)
+    /// 白底上的灰色块：那年今日横幅、编辑器的照片卡片、胶囊。
+    static let tile = Color(.secondarySystemBackground)
     static let groupedBackground = Color(.systemGroupedBackground)
 }
 
@@ -76,6 +83,17 @@ final class DiaryFonts {
         }
     }
 
+    /// 宋体下载完成前的系统衬线体。每段正文每次刷新都要用，按字号缓存。
+    @ObservationIgnored private var fallbackCache: [String: Font] = [:]
+
+    func fallbackFont(size: CGFloat, bold: Bool, style: Font.TextStyle) -> Font {
+        let key = "\(size)|\(bold)|\(style)"
+        if let font = fallbackCache[key] { return font }
+        let font = Font(uiFont(size: size, bold: bold, textStyle: style.uiKit))
+        fallbackCache[key] = font
+        return font
+    }
+
     func uiFont(size: CGFloat, bold: Bool = false, textStyle: UIFont.TextStyle = .body) -> UIFont {
         let base: UIFont
         if songtiReady, let f = UIFont(name: bold ? Self.boldName : Self.regularName, size: size) {
@@ -94,7 +112,7 @@ extension Font {
         if DiaryFonts.shared.songtiReady {
             return .custom(bold ? DiaryFonts.boldName : DiaryFonts.regularName, size: size, relativeTo: style)
         }
-        return Font(DiaryFonts.shared.uiFont(size: size, bold: bold, textStyle: style.uiKit))
+        return DiaryFonts.shared.fallbackFont(size: size, bold: bold, style: style)
     }
 }
 
@@ -159,7 +177,9 @@ extension ButtonStyle where Self == PressStyle {
 
 extension DateFormatter {
     private static var cache: [String: DateFormatter] = [:]
+    private static var localizedCache: [String: DateFormatter] = [:]
 
+    /// 固定中文格式，只给导出等不随界面语言变化的地方用。
     static func zh(_ format: String) -> DateFormatter {
         if let f = cache[format] { return f }
         let f = DateFormatter()
@@ -169,41 +189,73 @@ extension DateFormatter {
         cache[format] = f
         return f
     }
+
+    /// 按界面语言排列的格式（模板，如 "MMMd"）。
+    static func localized(_ template: String) -> DateFormatter {
+        if let f = localizedCache[template] { return f }
+        let f = DateFormatter()
+        f.locale = AppLanguage.current.locale
+        f.calendar = .diary
+        f.setLocalizedDateFormatFromTemplate(template)
+        localizedCache[template] = f
+        return f
+    }
+
+    static func resetLocalized() { localizedCache.removeAll() }
 }
 
 enum DiaryDates {
-    /// 10月20日 周二
-    static func dayTitle(_ date: Date) -> String { DateFormatter.zh("M月d日 EEE").string(from: date) }
-    /// 2026年 十月
-    static func monthHeader(_ date: Date) -> String { DateFormatter.zh("yyyy年 LLLL").string(from: date) }
-    static func weekday(_ date: Date) -> String { DateFormatter.zh("EEE").string(from: date) }
-    static func short(_ day: DayStamp) -> String { "\(day.month)月\(day.day)日" }
-    static func full(_ day: DayStamp) -> String { "\(day.year)年\(day.month)月\(day.day)日" }
+    private static func format(_ template: String, _ date: Date) -> String {
+        DateFormatter.localized(template).string(from: date)
+    }
+
+    /// 10月20日 周二 / 10月20日(火) / Tue, Oct 20
+    static func dayTitle(_ date: Date) -> String { format("MMMdEEE", date) }
+    /// 2023年10月31日 周二
+    static func fullWithWeekday(_ date: Date) -> String { format("yMMMdEEE", date) }
+    static func weekday(_ date: Date) -> String { format("EEE", date) }
+    static func short(_ day: DayStamp) -> String { format("MMMd", day.date) }
+    static func full(_ day: DayStamp) -> String { format("yMMMd", day.date) }
+    /// 月份标题：10月 / October
+    static func monthName(_ date: Date) -> String {
+        AppLanguage.current == .english ? format("LLLL", date) : format("MMM", date)
+    }
+    static func yearMonth(_ date: Date) -> String { format("yMMMM", date) }
+    /// 只写数字：2026
+    static func year(_ date: Date) -> String { String(Calendar.diary.component(.year, from: date)) }
+
+    /// 日历、本周写作的星期行，从周日开始：日 一 … / 日 月 … / S M …
+    static var weekdaySymbols: [String] {
+        DateFormatter.localized("EEEEE").veryShortStandaloneWeekdaySymbols
+    }
 
     /// 段落之间的分隔：（“两天后”，“10月22日”）。
     static func gap(from previous: DayStamp?, to day: DayStamp) -> (relative: String, date: String) {
-        let label = short(day)
-        guard let previous else { return (year(prefix: day) + label, "") }
+        guard let previous else { return (dated(day, relativeTo: nil), "") }
         let n = previous.days(to: day)
         let relative: String
         switch n {
-        case ..<1: relative = "同一天"
-        case 1: relative = "第二天"
-        case 2: relative = "两天后"
-        case 3..<30: relative = "\(n) 天后"
-        case 30..<365: relative = "\(n / 30) 个月后"
-        default: relative = "\(n / 365) 年后"
+        case ..<1: relative = String(localized: "同一天")
+        case 1: relative = String(localized: "第二天")
+        case 2: relative = String(localized: "两天后")
+        case 3..<30: relative = String(localized: "\(n) 天后")
+        case 30..<365: relative = String(localized: "\(n / 30) 个月后")
+        default: relative = String(localized: "\(n / 365) 年后")
         }
-        return (relative, year(prefix: day, relativeTo: previous) + short(day))
+        return (relative, dated(day, relativeTo: previous))
     }
 
-    private static func year(prefix day: DayStamp, relativeTo other: DayStamp? = nil) -> String {
-        let ref = other?.year ?? DayStamp.today.year
-        return day.year == ref ? "" : "\(day.year)年"
+    /// 同一年只写月日，跨年才带年份。
+    private static func dated(_ day: DayStamp, relativeTo other: DayStamp?) -> String {
+        day.year == (other?.year ?? DayStamp.today.year) ? short(day) : full(day)
     }
 
     static func yearsAgo(_ day: DayStamp) -> String {
-        let n = DayStamp.today.year - day.year
-        return n == 1 ? "1 年前" : "\(n) 年前"
+        String(localized: "\(DayStamp.today.year - day.year) 年前")
+    }
+
+    /// “3 年前的今天”
+    static func onThisDay(_ day: DayStamp) -> String {
+        String(localized: "\(DayStamp.today.year - day.year) 年前的今天")
     }
 }

@@ -1,5 +1,6 @@
 import Foundation
 import Photos
+import OSLog
 
 /// 读取照片库：全库遍历、按 change token 增量、写入说明与关键词。
 /// 所有方法都在后台执行，不持有任何 UI 状态。
@@ -64,12 +65,18 @@ nonisolated enum LibraryScanner {
     /// App 关闭期间或运行中发生的变化，只重新解析变化的照片。
     @concurrent
     static func incremental(since tokenData: Data) async throws -> IncrementalResult {
-        guard let token = unarchiveToken(tokenData) else { throw ScanError.tokenExpired }
+        guard let token = unarchiveToken(tokenData) else {
+            Log.sync.error("change token 无法解档（\(tokenData.count) 字节）")
+            throw ScanError.tokenExpired
+        }
+        let clock = ContinuousClock()
+        let begin = clock.now
         let library = PHPhotoLibrary.shared()
         let changes: PHPersistentChangeFetchResult
         do {
             changes = try library.fetchPersistentChanges(since: token)
         } catch {
+            Log.sync.notice("change token 已失效：\(error, privacy: .public)")
             throw ScanError.tokenExpired
         }
 
@@ -84,11 +91,13 @@ nonisolated enum LibraryScanner {
             deleted.formUnion(details.deletedLocalIdentifiers)
         }
         touched.subtract(deleted)
+        let listed = clock.now
 
         let updated = fetchEntries(ids: Array(touched))
         let withCaption = Set(updated.map(\.id))
         let removed = deleted.union(touched.subtracting(withCaption))
         let newToken = archive(lastToken ?? library.currentChangeToken)
+        Log.sync.debug("增量：列出变化 \(listed - begin, privacy: .public)（\(touched.count) 改 \(deleted.count) 删），读取条目 \(clock.now - listed, privacy: .public)")
         return IncrementalResult(updated: updated, removed: removed, token: newToken)
     }
 
@@ -107,11 +116,16 @@ nonisolated enum LibraryScanner {
         return entries
     }
 
+    /// 说明非空、也不是相机自动写入的，才算日记。
+    static func isDiaryCaption(_ caption: String?) -> Bool {
+        guard let caption else { return false }
+        return !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !CaptionFormat.isCameraBoilerplate(caption)
+    }
+
     static func entry(for asset: PHAsset) -> DiaryEntry? {
         let metadata = asset.extendedMetadata
-        guard let caption = metadata.caption,
-              !caption.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
-              !CaptionFormat.isCameraBoilerplate(caption) else { return nil }
+        guard let caption = metadata.caption, isDiaryCaption(caption) else { return nil }
         let kind: MediaKind = asset.mediaType == .video ? .video
             : asset.mediaSubtypes.contains(.photoLive) ? .livePhoto : .photo
         return DiaryEntry(
@@ -174,9 +188,18 @@ nonisolated enum LibraryScanner {
     }
 
     private static func applyKeywords(tags: [String], current: [String], to request: PHAssetChangeRequest) {
+        let change = keywordChange(tags: tags, current: current)
+        for keyword in change.remove { request.removeKeyword(keyword) }
+        for keyword in change.add { request.addKeyword(keyword) }
+    }
+
+    /// 让关键词等于说明里的标签：要删掉哪些、要加上哪些（按出现顺序，不重复）。
+    static func keywordChange(tags: [String], current: [String]) -> (remove: [String], add: [String]) {
         let target = Set(tags)
-        for keyword in current where !target.contains(keyword) { request.removeKeyword(keyword) }
-        for tag in tags where !current.contains(tag) { request.addKeyword(tag) }
+        var added = Set(current)
+        let remove = current.filter { !target.contains($0) }
+        let add = tags.filter { added.insert($0).inserted }
+        return (remove, add)
     }
 
     @concurrent

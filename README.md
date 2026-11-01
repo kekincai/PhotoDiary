@@ -51,8 +51,9 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 ## 技术
 
 - SwiftUI + Swift 6，最低 **iOS 27**：PhotoKit 从 iOS 27 起才公开说明和关键词的读写接口（`PHAsset.extendedMetadata`、`PHAssetChangeRequest.caption`、`addKeyword(_:)`）
-- 照片说明是唯一正本，本地只保存可重建的索引（`Application Support/diary-index.json`）
-- 首次启动后台分批遍历照片库，建好的部分先显示；之后用 `PHPhotoLibraryChangeObserver` 和 `fetchPersistentChanges(since:)` 增量同步
+- 照片说明是唯一正本，本地只保存可重建的索引：SwiftData 数据库（`Application Support/Index/`，不进 iCloud 备份），每张带说明的照片一行，连同解析好的结果；地名缓存单独一个库
+- 首次启动后台分批遍历照片库，建好的部分先显示；之后用 `PHPhotoLibraryChangeObserver` 和 `fetchPersistentChanges(since:)` 增量同步，只重读变化的照片，也只写变化的行
+- 日志用 `os.Logger`，subsystem 为 `com.kejincai.photodiary`；设置里可以导出本次运行的诊断日志（不含日记正文）
 - 照片日期按拍摄地当地时区计算，和照片 App 一致
 - 界面遵循 Apple 的设计原则：Liquid Glass 浮动标签栏、临界阻尼弹簧动画、zoom 转场、日记正文用宋体（系统按需下载）；适配深色模式、动态字体、“减少动态效果”和“降低透明度”
 
@@ -60,7 +61,7 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 PhotoDiary/
 ├── App/          入口、导航
 ├── Model/        说明格式解析（CaptionFormat）、日记条目
-├── Library/      照片库扫描与写入、本地索引、缩略图、地名
+├── Library/      照片库扫描与写入、索引数据库、缩略图、地名
 ├── Design/       主题色、字体、动效、通用组件
 └── Views/        日记、详情、编辑器、从照片添加、回顾、搜索、设置
 ```
@@ -84,6 +85,16 @@ xcodegen generate
 ```bash
 xcodebuild test -project PhotoDiary.xcodeproj -scheme PhotoDiary -destination 'platform=iOS Simulator,name=<你的模拟器>'
 ```
+
+### 测试
+
+单元测试用内存里的假照片库（`PhotoDiaryTests/Support/FakeLibrary.swift`），不读写模拟器里的照片：
+
+```bash
+xcodebuild test -project PhotoDiary.xcodeproj -scheme PhotoDiary -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
+```
+
+1 万篇日记规模的耗时测试默认不跑，加 `TEST_RUNNER_PERF=1` 运行（`PhotoDiaryTests/PerformanceTests.swift`）。
 
 ### 测试照片
 

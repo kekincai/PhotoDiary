@@ -44,30 +44,34 @@ struct EditorView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            if mode != .edit { context }
-            if isShared { sharedWarning }
-            if mode != .edit { SegmentDivider(primary: "今天", secondary: DiaryDates.short(.today)) }
+        VStack(alignment: .leading, spacing: 0) {
+            if mode != .edit { context.padding(.bottom, 24) }
+            if isShared { sharedWarning.padding(.bottom, 16) }
+            if mode != .edit {
+                SegmentDivider(primary: String(localized: "今天"), secondary: DiaryDates.short(.today))
+                    .padding(.horizontal, 6)
+                    .padding(.bottom, 16)
+            }
             DiaryTextView(controller: controller)
                 .overlay(alignment: .topLeading) {
                     if controller.text.isEmpty {
-                        Text(mode == .append ? "过了些日子，再看这张照片…" : "写下当时的感受，用 #话题# 加标签")
-                            .font(.diary(19))
-                            .foregroundStyle(Color(.placeholderText))
-                            .padding(.top, 4)
-                            .allowsHitTesting(false)
+                        Group {
+                            if mode == .append { Text("过了些日子，再看这张照片…") } else { Text("写下当时的感受，用 #话题# 加标签") }
+                        }
+                        .font(.diary(19))
+                        .foregroundStyle(Color(.placeholderText))
+                        .padding(.top, 4)
+                        .allowsHitTesting(false)
                     }
                 }
+                .padding(.horizontal, 6)
         }
-        .padding(.horizontal, 22)
-        .padding(.top, 16)
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Color(.systemBackground))
         .safeAreaInset(edge: .bottom, spacing: 0) { accessory }
         .navigationBarBackButtonHidden()
-        .toolbarBackground(brand, for: .navigationBar)
-        .toolbarBackgroundVisibility(.visible, for: .navigationBar)
-        .toolbarColorScheme(.dark, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { toolbar }
         .interactiveDismissDisabled(isDirty)
@@ -88,20 +92,22 @@ struct EditorView: View {
         .sensoryFeedback(.success, trigger: savedCount)
     }
 
-    // MARK: 顶栏：取消 / 日期 / 完成
+    // MARK: 顶栏：✕ / 日期 / ✓
 
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
-            Button("取消") {
+            Button("取消", systemImage: "xmark") {
                 if isDirty { confirmDiscard = true } else { onFinish(false) }
             }
         }
         ToolbarItem(placement: .principal) {
             VStack(spacing: 1) {
-                Text(DiaryDates.dayTitle(photoDate)).font(.headline)
-                Text(subtitle).font(.caption.weight(.medium)).foregroundStyle(.white.opacity(0.85))
+                Text(DiaryDates.full(DayStamp(photoDate)))
+                    .font(.callout.weight(.semibold))
+                Text(subtitle)
+                    .font(.caption.weight(.medium))
+                    .foregroundStyle(Color.meta)
             }
-            .foregroundStyle(.white)
             .accessibilityElement(children: .combine)
         }
         ToolbarItem(placement: .confirmationAction) {
@@ -115,42 +121,46 @@ struct EditorView: View {
                 if saving {
                     ProgressView()
                 } else {
-                    Text("完成").fontWeight(.semibold).foregroundStyle(brand)
+                    Label("完成", systemImage: "checkmark")
                 }
             }
             .buttonStyle(.glassProminent)
-            .tint(.white)
+            .tint(brand)
             .disabled(!canSave || saving)
         }
     }
 
     private var subtitle: String {
         switch mode {
-        case .new: entry == nil ? "写日记" : "补写日记"
-        case .append: "追加感想"
-        case .edit: "编辑"
+        case .new: entry == nil ? String(localized: "写日记") : String(localized: "补写日记")
+        case .append: String(localized: "追加感想")
+        case .edit: String(localized: "编辑")
         }
     }
 
     // MARK: 内容
 
+    /// 原照片和已有的日记，灰底卡片。
     private var context: some View {
         HStack(spacing: 12) {
-            AssetImage(id: assetID, pointSize: CGSize(width: 56, height: 56))
-                .frame(width: 56, height: 56)
-                .clipShape(.rect(cornerRadius: 12))
+            AssetImage(id: assetID, pointSize: CGSize(width: 76, height: 76))
+                .frame(width: 76, height: 76)
+                .clipShape(.rect(cornerRadius: 8, style: .continuous))
             Text(contextText)
                 .font(.diary(14, relativeTo: .subheadline))
-                .lineSpacing(4)
+                .lineSpacing(7)
                 .foregroundStyle(Color.meta)
-                .lineLimit(2)
+                .lineLimit(3)
+                .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
+        .padding(8)
+        .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
     }
 
     private var contextText: String {
         guard let entry else {
-            return "拍摄于 " + DateFormatter.zh("yyyy年M月d日").string(from: photoDate)
+            return String(localized: "拍摄于 \(DiaryDates.full(DayStamp(photoDate)))")
         }
         let segs = entry.displaySegments
         if segs.count > 1, let last = segs.last { return entry.title + "…… " + last.text }
@@ -159,91 +169,82 @@ struct EditorView: View {
 
     private var sharedWarning: some View {
         Label {
-            Text("这张照片在共享图库中，其他成员可能看到这段日记。")
+            Text("这张照片在共享图库中，其他成员可能看到这段日记")
         } icon: {
             Image(systemName: "person.2")
         }
         .font(.footnote)
         .foregroundStyle(Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.8, blue: 0.5, alpha: 1) : UIColor(red: 0.42, green: 0.25, blue: 0, alpha: 1) }))
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.orange.opacity(0.12), in: .rect(cornerRadius: 12))
     }
 
-    // MARK: 键盘上方：标签联想 + 工具栏
+    // MARK: 键盘上方：玻璃胶囊工具栏（# 按钮、横向标签联想、收起键盘）
 
     private var accessory: some View {
-        VStack(spacing: 0) {
-            let suggestions = tagSuggestions
-            if !suggestions.isEmpty {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("用过的标签")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(Color.meta)
-                        .padding(.horizontal, 10)
-                        .padding(.top, 6)
-                        .padding(.bottom, 4)
+        let suggestions = tagSuggestions
+        return HStack(spacing: 6) {
+            Button { controller.insertHash() } label: {
+                Text(verbatim: "#")
+                    .font(.system(size: 19, weight: .semibold))
+                    .foregroundStyle(brand)
+                    .frame(width: 40, height: 40)
+                    .background(brand.soft(), in: .circle)
+            }
+            .buttonStyle(.press)
+            .accessibilityLabel("插入标签")
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
                     ForEach(suggestions, id: \.self) { tag in
                         Button {
                             controller.complete(tag)
                         } label: {
-                            Text("#\(tag)#")
-                                .font(.callout.weight(.semibold))
+                            Text(verbatim: "#\(tag)#")
+                                .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(brand)
-                                .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                .padding(.horizontal, 10)
+                                .padding(.horizontal, 12)
+                                .frame(height: 34)
+                                .background(Color(.systemBackground), in: .capsule)
+                                .overlay(Capsule().strokeBorder(Color(.separator).opacity(0.6), lineWidth: 0.5))
                         }
-                        .buttonStyle(.row(radius: 12))
+                        .buttonStyle(.press)
+                        .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     }
                 }
-                .padding(6)
-                .background(Color(.systemBackground), in: .rect(cornerRadius: 18))
-                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Color.hairline))
-                .shadow(color: .black.opacity(0.18), radius: 15, y: 10)
-                .padding(.horizontal, 12)
-                .padding(.bottom, 10)
-                .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .bottom)))
             }
+            .scrollIndicators(.hidden)
+            .frame(maxWidth: .infinity)
+            .accessibilityLabel("用过的标签")
 
-            HStack(spacing: 8) {
-                Button { controller.insertHash() } label: {
-                    Text("#")
-                        .font(.title3.weight(.semibold))
-                        .foregroundStyle(brand)
-                        .frame(width: 44, height: 40)
-                        .background(Color(.systemBackground), in: .rect(cornerRadius: 10))
-                        .shadow(color: .black.opacity(0.12), radius: 1, y: 1)
+            if controller.isEditing {
+                Button { controller.dismissKeyboard() } label: {
+                    Image(systemName: "keyboard.chevron.compact.down")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Color.ink)
+                        .frame(width: 40, height: 40)
                 }
                 .buttonStyle(.press)
-                .accessibilityLabel("插入标签")
-                Spacer()
-                if controller.isEditing {
-                    Button { controller.dismissKeyboard() } label: {
-                        Image(systemName: "keyboard.chevron.compact.down")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Color.ink)
-                            .frame(width: 44, height: 40)
-                    }
-                    .buttonStyle(.press)
-                    .accessibilityLabel("收起键盘")
-                }
+                .accessibilityLabel("收起键盘")
             }
-            .padding(.horizontal, 12)
-            .frame(height: 52)
-            .background(Color(.secondarySystemBackground))
-            .overlay(alignment: .top) { Rectangle().fill(Color.hairline).frame(height: 1) }
         }
-        .animation(.drawer, value: tagSuggestions)
+        .padding(.horizontal, 4)
+        .frame(height: 50)
+        .glassEffect(.regular, in: .capsule)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+        .animation(.drawer, value: suggestions)
     }
 
     private var tagSuggestions: [String] {
         guard let q = controller.tagQuery else { return [] }
         let all = store.allTags
-        if q.isEmpty { return Array(all.prefix(4)) }
+        if q.isEmpty { return Array(all.prefix(8)) }
         let prefix = all.filter { $0.hasPrefix(q) && $0 != q }
         let contains = all.filter { !$0.hasPrefix(q) && $0.localizedStandardContains(q) }
-        return Array((prefix + contains).prefix(4))
+        return Array((prefix + contains).prefix(8))
     }
 
     // MARK: 保存
@@ -261,7 +262,7 @@ struct EditorView: View {
             } catch {
                 let nsError = error as NSError
                 if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.userCancelled.rawValue { return }
-                errorMessage = "写入照片说明失败：\(error.localizedDescription)"
+                errorMessage = String(localized: "写入照片说明失败：\(error.localizedDescription)")
             }
         }
     }
