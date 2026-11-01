@@ -45,13 +45,42 @@ nonisolated struct DayStamp: Hashable, Comparable, Codable, Sendable {
     }
 }
 
+/// 一周从哪天开始。默认周一；设置里可改，Watch 跟随 iPhone 的快照。
+nonisolated enum WeekStart: Int, CaseIterable, Identifiable, Sendable {
+    case monday = 2
+    case sunday = 1
+
+    static let storageKey = "weekStart"
+    static let `default` = WeekStart.monday
+
+    var id: Int { rawValue }
+
+    /// 应用里当前生效的设定（UserDefaults 里没有就是周一）。
+    static var stored: WeekStart {
+        WeekStart(rawValue: UserDefaults.standard.integer(forKey: storageKey)) ?? .default
+    }
+}
+
 nonisolated extension Calendar {
-    /// 以周日为一周第一天的公历，与设计稿“日 一 二 … 六”一致。
-    static let diary: Calendar = {
+    /// 日记用的公历；一周从哪天开始由 `diaryFirstWeekday` 决定（启动时和设置改动时写入）。
+    static var diary: Calendar {
+        var c = base
+        c.firstWeekday = diaryFirstWeekday
+        return c
+    }
+
+    /// 1 = 周日，2 = 周一。只在主线程改，各处读；写入后要重算按周归并的数据（DiaryStore.weekStartChanged）。
+    nonisolated(unsafe) static var diaryFirstWeekday = WeekStart.default.rawValue
+
+    private static let base: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.locale = Locale(identifier: "zh_CN")
-        c.firstWeekday = 1
         c.timeZone = .current
         return c
     }()
+
+    /// 月份第一天前面要空出的格子数（按本日历的一周起始日）。
+    func leadingBlanks(before firstDay: Date) -> Int {
+        (component(.weekday, from: firstDay) - firstWeekday + 7) % 7
+    }
 }

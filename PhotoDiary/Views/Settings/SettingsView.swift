@@ -11,26 +11,18 @@ struct SettingsView: View {
     @AppStorage(BrandColor.customKey) private var customHex = "#C0603A"
     @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
     @AppStorage(AppLanguage.storageKey) private var language: AppLanguage = .system
+    @AppStorage(WeekStart.storageKey) private var weekStart: WeekStart = .default
     @State private var confirmRebuild = false
 
     var body: some View {
         NavigationStack {
             Form {
                 themeSection
-                Section {
-                    Picker(selection: languageBinding) {
-                        ForEach(AppLanguage.allCases) { option in
-                            Text(option.displayName).tag(option)
-                        }
-                    } label: {
-                        SettingsLabel("界面语言", symbol: "globe", color: .indigo)
-                    }
-                }
-                watchSection
-                captionFilterSection
+                generalSection
+                diarySection
                 accessSection
-                dataSection
-                formatSection
+                watchSection
+                supportSection
                 aboutSection
             }
             .navigationTitle("设置")
@@ -116,6 +108,57 @@ struct SettingsView: View {
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
+    // MARK: 通用：语言、一周起始日
+
+    private var generalSection: some View {
+        Section("通用") {
+            Picker(selection: languageBinding) {
+                ForEach(AppLanguage.allCases) { option in
+                    Text(option.displayName).tag(option)
+                }
+            } label: {
+                SettingsLabel("界面语言", symbol: "globe", color: .indigo)
+            }
+            Picker(selection: $weekStart) {
+                ForEach(WeekStart.allCases) { option in
+                    Text(option.name).tag(option)
+                }
+            } label: {
+                SettingsLabel("一周从", symbol: "calendar", color: .red)
+            }
+        }
+    }
+
+    // MARK: 日记：隐藏的说明、说明格式、导出
+
+    private var diarySection: some View {
+        Section {
+            NavigationLink {
+                HiddenCaptionsView()
+            } label: {
+                LabeledContent {
+                    let count = store.hiddenCaptionCounts().values.reduce(0, +)
+                    if count > 0 { Text("\(count) 张").monospacedDigit() }
+                } label: {
+                    SettingsLabel("隐藏的说明", symbol: "eye.slash", color: .gray)
+                }
+            }
+            NavigationLink {
+                CaptionFormatView()
+            } label: {
+                SettingsLabel("说明格式", symbol: "text.quote", color: .teal)
+            }
+            let export = MarkdownExport(text: store.markdownExport(), filename: String(localized: "照片日记", bundle: .app, locale: .app) + ".md")
+            ShareLink(item: export, preview: SharePreview(export.filename, image: Image(systemName: "doc.text"))) {
+                SettingsLabel("导出全部日记（Markdown）", symbol: "square.and.arrow.up", color: .orange)
+            }
+        } header: {
+            Text("日记")
+        } footer: {
+            Text("日记在照片的说明里，删除 App 不会丢失。")
+        }
+    }
+
     // MARK: Apple Watch
 
     @ViewBuilder private var watchSection: some View {
@@ -126,7 +169,7 @@ struct SettingsView: View {
                     Text(watchStatusText(bridge))
                         .foregroundStyle(Color.meta)
                 } label: {
-                    SettingsLabel("Apple Watch", symbol: "applewatch", color: .black)
+                    SettingsLabel("状态", symbol: "applewatch", color: .black)
                 }
                 if bridge.status == .ready {
                     Button {
@@ -136,6 +179,8 @@ struct SettingsView: View {
                     }
                     .disabled(bridge.isSending)
                 }
+            } header: {
+                Text(verbatim: "Apple Watch")
             } footer: {
                 if bridge.status == .appNotInstalled {
                     Text("在 iPhone 的 Watch App 里安装“照片日记”，就能在手表上回看日记、口述感想。")
@@ -162,7 +207,7 @@ struct SettingsView: View {
     // MARK: 照片访问
 
     private var accessSection: some View {
-        Section {
+        Section("照片") {
             LabeledContent {
                 Text(accessText).foregroundStyle(Color.meta)
             } label: {
@@ -192,14 +237,10 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: 数据
+    // MARK: 帮助：诊断日志、重建索引
 
-    private var dataSection: some View {
+    private var supportSection: some View {
         Section {
-            let export = MarkdownExport(text: store.markdownExport(), filename: String(localized: "照片日记", bundle: .app, locale: .app) + ".md")
-            ShareLink(item: export, preview: SharePreview(export.filename, image: Image(systemName: "doc.text"))) {
-                SettingsLabel("导出全部日记（Markdown）", symbol: "square.and.arrow.up", color: .orange)
-            }
             ShareLink(item: DiagnosticLog(), preview: SharePreview(DiagnosticLog.filename, image: Image(systemName: "ladybug"))) {
                 SettingsLabel("导出诊断日志", symbol: "ladybug", color: .brown)
             }
@@ -208,23 +249,15 @@ struct SettingsView: View {
             } label: {
                 SettingsLabel("重建索引", symbol: "arrow.clockwise", color: .gray)
             }
+        } header: {
+            Text("帮助")
         } footer: {
-            Text("日记在照片的说明里，删除 App 不会丢失。")
-        }
-    }
-
-    // MARK: 说明格式
-
-    private var formatSection: some View {
-        Section("说明格式") {
-            Text("风很舒服，第一次用新镜头拍日落 #旅行#\n— 2026.10.31\n\n三年后再看，还是喜欢这张\n— 2029.11.02")
-                .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(Color.meta)
+            Text("联系开发者时附上诊断日志，里面没有日记正文。")
         }
     }
 
     private var aboutSection: some View {
-        Section {
+        Section("关于") {
             LabeledContent {
                 Text(Self.versionText).foregroundStyle(Color.meta).monospacedDigit()
             } label: {
@@ -250,22 +283,6 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: 隐藏的说明
-
-    private var captionFilterSection: some View {
-        Section {
-            NavigationLink {
-                HiddenCaptionsView()
-            } label: {
-                LabeledContent {
-                    let count = store.hiddenCaptionCounts().values.reduce(0, +)
-                    if count > 0 { Text("\(count) 张").monospacedDigit() }
-                } label: {
-                    SettingsLabel("隐藏的说明", symbol: "eye.slash", color: .gray)
-                }
-            }
-        }
-    }
 }
 
 /// 设置行的标签：29pt 圆角方块底色 + 白色符号，和系统“设置”一致。
@@ -316,5 +333,21 @@ struct MarkdownExport: Transferable {
             try export.text.write(to: url, atomically: true, encoding: .utf8)
             return SentTransferredFile(url)
         }
+    }
+}
+
+/// 说明格式：一段示例，照片 App 里看到的就是这个样子。
+struct CaptionFormatView: View {
+    var body: some View {
+        Form {
+            Section {
+                Text("风很舒服，第一次用新镜头拍日落 #旅行#\n— 2026.10.31\n\n三年后再看，还是喜欢这张\n— 2029.11.02")
+                    .font(.system(.footnote, design: .monospaced))
+                    .foregroundStyle(Color.ink)
+                    .padding(.vertical, Metrics.Spacing.xs)
+            }
+        }
+        .navigationTitle("说明格式")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }

@@ -78,6 +78,17 @@ enum Appearance: String, CaseIterable, Identifiable {
     }
 }
 
+// MARK: 一周起始日
+
+extension WeekStart {
+    var name: String {
+        switch self {
+        case .monday: String(localized: "周一", bundle: .app, locale: .app)
+        case .sunday: String(localized: "周日", bundle: .app, locale: .app)
+        }
+    }
+}
+
 // MARK: 语义色
 
 extension Color {

@@ -118,7 +118,8 @@ final class WatchBridge: NSObject {
             writtenThisWeek: store.writtenThisWeek,
             writtenThisMonth: store.writtenThisMonth,
             unwritten: Array(unwritten),
-            tags: store.allTags)
+            tags: store.allTags,
+            firstWeekday: Calendar.diaryFirstWeekday)
     }
 
     /// 表要的缩略图：正方形裁切、缩到 256 像素的 JPEG，一张 15 KB 左右。只用本地已有的图，不为表去下载。

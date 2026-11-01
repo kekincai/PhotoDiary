@@ -54,9 +54,18 @@ enum DiaryDates {
     /// 只写数字：2026
     static func year(_ date: Date) -> String { String(Calendar.diary.component(.year, from: date)) }
 
-    /// 日历、本周写作的星期行，从周日开始：日 一 … / 日 月 … / S M …
+    /// 日历、本周写作的星期行，从设置的一周起始日开始：一 二 … 日 / 月 火 … / M T …
     static var weekdaySymbols: [String] {
-        DateFormatter.localized("EEEEE").veryShortStandaloneWeekdaySymbols
+        let symbols = DateFormatter.localized("EEEEE").veryShortStandaloneWeekdaySymbols ?? []
+        let first = Calendar.diary.firstWeekday - 1
+        guard symbols.count == 7 else { return symbols }
+        return Array(symbols[first...] + symbols[..<first])
+    }
+
+    /// 星期行里第 column 列是不是周末（周六、周日）。
+    static func isWeekend(column: Int) -> Bool {
+        let weekday = (column + Calendar.diary.firstWeekday - 1) % 7 + 1
+        return weekday == 1 || weekday == 7
     }
 
     /// 段落之间的分隔：（“两天后”，“10月22日”）。

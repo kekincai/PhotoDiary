@@ -95,7 +95,7 @@ private struct RangeMonthGrid: View {
 
     var body: some View {
         let cal = Calendar.diary
-        let leading = cal.component(.weekday, from: firstDay) - 1
+        let leading = cal.leadingBlanks(before: firstDay)
         let count = cal.range(of: .day, in: .month, for: firstDay)?.count ?? 30
         let days = (1...count).map { DayStamp(cal.date(byAdding: .day, value: $0 - 1, to: firstDay)!) }
         let total = days.reduce(0) { $0 + store.entries(on: $1).count }

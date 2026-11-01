@@ -447,18 +447,18 @@
         }
       }
     },
-    "Apple Watch": {
+    "一周从": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Watch"
+            "value": "Week Starts On"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "Apple Watch"
+            "value": "週の始まり"
           }
         }
       }
@@ -683,6 +683,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "すべての写真"
+          }
+        }
+      }
+    },
+    "关于": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "About"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このAppについて"
           }
         }
       }
@@ -1103,6 +1119,38 @@
         }
       }
     },
+    "周一": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monday"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "月曜日"
+          }
+        }
+      }
+    },
+    "周日": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sunday"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日曜日"
+          }
+        }
+      }
+    },
     "回到日记": {
       "localizations": {
         "en": {
@@ -1505,6 +1553,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "非表示"
+          }
+        }
+      }
+    },
+    "帮助": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Help"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ヘルプ"
           }
         }
       }
@@ -2562,6 +2626,22 @@
         }
       }
     },
+    "状态": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Status"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "状態"
+          }
+        }
+      }
+    },
     "琥珀": {
       "localizations": {
         "en": {
@@ -2798,6 +2878,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "編集"
+          }
+        }
+      }
+    },
+    "联系开发者时附上诊断日志，里面没有日记正文。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Attach the diagnostic log when you contact the developer. It contains no diary text."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開発者に連絡するときは診断ログを添付してください。日記の本文は含まれていません。"
           }
         }
       }
@@ -3323,6 +3419,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "写真をさらに選択"
+          }
+        }
+      }
+    },
+    "通用": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "一般"
           }
         }
       }

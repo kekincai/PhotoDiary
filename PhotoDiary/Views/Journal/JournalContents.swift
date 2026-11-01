@@ -10,6 +10,8 @@ struct ListContent: View {
     @Environment(Router.self) private var router
     @Environment(\.zoomNamespace) private var namespace
     @Environment(\.isWide) private var wide
+    @Environment(\.displayScale) private var scale
+    @State private var width: CGFloat = 0
 
     /// iPad 上卡片排成两三栏。
     private var columns: [GridItem] { [GridItem(.adaptive(minimum: 340, maximum: 520), spacing: Metrics.Spacing.xl, alignment: .top)] }
@@ -51,6 +53,7 @@ struct ListContent: View {
                 }
             }
         }
+        .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
     }
 
     private func card(_ entry: DiaryEntry) -> some View {
@@ -59,6 +62,19 @@ struct ListContent: View {
         }
         .buttonStyle(.press)
         .entryContextMenu(entry)
+        .onAppear { prefetch(after: entry) }
+    }
+
+    /// 一张卡片出现时，让后面几张的照片先解好；手机上卡片宽 = 屏宽 − 32，4:3。
+    private func prefetch(after entry: DiaryEntry) {
+        guard !wide, width > 0 else { return }
+        let ids = store.timeline.map(\.id)
+        guard let index = ids.firstIndex(of: entry.id) else { return }
+        let next = Array(ids[(index + 1)..<min(index + 7, ids.count)])
+        guard !next.isEmpty else { return }
+        let cardWidth = width - Metrics.page * 2
+        let px = AssetImages.pixelSize(points: CGSize(width: cardWidth, height: cardWidth * 3 / 4), scale: scale)
+        AssetImages.shared.startCaching(ids: next, pixelSize: px)
     }
 
     @ViewBuilder private var emptyState: some View {
@@ -219,7 +235,7 @@ struct WeekdayHeader: View {
             ForEach(Array(names.enumerated()), id: \.offset) { i, name in
                 Text(name)
                     .font(.caption.weight(.medium))
-                    .foregroundStyle(i == 0 || i == 6 ? Color(.tertiaryLabel) : Color.meta)
+                    .foregroundStyle(DiaryDates.isWeekend(column: i) ? Color(.tertiaryLabel) : Color.meta)
                     .frame(maxWidth: .infinity)
             }
         }
@@ -262,7 +278,7 @@ private struct MonthGrid: View {
 
     var body: some View {
         let cal = Calendar.diary
-        let leading = cal.component(.weekday, from: firstDay) - 1
+        let leading = cal.leadingBlanks(before: firstDay)
         let count = cal.range(of: .day, in: .month, for: firstDay)?.count ?? 30
         let days = (1...count).map { DayStamp(cal.date(byAdding: .day, value: $0 - 1, to: firstDay)!) }
         let total = days.reduce(0) { $0 + store.entries(on: $1).count }

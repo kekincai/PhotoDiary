@@ -36,12 +36,16 @@ nonisolated enum Log {
     static func export() async throws -> String {
         let store = try OSLogStore(scope: .currentProcessIdentifier)
         let entries = try store.getEntries(matching: NSPredicate(format: "subsystem == %@", subsystem))
-        let time = Date.ISO8601FormatStyle(includingFractionalSeconds: true).dateSeparator(.dash).timeZone(separator: .omitted)
+        // ISO8601FormatStyle 一旦调用构造方法就只保留显式指定的字段，所以年月日时分秒都要写出来；用本地时间，读着顺。
+        let time = Date.ISO8601FormatStyle(timeZone: .current)
+            .year().month().day().dateSeparator(.dash)
+            .dateTimeSeparator(.space)
+            .time(includingFractionalSeconds: true)
         let info = Bundle.main.infoDictionary
         var out = """
         PhotoDiary \(info?["CFBundleShortVersionString"] as? String ?? "?") (\(info?["CFBundleVersion"] as? String ?? "?"))
         \(ProcessInfo.processInfo.operatingSystemVersionString)
-        导出于 \(Date.now.formatted(time))
+        导出于 \(Date.now.formatted(time))（\(TimeZone.current.identifier)）
 
         """
         for case let entry as OSLogEntryLog in entries {

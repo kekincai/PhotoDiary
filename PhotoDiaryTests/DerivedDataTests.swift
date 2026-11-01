@@ -46,7 +46,8 @@ struct DerivedDataTests {
     @Test func reviewCounts() async {
         let store = await store()
         #expect(store.onThisDay.map(\.id) == ["b", "c"])
-        #expect(store.weekWriting.map(\.day.day) == [25, 26, 27, 28, 29, 30, 31])
+        // 一周默认从周一开始：2026-10-26（一）… 11-01（日）。
+        #expect(store.weekWriting.map(\.day.day) == [26, 27, 28, 29, 30, 31, 1])
         #expect(store.weekWriting.filter(\.wrote).map(\.day.day) == [26, 30])
         #expect(store.writtenThisWeek == 2)
         #expect(store.writtenThisMonth == 2)
@@ -79,7 +80,8 @@ struct DerivedDataTests {
         clock.now = date(2026, 11, 1)
         store.refreshAuthorization() // 回到前台时调用
         #expect(store.onThisDay.isEmpty)
-        #expect(store.weekWriting.first?.day == DayStamp(year: 2026, month: 11, day: 1))
+        // 11 月 1 日是周日，仍属于 10 月 26 日开始的那一周。
+        #expect(store.weekWriting.first?.day == DayStamp(year: 2026, month: 10, day: 26))
         #expect(store.writtenThisMonth == 0)
     }
 

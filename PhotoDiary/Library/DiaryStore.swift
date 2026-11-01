@@ -515,6 +515,9 @@ final class DiaryStore {
     /// 设置里改了说明过滤规则后，重新整理列表。
     func captionFilterChanged() { rebuildDerived() }
 
+    /// 设置里改了一周起始日后，本周写作要按新的一周重算。
+    func weekStartChanged() { rebuildDerived() }
+
     /// 索引里出现多次的短说明（不像日记的那种），给设置里的过滤规则做建议。
     func frequentShortCaptions(limit: Int = 8) -> [(caption: String, count: Int)] {
         var counts: [String: Int] = [:]

@@ -27,6 +27,11 @@ struct SearchView: View {
     @State private var customFrom = Calendar.diary.date(byAdding: .month, value: -3, to: .now) ?? .now
     @State private var customTo = Date.now
     @State private var showCustom = false
+    /// 有筛选条件时往下拉：拉过这个距离松手就清掉所有条件。
+    @State private var pull: CGFloat = 0
+    @State private var armed = false
+    @State private var phase: ScrollPhase = .idle
+    private static let clearPull: CGFloat = 96
     @FocusState private var focused: Bool
     @Environment(\.isWide) private var wide
 
@@ -41,10 +46,13 @@ struct SearchView: View {
                 if isTypingTag {
                     tagSuggestions
                 } else if !isFiltering {
-                    browse
+                    browse.transition(.opacity)
                 } else {
-                    filterBar
-                    resultsList
+                    Group {
+                        filterBar
+                        resultsList
+                    }
+                    .transition(.opacity)
                 }
             }
             .padding(.bottom, 40)
@@ -58,6 +66,29 @@ struct SearchView: View {
             .background { ScrollToTop(trigger: filterKey) }
         }
         .scrollDismissesKeyboard(.immediately)
+        // 有筛选条件时，往下拉到底再松手就清掉：一枚光圈随着下拉收拢，拉够了合上、变成主题色。
+        .onScrollGeometryChange(for: CGFloat.self) { geo in
+            max(0, -(geo.contentOffset.y + geo.contentInsets.top))
+        } action: { _, amount in
+            guard isFiltering, phase == .interacting || phase == .decelerating else { pull = 0; return }
+            pull = amount
+            let nowArmed = phase == .interacting && amount > Self.clearPull
+            if nowArmed != armed { withAnimation(.snappy) { armed = nowArmed } }
+        }
+        .onScrollPhaseChange { _, newPhase in
+            phase = newPhase
+            if newPhase != .interacting, armed { clearFilters() }
+            if newPhase == .idle { pull = 0 }
+        }
+        .overlay(alignment: .top) {
+            if isFiltering {
+                PullToClear(progress: pull / Self.clearPull, armed: armed)
+                    .offset(y: pull / 2 - 20)
+                    .allowsHitTesting(false)
+                    .transition(.scale(scale: 0.3).combined(with: .opacity))
+            }
+        }
+        .sensoryFeedback(.impact(weight: .medium), trigger: armed) { _, new in new }
         // 离开搜索页（切到别的标签、点开一篇日记）时收起键盘，不让键盘留在别的页面上。
         .onChange(of: router.tab == .search && router.searchPath.isEmpty) { _, visible in
             if !visible { focused = false }
@@ -72,6 +103,18 @@ struct SearchView: View {
                 customTo = to.date
                 range = .custom
             }
+        }
+    }
+
+    /// 下拉到底松手：所有筛选条件一起淡出，回到浏览。
+    private func clearFilters() {
+        armed = false
+        focused = false
+        withAnimation(.snappy) {
+            tags = []
+            place = nil
+            range = .any
+            query = ""
         }
     }
 
@@ -97,8 +140,8 @@ struct SearchView: View {
                 groupTitle(String(localized: "地点", bundle: .app, locale: .app)).padding(.top, 28)
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 8) {
-                        ForEach(places, id: \.name) { item in
-                            Button { place = item.name; focused = false } label: { placeCard(item) }
+                        ForEach(Array(places.enumerated()), id: \.element.name) { index, item in
+                            Button { place = item.name; focused = false } label: { placeCard(item, stagger: index) }
                                 .buttonStyle(.press)
                         }
                     }
@@ -109,14 +152,14 @@ struct SearchView: View {
             }
 
             groupTitle(String(localized: "时间", bundle: .app, locale: .app)).padding(.top, 28)
-            let covers = timeCovers
+            let pools = timePools
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: wide ? 4 : 2), spacing: 10) {
-                ForEach(timeOptions, id: \.self) { option in
+                ForEach(Array(timeOptions.enumerated()), id: \.element) { index, option in
                     Button {
                         focused = false
                         // 自选日期：在日历里点完“完成”才生效。
                         if option == .custom { showCustom = true } else { range = option }
-                    } label: { timeTile(option, cover: covers[option]) }
+                    } label: { timeTile(option, pool: pools[option] ?? [], stagger: index) }
                         .buttonStyle(.press)
                 }
             }
@@ -133,49 +176,56 @@ struct SearchView: View {
         option == .onThisDay ? store.onThisDay : store.search(text: "", tags: [], range: dateRange(option))
     }
 
-    /// 每块时间卡片的照片：这段时间里最近的一篇，已被前面卡片用掉的跳过，免得几块一样。
-    private var timeCovers: [Range: String] {
-        var used: Set<String> = []
-        var out: [Range: String] = [:]
-        for option in timeOptions where option != .custom {
-            let items = entries(in: option)
-            if let pick = items.first(where: { !used.contains($0.id) }) ?? items.first {
-                out[option] = pick.id
-                used.insert(pick.id)
-            }
-        }
-        return out
+    /// 每块时间卡片轮换的照片。几块尽量不放同一批：最近一年去掉最近 30 天里的，
+    /// “选择日期”用一年以前的；哪块没得挑了就用这段时间里的全部。每块最多轮 12 张，
+    /// 从早到晚排——地点卡片是从最近一张起，这样两排不会同时翻到同一张。
+    private var timePools: [Range: [String]] {
+        let month = entries(in: .month).map(\.id)
+        let year = entries(in: .year).map(\.id)
+        let all = store.timeline.map(\.id)
+        let monthSet = Set(month)
+        let yearSet = Set(year)
+        let yearOnly = year.filter { !monthSet.contains($0) }
+        let older = all.filter { !yearSet.contains($0) }
+        func pool(_ ids: [String]) -> [String] { Array(ids.prefix(12).reversed()) }
+        return [
+            .onThisDay: pool(store.onThisDay.map(\.id)),
+            .month: pool(month),
+            .year: pool(yearOnly.isEmpty ? year : yearOnly),
+            .custom: pool(older.isEmpty ? all : older),
+        ]
     }
 
-    /// 时间范围也用照片表示，和地点卡片一样压白字。自选日期没有照片，是一块灰底加本月的小日历。
-    private func timeTile(_ option: Range, cover: String?) -> some View {
-        let items = option == .custom ? [] : entries(in: option)
+    /// 时间范围也用照片表示，和地点卡片一样压白字；封面在这段时间的照片里慢慢轮换。
+    /// “选择日期”同样是一块照片，标题前多一个日历符号。
+    private func timeTile(_ option: Range, pool: [String], stagger: Int) -> some View {
+        let count = option == .custom ? 0 : entries(in: option).count
         let shape = RoundedRectangle(cornerRadius: Metrics.Radius.card, style: .continuous)
         return Color.tile
             .frame(height: 96)
             .overlay {
-                if let cover {
-                    AssetImage(id: cover, pointSize: CGSize(width: 220, height: 96))
+                if !pool.isEmpty {
+                    RotatingCover(ids: pool, pointSize: CGSize(width: 220, height: 96), stagger: .seconds(2.3 * Double(stagger)))
                     LinearGradient(colors: [.black.opacity(0), .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
-                }
-            }
-            .overlay(alignment: .topLeading) {
-                if option == .custom {
-                    MiniMonth().padding(12)
                 }
             }
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(option.title)
-                        .font(.system(size: 16, weight: .semibold))
-                        .lineLimit(1)
-                    if !items.isEmpty {
-                        Text("\(items.count) 篇")
+                    HStack(spacing: 5) {
+                        if option == .custom {
+                            Image(systemName: "calendar").font(.system(size: 14, weight: .semibold))
+                        }
+                        Text(option.title)
+                            .font(.system(size: 16, weight: .semibold))
+                            .lineLimit(1)
+                    }
+                    if count > 0 {
+                        Text("\(count) 篇")
                             .font(.caption.weight(.medium))
                             .opacity(0.85)
                     }
                 }
-                .foregroundStyle(cover == nil ? Color.ink : .white)
+                .foregroundStyle(pool.isEmpty ? Color.ink : .white)
                 .padding(12)
             }
             .clipShape(shape)
@@ -200,8 +250,11 @@ struct SearchView: View {
         }
     }
 
-    private func placeCard(_ item: DiaryStore.PlaceGroup) -> some View {
-        AssetImage(id: item.cover, pointSize: CGSize(width: 140, height: 172))
+    /// 地点卡片：封面在这个地点的照片里慢慢轮换，各张卡片错开起步。
+    private func placeCard(_ item: DiaryStore.PlaceGroup, stagger: Int) -> some View {
+        let pool = Array(store.entries(at: item.name).prefix(12).map(\.id))
+        return RotatingCover(ids: pool.isEmpty ? [item.cover] : pool, pointSize: CGSize(width: 140, height: 172),
+                             stagger: .seconds(1.7 * Double(stagger) + 1))
             .frame(width: 140, height: 172)
             .overlay(alignment: .bottom) {
                 LinearGradient(colors: [.black.opacity(0), .black.opacity(0.62)], startPoint: .top, endPoint: .bottom)
@@ -488,38 +541,24 @@ private struct FilterToken: View {
     }
 }
 
-/// “选择日期”卡片上的本月小日历：写过的日子是实心点，今天是主题色，和日记的日历一个意思。
-private struct MiniMonth: View {
-    @Environment(DiaryStore.self) private var store
+/// 下拉清除筛选的提示：一枚光圈随着下拉慢慢收拢，拉够了“咔哒”合上、变成主题色；松手筛选条件就清掉了。
+private struct PullToClear: View {
+    let progress: CGFloat
+    let armed: Bool
     @Environment(\.brand) private var brand
 
     var body: some View {
-        let cal = Calendar.diary
-        let first = cal.dateInterval(of: .month, for: .now)?.start ?? .now
-        let leading = cal.component(.weekday, from: first) - 1
-        let count = cal.range(of: .day, in: .month, for: first)?.count ?? 30
-        let today = DayStamp.today
-        let cells: [DayStamp?] = Array(repeating: nil, count: leading)
-            + (0..<count).map { DayStamp(cal.date(byAdding: .day, value: $0, to: first)!) }
-        Grid(horizontalSpacing: 3, verticalSpacing: 3) {
-            ForEach(0..<(cells.count + 6) / 7, id: \.self) { row in
-                GridRow {
-                    ForEach(0..<7, id: \.self) { col in
-                        let i = row * 7 + col
-                        let day = i < cells.count ? cells[i] : nil
-                        Circle()
-                            .fill(color(day, today: today))
-                            .frame(width: 5, height: 5)
-                    }
-                }
-            }
+        let p = Double(min(max(progress, 0), 1))
+        // 拉的时候最多收到八成，合上那一下留给 armed，才有“关上”的动作。
+        let closure = armed ? 1 : p * 0.8
+        ZStack {
+            Aperture(closure: closure, color: .tile, seam: Color.ink.opacity(0.16))
+            Aperture(closure: closure, color: brand, seam: .white.opacity(0.4))
+                .opacity(armed ? 1 : 0)
         }
-        .accessibilityHidden(true)
-    }
-
-    private func color(_ day: DayStamp?, today: DayStamp) -> Color {
-        guard let day else { return .clear }
-        if day == today { return brand }
-        return store.entries(on: day).isEmpty ? Color.meta.opacity(0.25) : Color.inkSecondary
+        .frame(width: 40, height: 40)
+        .scaleEffect(armed ? 1.12 : 0.55 + 0.45 * p)
+        .opacity(p)
+        .animation(.snappy(duration: 0.35), value: armed)
     }
 }

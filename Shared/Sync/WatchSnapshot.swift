@@ -31,10 +31,12 @@ nonisolated struct WatchSnapshot: Codable, Sendable, Equatable {
     /// 最近还没写日记的照片，表上可以直接口述一段。
     var unwritten: [WatchPhoto]
     var tags: [String]
+    /// iPhone 上设置的一周起始日（1 周日、2 周一）；旧快照没有这项。
+    var firstWeekday: Int?
 
     init(generated: Date, today: DayStamp, entries: [WatchEntry] = [], onThisDay: [String] = [],
          week: [WatchWeekDay] = [], writtenThisWeek: Int = 0, writtenThisMonth: Int = 0,
-         unwritten: [WatchPhoto] = [], tags: [String] = []) {
+         unwritten: [WatchPhoto] = [], tags: [String] = [], firstWeekday: Int? = nil) {
         self.generated = generated
         self.today = today
         self.entries = entries
@@ -44,6 +46,7 @@ nonisolated struct WatchSnapshot: Codable, Sendable, Equatable {
         self.writtenThisMonth = writtenThisMonth
         self.unwritten = unwritten
         self.tags = tags
+        self.firstWeekday = firstWeekday
     }
 
     static let fileName = "watch-snapshot.json"

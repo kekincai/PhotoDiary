@@ -55,6 +55,8 @@ final class WatchStore: NSObject {
 
     private func apply(_ snapshot: WatchSnapshot) {
         self.snapshot = snapshot
+        // 星期行的顺序跟 iPhone 的设置走，和快照里的一周对齐。
+        Calendar.diaryFirstWeekday = snapshot.firstWeekday ?? WeekStart.default.rawValue
         let all = snapshot.entries.map(\.entry)
         byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         let recentIDs = Set(snapshot.entries.prefix(WatchSnapshot.maxEntries).map(\.id))

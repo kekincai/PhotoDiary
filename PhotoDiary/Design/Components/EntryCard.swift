@@ -9,7 +9,8 @@ struct EntryCard: View {
         VStack(alignment: .leading, spacing: Metrics.Spacing.m) {
             Color.clear
                 .aspectRatio(4 / 3, contentMode: .fit)
-                .overlay { AssetImage(id: entry.id) }
+                // 首页的主画面：原图在 iCloud 时也下载清晰的，不停在模糊的本地预览上。
+                .overlay { AssetImage(id: entry.id, allowNetwork: true) }
                 .clipShape(.rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
                 .overlay(alignment: .bottomTrailing) {
                     if entry.segments.count > 1 {

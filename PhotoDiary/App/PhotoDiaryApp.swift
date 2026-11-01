@@ -11,10 +11,13 @@ struct PhotoDiaryApp: App {
     @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
     /// 设置里改语言时先调用 AppLanguage.apply，再写入这里，界面整体按新语言重建。
     @AppStorage(AppLanguage.storageKey) private var language: AppLanguage = .system
+    @AppStorage(WeekStart.storageKey) private var weekStart: WeekStart = .default
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
         AppLanguage.apply(AppLanguage.stored)
+        // 读索引之前就定下一周从哪天开始，按周归并的数据才对。
+        Calendar.diaryFirstWeekday = WeekStart.stored.rawValue
         let store = DiaryStore()
         // 第一帧还没画就开始读索引。
         if !Self.isHostingUnitTests { store.prepare() }
@@ -35,6 +38,10 @@ struct PhotoDiaryApp: App {
                 .onChange(of: language) { store.placeLanguageChanged() }
                 .onAppear { appearance.apply() }
                 .onChange(of: appearance) { appearance.apply() }
+                .onChange(of: weekStart) {
+                    Calendar.diaryFirstWeekday = weekStart.rawValue
+                    store.weekStartChanged()
+                }
                 .task {
                     // 作为单元测试宿主启动时不读照片库：测试用自己的假照片库，不能改到模拟器里的照片。
                     guard !Self.isHostingUnitTests else { return }
@@ -52,6 +59,8 @@ struct PhotoDiaryApp: App {
                 }
                 // 日记一变就把快照发给 Apple Watch（防抖）。
                 .onChange(of: store.diaries) { WatchBridge.shared.scheduleSync() }
+                // 日记列表一变就在后台把这些照片的 PHAsset 取齐，界面上滚动时不再查照片库。
+                .onChange(of: store.diaries, initial: true) { AssetImages.shared.warm(ids: store.diaries.map(\.id)) }
         }
     }
 
