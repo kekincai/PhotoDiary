@@ -2,6 +2,8 @@ import SwiftUI
 import Photos
 
 /// 写日记 / 追加感想 / 编辑说明。
+/// 整页是一张翻过来的相纸：照片左右镜像、隔着纸隐约透出来，字就写在纸背上——人们本来就是这样在照片背面记日记的。
+/// 以前写的几行留在纸上（退后一层），下面一条“今天”的分隔线，再往下是新写的字。
 struct EditorView: View {
     let assetID: String
     let mode: DiaryStore.WriteMode
@@ -44,13 +46,55 @@ struct EditorView: View {
     }
 
     var body: some View {
+        paper
+            .padding(.horizontal, PhotoPaper.margin)
+            .padding(.top, 6)
+            .padding(.bottom, 10)
+            .frame(maxWidth: 720)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+            .background { PhotoPaper.desk.ignoresSafeArea() }
+            .safeAreaInset(edge: .bottom, spacing: 0) { accessory }
+            .navigationBarBackButtonHidden()
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { toolbar }
+            .interactiveDismissDisabled(isDirty)
+            .confirmationDialog("放弃这次修改？", isPresented: $confirmDiscard, titleVisibility: .visible) {
+                Button("放弃", role: .destructive) { onFinish(false) }
+                Button("继续写", role: .cancel) {}
+            }
+            .confirmationDialog("清除这张照片的说明？", isPresented: $confirmClear, titleVisibility: .visible) {
+                Button("清除说明", role: .destructive) { save() }
+                Button("取消", role: .cancel) {}
+            } message: {
+                Text("日记写在照片说明里，清除后在照片 App 里也看不到了。")
+            }
+            .alert("没有保存", isPresented: .constant(errorMessage != nil)) {
+                Button("好") { errorMessage = nil }
+            } message: {
+                Text(errorMessage ?? "")
+            }
+            .sensoryFeedback(.success, trigger: savedCount)
+    }
+
+    // MARK: 相纸
+
+    /// 一张纸：以前写的字、今天的分隔线、正在写的字，都在同一张纸背上。
+    private var paper: some View {
         VStack(alignment: .leading, spacing: 0) {
-            if mode != .edit { context.padding(.bottom, 24) }
-            if isShared { sharedWarning.padding(.bottom, 16) }
+            if isShared { sharedWarning.padding(.bottom, 18) }
             if mode != .edit {
+                if let earlier = earlierWriting {
+                    Text(earlier)
+                        .font(.diary(16, relativeTo: .subheadline))
+                        .lineSpacing(8)
+                        .foregroundStyle(Color.inkSecondary)
+                        .lineLimit(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.bottom, 20)
+                        .accessibilityLabel(Text("之前写的：\(earlier)"))
+                }
                 SegmentDivider(primary: String(localized: "今天", bundle: .app, locale: .app), secondary: DiaryDates.short(.today))
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 16)
+                    .padding(.bottom, 14)
             }
             DiaryTextView(controller: controller)
                 .overlay(alignment: .topLeading) {
@@ -64,33 +108,31 @@ struct EditorView: View {
                         .allowsHitTesting(false)
                     }
                 }
-                .padding(.horizontal, 6)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .padding(.horizontal, PhotoPaper.inset)
+        .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background(Color(.systemBackground))
-        .safeAreaInset(edge: .bottom, spacing: 0) { accessory }
-        .navigationBarBackButtonHidden()
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar { toolbar }
-        .interactiveDismissDisabled(isDirty)
-        .confirmationDialog("放弃这次修改？", isPresented: $confirmDiscard, titleVisibility: .visible) {
-            Button("放弃", role: .destructive) { onFinish(false) }
-            Button("继续写", role: .cancel) {}
+        .background { PhotoPaper(assetID: assetID) }
+    }
+
+    /// 纸上已经有的字：标题……最后一段。一篇日记只有一段时就是整段，最多露四行。
+    private var earlierWriting: String? {
+        guard let entry else { return nil }
+        let segs = entry.displaySegments
+        if segs.count > 1, let last = segs.last { return entry.title + "…… " + last.text }
+        let text = segs.first?.text ?? entry.caption
+        return text.isEmpty ? nil : text
+    }
+
+    private var sharedWarning: some View {
+        Label {
+            Text("这张照片在共享图库中，其他成员可能看到这段日记")
+        } icon: {
+            Image(systemName: "person.2")
         }
-        .confirmationDialog("清除这张照片的说明？", isPresented: $confirmClear, titleVisibility: .visible) {
-            Button("清除说明", role: .destructive) { save() }
-            Button("取消", role: .cancel) {}
-        } message: {
-            Text("日记写在照片说明里，清除后在照片 App 里也看不到了。")
-        }
-        .alert("没有保存", isPresented: .constant(errorMessage != nil)) {
-            Button("好") { errorMessage = nil }
-        } message: {
-            Text(errorMessage ?? "")
-        }
-        .sensoryFeedback(.success, trigger: savedCount)
+        .font(.footnote)
+        .foregroundStyle(Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.8, blue: 0.5, alpha: 1) : UIColor(red: 0.42, green: 0.25, blue: 0, alpha: 1) }))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: 顶栏：✕ / 日期 / ✓
@@ -137,49 +179,6 @@ struct EditorView: View {
         case .append: String(localized: "追加感想", bundle: .app, locale: .app)
         case .edit: String(localized: "编辑", bundle: .app, locale: .app)
         }
-    }
-
-    // MARK: 内容
-
-    /// 原照片和已有的日记，灰底卡片。
-    private var context: some View {
-        HStack(spacing: 12) {
-            AssetImage(id: assetID, pointSize: CGSize(width: 76, height: 76))
-                .frame(width: 76, height: 76)
-                .clipShape(.rect(cornerRadius: 8, style: .continuous))
-            Text(contextText)
-                .font(.diary(14, relativeTo: .subheadline))
-                .lineSpacing(7)
-                .foregroundStyle(Color.meta)
-                .lineLimit(3)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
-        }
-        .padding(8)
-        .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
-    }
-
-    private var contextText: String {
-        guard let entry else {
-            return String(localized: "拍摄于 \(DiaryDates.full(DayStamp(photoDate)))", bundle: .app, locale: .app)
-        }
-        let segs = entry.displaySegments
-        if segs.count > 1, let last = segs.last { return entry.title + "…… " + last.text }
-        return segs.first?.text ?? entry.caption
-    }
-
-    private var sharedWarning: some View {
-        Label {
-            Text("这张照片在共享图库中，其他成员可能看到这段日记")
-        } icon: {
-            Image(systemName: "person.2")
-        }
-        .font(.footnote)
-        .foregroundStyle(Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.8, blue: 0.5, alpha: 1) : UIColor(red: 0.42, green: 0.25, blue: 0, alpha: 1) }))
-        .padding(.horizontal, 12)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color.orange.opacity(0.12), in: .rect(cornerRadius: 12))
     }
 
     // MARK: 键盘上方：玻璃胶囊工具栏（# 按钮、横向标签联想、收起键盘）

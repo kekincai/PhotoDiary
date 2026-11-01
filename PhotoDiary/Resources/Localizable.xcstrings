@@ -511,6 +511,22 @@
         }
       }
     },
+    "之前写的：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Written earlier: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "以前に書いたこと：%@"
+          }
+        }
+      }
+    },
     "今天": {
       "localizations": {
         "en": {
@@ -907,6 +923,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "「設定」でアクセスを許可"
+          }
+        }
+      }
+    },
+    "去掉“%@”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」を外す"
           }
         }
       }
@@ -3247,18 +3279,18 @@
         }
       }
     },
-    "选择日期…": {
+    "选择日期": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Choose Dates…"
+            "value": "Choose Dates"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "日付を選択…"
+            "value": "日付を選択"
           }
         }
       }

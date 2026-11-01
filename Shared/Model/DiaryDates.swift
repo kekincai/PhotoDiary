@@ -36,6 +36,16 @@ enum DiaryDates {
     static func weekday(_ date: Date) -> String { format("EEE", date) }
     static func short(_ day: DayStamp) -> String { format("MMMd", day.date) }
     static func full(_ day: DayStamp) -> String { format("yMMMd", day.date) }
+    /// 日期范围，重复的部分只写一次：10月3日至12日 / Oct 3 – 12；不在今年才写年份。
+    static func range(_ from: DayStamp, _ to: DayStamp) -> String {
+        let thisYear = from.year == DayStamp.today.year && to.year == DayStamp.today.year
+        if from == to { return thisYear ? short(from) : full(from) }
+        let f = DateIntervalFormatter()
+        f.locale = locale
+        f.calendar = .diary
+        f.dateTemplate = thisYear ? "MMMd" : "yMMMd"
+        return f.string(from: from.date, to: to.date)
+    }
     /// 月份标题：10月 / October
     static func monthName(_ date: Date) -> String {
         locale.language.languageCode == .english ? format("LLLL", date) : format("MMM", date)

@@ -65,8 +65,7 @@ struct DateRangeCalendar: View {
     /// 标题就是选中的范围，不另写说明。
     private var title: String {
         guard let start else { return String(localized: "日期范围", bundle: .app, locale: .app) }
-        guard let end else { return DiaryDates.full(start) }
-        return "\(DiaryDates.full(start)) – \(DiaryDates.full(end))"
+        return DiaryDates.range(start, end ?? start)
     }
 
     private func select(_ day: DayStamp) {

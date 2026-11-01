@@ -58,6 +58,7 @@
 		A62694CB8B58EE6289927356 /* EntryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49E9A3B48C2333F491CCA000 /* EntryCard.swift */; };
 		A6271A72972998A8FC5138BC /* DiaryDates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F31CB92006521A42AFCA8FC /* DiaryDates.swift */; };
 		A7B79479B499A9A56A9B9322 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC86DB655F0D0581DE7737A2 /* RootView.swift */; };
+		A9AB731F91A11C69AD3A92D2 /* PhotoPaper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92BA1FD81062B754BE43A09 /* PhotoPaper.swift */; };
 		AB4027446D0AD16E590ABF44 /* EditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18B47E414F8D62CAECDEE565 /* EditorView.swift */; };
 		AE1F4415346E6473FF19EE76 /* Language.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0ED98056100464D9F56CF7E4 /* Language.swift */; };
 		AE49605B35D93DD5B7E45C18 /* CaptionFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BDEAEA7193F206C7622EF9 /* CaptionFilter.swift */; };
@@ -179,6 +180,7 @@
 		CCF63237BB0BE0376576B2EB /* AddFromPhotosView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFromPhotosView.swift; sourceTree = "<group>"; };
 		CD3511816DF16328D71510DC /* SyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTests.swift; sourceTree = "<group>"; };
 		CED7A36E4A29050D59B61BEE /* JournalContents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalContents.swift; sourceTree = "<group>"; };
+		D92BA1FD81062B754BE43A09 /* PhotoPaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPaper.swift; sourceTree = "<group>"; };
 		DC166D7DBA4B08A5DD8D8F41 /* PhotoDiary.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhotoDiary.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E2D13A4941E26AD67A722D64 /* PhotoDiaryTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PhotoDiaryTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		E67CD7DDD7DC5A1AB1BDDD0D /* WatchEntryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchEntryView.swift; sourceTree = "<group>"; };
@@ -392,6 +394,7 @@
 			children = (
 				8E3388A1E4175CE442977C3A /* DiaryTextView.swift */,
 				18B47E414F8D62CAECDEE565 /* EditorView.swift */,
+				D92BA1FD81062B754BE43A09 /* PhotoPaper.swift */,
 			);
 			path = Editor;
 			sourceTree = "<group>";
@@ -672,6 +675,7 @@
 				069DF4B61CABDA96E2BBDFDB /* PermissionView.swift in Sources */,
 				E73E79AB359071C6ADD5A40A /* PhotoDiaryApp.swift in Sources */,
 				E86E0B7C10429F3ED159480D /* PhotoLibraryClient.swift in Sources */,
+				A9AB731F91A11C69AD3A92D2 /* PhotoPaper.swift in Sources */,
 				987B75B2193013B9FF6C0AF3 /* PhotoViewer.swift in Sources */,
 				30DBFE59442AF451E2846E68 /* PlaceNamer.swift in Sources */,
 				609F4BA5EF2EC406E4E30704 /* ReviewView.swift in Sources */,
