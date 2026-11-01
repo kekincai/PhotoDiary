@@ -100,7 +100,7 @@
 ### 阶段 5：性能基线
 
 - 1 万、5 万条目下：`rebuildDerived()` 耗时、`IndexStore` 编码 / 解码耗时与文件大小、全量扫描批次合并耗时。
-- 判断标准：主线程单次超过 16ms 就要优化（例如批次合并时不每批全量重算、改成增量合并）；索引编码超过 200ms 或文件超过 20MB 再考虑换 SQLite / SwiftData。**在数据证明需要之前不换存储格式。**
+- 判断标准：主线程单次超过 16ms 就要优化（例如批次合并时不每批全量重算、改成增量合并）。（存储格式已经换成 SwiftData，见“进度”。）
 - `Tools/test.sh` 一条命令跑单元测试 + 覆盖率；之后需要的话再加 GitHub Actions（取决于托管 runner 是否有 Xcode 27）。
 
 ## 进度
@@ -130,6 +130,27 @@
 “增量同步 3 秒”查清楚了：PhotoKit 的增量查询本身只要 3–23ms；慢在读完索引后回到主线程，要等启动时的界面绘制让出来，每次约 0.5 秒（刚安装后第一次启动更久）。现在两个文件同时读，少等一轮。主线程启动时具体被什么占着，留到阶段 5 用 Time Profiler 看。
 
 测试：27 → 58 个，新增 `SyncTests`（并发与取消）、`LibraryWriteTests`（增量、写入、关键词、地名）、`DerivedDataTests`（月份、日历、回顾、标签、地点、过滤、跨天、搜索、导出）、`IndexPersistenceTests`。连续跑 20 遍都通过。没有单元测试覆盖的：`AssetImages` 的作废（直接依赖 PhotoKit，留给阶段 4 的集成测试）、进入后台时的 `beginBackgroundTask`。
+
+### 2026-11-01：索引改用 SwiftData
+
+原计划是“数据证明需要之前不换存储格式”，按你的要求提前换了。原来的 JSON 索引有三处整份处理：每次保存整份重写（1 万条约 4MB）、每次启动逐条重新解析说明、全量重读后整份替换。现在：
+
+- `Library/IndexDatabase.swift`：`EntryRecord`（每张带说明的照片一行，含解析结果 JSON 和解析规则版本 `CaptionDisplay.version`）、`SyncRecord`（change token）、`PlaceRecord`（地名，单独一个库文件）。都在 `Application Support/Index/`，目录不进备份。
+- `DiaryStore` 在 `entries` 每次赋值时记下变了的行，保存时只写这些；token 和条目在同一个事务里。全量重读（token 失效、手动重建）也是和库里比，只写不一样的行。
+- 启动直接用存着的解析结果；解析规则改了就把 `CaptionDisplay.version` 加一，旧结果会在下次启动时重算并写回。
+- 条目库打不开（文件损坏、模型改得不兼容）就删掉重建，地名库保留；都不行时退回内存库。
+- 旧版 `diary-index.json` / `place-cache.json` 在第一次启动时整个搬进库里，然后删掉，不重读照片库。模拟器上实测：15 条、12 个地名迁入，之后走增量同步。
+- App 初始化时就在后台打开并读入索引（`DiaryStore.prepare()`），和第一帧界面绘制并行；`start()` 时数据已经读好。
+
+1 万条的耗时（模拟器、Release，`TEST_RUNNER_PERF=1` 跑 `PerformanceTests`）：
+
+| | JSON 文件 | SwiftData |
+|---|---|---|
+| 保存 1 处修改 | 整份编码 0.06s + 写 4MB | 0.02s |
+| 启动读入 | 0.39s（含逐条解析 0.13s） | 0.49s（不解析） |
+| 第一次建索引后保存 | 0.06s | 1.8s（只有一次，在后台） |
+
+启动读入反而慢 0.1s，花在 SwiftData 为每一行建对象上；1 万篇以下的库差别更小，而且现在在第一帧画出来之前就读完了。
 
 ## 需要你决定的
 

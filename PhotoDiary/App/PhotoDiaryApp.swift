@@ -4,7 +4,7 @@ import OSLog
 
 @main
 struct PhotoDiaryApp: App {
-    @State private var store = DiaryStore()
+    @State private var store: DiaryStore
     @State private var router = Router()
     @AppStorage("brand") private var brand: BrandColor = .lake
     /// 设置里改语言时先调用 AppLanguage.apply，再写入这里，界面整体按新语言重建。
@@ -13,6 +13,10 @@ struct PhotoDiaryApp: App {
 
     init() {
         AppLanguage.apply(AppLanguage.stored)
+        let store = DiaryStore()
+        // 第一帧还没画就开始读索引。
+        if !Self.isHostingUnitTests { store.prepare() }
+        _store = State(initialValue: store)
     }
 
     static let isHostingUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil

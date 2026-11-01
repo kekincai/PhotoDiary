@@ -22,12 +22,12 @@ final class FakePlaceNamer: PlaceNaming {
 /// 测试用的固定“现在”：2026-10-31 正午。
 let fixedNow = Calendar.diary.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 12))!
 
-func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
+nonisolated func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
     Calendar.diary.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
 }
 
 /// 每次一个新的空目录。
-func temporaryDirectory() -> URL {
+nonisolated func temporaryDirectory() -> URL {
     URL.temporaryDirectory.appending(path: "PhotoDiaryTests-\(UUID().uuidString)")
 }
 
@@ -45,7 +45,7 @@ final class TestClock {
 func makeStore(library: FakeLibrary, places: FakePlaceNamer = FakePlaceNamer(),
                directory: URL = temporaryDirectory(), defaults: UserDefaults = isolatedDefaults(),
                clock: TestClock = TestClock(), saveDelay: Duration = .zero) -> DiaryStore {
-    DiaryStore(.init(library: library, index: IndexStore(directory: directory), placeNamer: places,
+    DiaryStore(.init(library: library, indexDirectory: directory, placeNamer: places,
                      defaults: defaults, now: { clock.now }, saveDelay: saveDelay, changeDelay: .zero,
                      geocodeInterval: .zero))
 }
@@ -69,3 +69,10 @@ func eventually(timeout: Duration = .seconds(2), _ condition: () -> Bool) async 
     }
     return true
 }
+
+/// 另开一个连接读出 directory 里的索引数据库。
+func loadIndex(_ directory: URL) async -> IndexDatabase.Loaded {
+    await IndexDatabase.open(directory: directory).load()
+}
+
+func indexFolder(_ directory: URL) -> URL { directory.appending(path: "Index", directoryHint: .isDirectory) }

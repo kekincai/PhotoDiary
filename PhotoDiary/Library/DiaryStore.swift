@@ -16,7 +16,8 @@ final class DiaryStore {
     /// 外部依赖。默认值就是真实实现；测试换成假照片库、临时目录和固定时间。
     struct Dependencies {
         var library: any PhotoLibraryClient = PhotoKitLibrary()
-        var index = IndexStore()
+        /// 索引数据库放在这个目录下的 Index/ 里；旧版 JSON 索引也在这里找。
+        var indexDirectory: URL = .applicationSupportDirectory
         var placeNamer: any PlaceNaming = PlaceNamer()
         /// 说明过滤规则存在这里。
         var defaults: UserDefaults = .standard
@@ -40,7 +41,10 @@ final class DiaryStore {
 
     /// 所有带说明的照片，按 localIdentifier 索引。
     private(set) var entries: [String: DiaryEntry] = [:] {
-        didSet { rebuildDerived() }
+        didSet {
+            trackChanges(from: oldValue)
+            rebuildDerived()
+        }
     }
 
     /// 所有写了说明的照片，按照片日期倒序。
@@ -96,7 +100,9 @@ final class DiaryStore {
     /// 列表、日历、照片、地图里显示的条目。
     var timeline: [DiaryEntry] { diaries }
 
-    private var changeToken: Data?
+    private var changeToken: Data? {
+        didSet { if changeToken != oldValue { tokenDirty = true } }
+    }
     private var writtenInApp: Set<String> = []
     private var placeCache: [String: String] = [:]
     private var timeZoneCache: [String: String] = [:]
@@ -106,6 +112,16 @@ final class DiaryStore {
     private var pendingIncremental = false
     /// 反向地理编码失败过的照片，本次运行不再重试。
     private var placeFailures = Set<String>()
+
+    private var database: IndexDatabase?
+    private var preparing: Task<(IndexDatabase, IndexDatabase.Loaded), Never>?
+    // 自上次保存以来变化的行。保存时只写这些。
+    private var dirtyIDs = Set<String>()
+    private var removedIDs = Set<String>()
+    private var dirtyPlaces: [String: (name: String, timeZone: String?)] = [:]
+    private var tokenDirty = false
+    /// 最近一次保存写了多少行（日志和测试用）。
+    private(set) var lastSaveStats: IndexDatabase.Stats?
 
     init(_ dependencies: Dependencies = Dependencies()) {
         deps = dependencies
@@ -126,28 +142,35 @@ final class DiaryStore {
 
     // MARK: 启动
 
+    /// App 一启动就在后台打开并读入索引，和第一帧界面的绘制同时进行；start() 直接接着用。
+    /// 数据库第一次查询要几百毫秒建立连接，不提前开始就会全算在开屏等待里。
+    func prepare() {
+        guard preparing == nil else { return }
+        let directory = deps.indexDirectory
+        // detached：不等主线程有空才开始。
+        preparing = Task.detached(priority: .userInitiated) {
+            let database = await IndexDatabase.open(directory: directory)
+            await database.importLegacy(from: LegacyIndex(directory: directory))
+            return (database, await database.load())
+        }
+    }
+
     func start() async {
         authorization = library.authorizationStatus()
         Log.app.notice("启动，照片权限 \(self.authorization.rawValue, privacy: .public)")
         guard canRead else { return }
         if !hasLoaded {
-            // 两个文件同时读：每次 await 回到主线程都要等启动时的界面绘制让出来。
-            async let loadedSnapshot = deps.index.load()
-            async let loadedPlaces = deps.index.loadPlaces()
-            let (snapshot, places) = await (loadedSnapshot, loadedPlaces)
-            // 地名缓存不随索引作废；没有单独的文件时，从旧版本索引里迁移过来。
-            if let places {
-                placeCache = places.names
-                timeZoneCache = places.timeZones
-            } else if let snapshot {
-                placeCache = snapshot.placeCache
-                timeZoneCache = snapshot.timeZoneCache ?? [:]
-            }
-            if let snapshot {
-                writtenInApp = snapshot.writtenInApp
-                changeToken = snapshot.changeToken
-                entries = Dictionary(snapshot.entries.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
-            }
+            // 打开、迁移、读取都在数据库自己的线程上，一次回到主线程。
+            prepare()
+            guard let (database, loaded) = await preparing?.value else { return }
+            self.database = database
+            placeCache = loaded.places.names
+            timeZoneCache = loaded.places.timeZones
+            writtenInApp = Set(loaded.entries.lazy.filter(\.writtenInApp).map(\.id))
+            changeToken = loaded.changeToken
+            entries = Dictionary(loaded.entries.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
+            // 刚从库里读出来的不算变化。
+            clearDirty()
         }
         hasLoaded = true
         registerObserver()
@@ -559,6 +582,7 @@ final class DiaryStore {
                     filled += 1
                     placeCache[key] = name
                     timeZoneCache[key] = place.timeZone
+                    dirtyPlaces[key] = (name, place.timeZone)
                     resolved[key] = (name, place.timeZone)
                     try? await Task.sleep(for: deps.geocodeInterval) // 遵守地理编码的频率限制
                 } else {
@@ -611,11 +635,46 @@ final class DiaryStore {
         await persist()
     }
 
+    /// 只把上次保存以来变化的行写进数据库。
     private func persist() async {
-        let snapshot = IndexSnapshot(entries: Array(entries.values), changeToken: changeToken, writtenInApp: writtenInApp)
-        let places = PlaceCache(names: placeCache, timeZones: timeZoneCache)
-        await deps.index.save(snapshot)
-        await deps.index.savePlaces(places)
+        guard let database, hasPendingChanges else { return }
+        var changes = IndexDatabase.Changes(changeToken: changeToken, places: dirtyPlaces)
+        changes.upserts = dirtyIDs.compactMap { entries[$0] }
+        changes.deletions = removedIDs
+        clearDirty()
+        do {
+            lastSaveStats = try await database.apply(changes)
+        } catch {
+            Log.index.error("保存索引失败，下次再试：\(error, privacy: .public)")
+            // 没写进去的变化放回去（期间又有新变化的以新的为准）。
+            for entry in changes.upserts where !removedIDs.contains(entry.id) { dirtyIDs.insert(entry.id) }
+            removedIDs.formUnion(changes.deletions.subtracting(dirtyIDs))
+            dirtyPlaces.merge(changes.places) { new, _ in new }
+            tokenDirty = true
+        }
+    }
+
+    private var hasPendingChanges: Bool {
+        !dirtyIDs.isEmpty || !removedIDs.isEmpty || !dirtyPlaces.isEmpty || tokenDirty
+    }
+
+    private func clearDirty() {
+        dirtyIDs.removeAll()
+        removedIDs.removeAll()
+        dirtyPlaces.removeAll()
+        tokenDirty = false
+    }
+
+    /// entries 每次赋值后找出变了的行：新增和修改的记进 dirtyIDs，没了的记进 removedIDs。
+    private func trackChanges(from old: [String: DiaryEntry]) {
+        for (id, entry) in entries where old[id] != entry {
+            dirtyIDs.insert(id)
+            removedIDs.remove(id)
+        }
+        for id in old.keys where entries[id] == nil {
+            removedIDs.insert(id)
+            dirtyIDs.remove(id)
+        }
     }
 
     // MARK: 导出

@@ -5,6 +5,34 @@ nonisolated enum MediaKind: String, Codable, Sendable {
     case photo, livePhoto, video
 }
 
+/// 说明解析后给界面用的结果，只由说明决定。和条目一起存进索引数据库，启动时直接读出来，不必逐条重新解析。
+nonisolated struct CaptionDisplay: Hashable, Codable, Sendable {
+    /// 解析规则的版本。CaptionFormat 的解析或显示规则改了就加一，数据库里旧的解析结果会在启动时重算。
+    static let version = 1
+
+    var segments: [DiarySegment] = []
+    var tags: [String] = []
+    /// 去掉行尾标签后的各段正文。
+    var displaySegments: [DiarySegment] = []
+    var title = ""
+    /// 列表预览：只有一段时显示首句之后的内容；多段时显示最新追加的那段。
+    var preview = ""
+
+    init() {}
+
+    init(caption: String) {
+        let parsed = CaptionFormat.parse(caption)
+        segments = parsed.segments
+        tags = parsed.tags
+        displaySegments = segments
+            .map { DiarySegment(text: CaptionFormat.strippingTrailingTags($0.text), date: $0.date) }
+            .filter { !$0.text.isEmpty || $0.date != nil }
+        let first = CaptionFormat.splitTitle(displaySegments.first?.text ?? "")
+        title = first.title
+        preview = displaySegments.count > 1 ? (displaySegments.last?.text ?? "") : first.rest
+    }
+}
+
 /// 本地索引里的一条记录：一张带说明的照片。可以随时从照片库完整重建。
 ///
 /// 列表、日历每次刷新都会读日期、标题、预览，所以这些派生值在说明或时区变化时算一次存起来，
@@ -28,14 +56,13 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
     /// 曾在本 App 写过。决定同步时是否按标签改写关键词。
     var writtenInApp: Bool = false
 
-    // 解析结果（由 caption 派生，随 caption 一起更新）。
-    private(set) var segments: [DiarySegment] = []
-    private(set) var tags: [String] = []
-    /// 去掉行尾标签后的各段正文。
-    private(set) var displaySegments: [DiarySegment] = []
-    private(set) var title = ""
-    /// 列表预览：只有一段时显示首句之后的内容；多段时显示最新追加的那段。
-    private(set) var preview = ""
+    /// 解析结果（由 caption 派生，随 caption 一起更新）。
+    private(set) var display = CaptionDisplay()
+    var segments: [DiarySegment] { display.segments }
+    var tags: [String] { display.tags }
+    var displaySegments: [DiarySegment] { display.displaySegments }
+    var title: String { display.title }
+    var preview: String { display.preview }
     private(set) var writingDays: [DayStamp] = []
     /// 照片日期；没有拍摄日期时退回第一段的写作日期。
     private(set) var day: DayStamp = .today
@@ -49,7 +76,8 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
 
     init(id: String, caption: String, keywords: [String], creationDate: Date?, latitude: Double?,
          longitude: Double?, mediaKind: MediaKind, isCloudShared: Bool, pixelWidth: Int,
-         pixelHeight: Int, placeName: String? = nil, writtenInApp: Bool = false) {
+         pixelHeight: Int, placeName: String? = nil, timeZoneID: String? = nil, writtenInApp: Bool = false,
+         display: CaptionDisplay? = nil) {
         self.id = id
         self.caption = caption
         self.keywords = keywords
@@ -61,8 +89,10 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
         self.pixelWidth = pixelWidth
         self.pixelHeight = pixelHeight
         self.placeName = placeName
+        self.timeZoneID = timeZoneID
         self.writtenInApp = writtenInApp
-        reparse()
+        // 从数据库读出时带着已有的解析结果，不再解析一遍。
+        if let display { apply(display) } else { reparse() }
     }
 
     init(from decoder: Decoder) throws {
@@ -84,16 +114,12 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
     }
 
     mutating func reparse() {
-        let parsed = CaptionFormat.parse(caption)
-        segments = parsed.segments
-        tags = parsed.tags
-        writingDays = segments.compactMap(\.date)
-        displaySegments = segments
-            .map { DiarySegment(text: CaptionFormat.strippingTrailingTags($0.text), date: $0.date) }
-            .filter { !$0.text.isEmpty || $0.date != nil }
-        let first = CaptionFormat.splitTitle(displaySegments.first?.text ?? "")
-        title = first.title
-        preview = displaySegments.count > 1 ? (displaySegments.last?.text ?? "") : first.rest
+        apply(CaptionDisplay(caption: caption))
+    }
+
+    private mutating func apply(_ display: CaptionDisplay) {
+        self.display = display
+        writingDays = display.segments.compactMap(\.date)
         updateDay()
     }
 

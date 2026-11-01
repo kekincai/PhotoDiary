@@ -20,11 +20,10 @@ struct DiaryStoreTests {
         #expect(store.tagCounts == [.init(name: "旅行", count: 1)])
         #expect(library.fullScans == 1)
 
-        let index = IndexStore(directory: dir)
-        #expect(await eventually { FileManager.default.fileExists(atPath: index.fileURL.path()) })
-        let snapshot = try #require(await index.load())
-        #expect(snapshot.entries.map(\.id) == ["a"])
-        #expect(snapshot.changeToken != nil)
+        #expect(await eventually { store.lastSaveStats != nil })
+        let index = await loadIndex(dir)
+        #expect(index.entries.map(\.id) == ["a"])
+        #expect(index.changeToken != nil)
     }
 
     @Test func relaunchShowsIndexFirstThenSyncsIncrementally() async throws {
@@ -34,7 +33,7 @@ struct DiaryStoreTests {
         let first = makeStore(library: library, directory: dir)
         await first.start()
         #expect(await eventually { first.hasSynced })
-        #expect(await eventually { FileManager.default.fileExists(atPath: IndexStore(directory: dir).fileURL.path()) })
+        await first.saveNow()
 
         // App 关闭期间在照片 App 里多写了一篇（关闭时收不到通知）。
         library.externalEdit("b", caption: "第二篇", notify: false)
@@ -55,7 +54,7 @@ struct DiaryStoreTests {
         let first = makeStore(library: library, directory: dir)
         await first.start()
         #expect(await eventually { first.hasSynced })
-        #expect(await eventually { FileManager.default.fileExists(atPath: IndexStore(directory: dir).fileURL.path()) })
+        await first.saveNow()
 
         library.expireTokens()
         let second = makeStore(library: library, directory: dir)
