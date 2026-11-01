@@ -51,13 +51,15 @@ struct PermissionView: View {
             .tint(brand)
             .disabled(requesting)
 
-            (denied ? Text("需要“完整访问”才能读取和写入照片说明。也可以只选部分照片。")
-                    : Text("需要读写照片说明。选择“有限访问”也可以使用，但只会显示你选的照片。"))
-                .font(.footnote)
-                .foregroundStyle(Color.meta)
-                .frame(maxWidth: .infinity)
-                .multilineTextAlignment(.center)
-                .padding(.top, Metrics.Spacing.l)
+            // 第一次请求时系统弹窗自带用途说明；只有被拒绝后才说明需要什么权限。
+            if denied {
+                Text("需要“完整访问”才能读取和写入照片说明。也可以只选部分照片。")
+                    .font(.footnote)
+                    .foregroundStyle(Color.meta)
+                    .frame(maxWidth: .infinity)
+                    .multilineTextAlignment(.center)
+                    .padding(.top, Metrics.Spacing.l)
+            }
         }
         .padding(.horizontal, 28)
         .padding(.bottom, Metrics.Spacing.m)

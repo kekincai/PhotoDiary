@@ -77,10 +77,9 @@ struct Chip<Content: View>: View {
     }
 }
 
-/// 空状态：说清楚是什么空了，最多给一个动作。不放大图标。
+/// 空状态：一句话说清楚是什么空了，最多给一个动作。不放大图标，也不再加一行解释。
 struct EmptyHint: View {
     let title: LocalizedStringKey
-    let message: LocalizedStringKey
     var action: (label: LocalizedStringKey, perform: () -> Void)? = nil
 
     var body: some View {
@@ -88,10 +87,6 @@ struct EmptyHint: View {
             Text(title)
                 .font(.headline)
                 .foregroundStyle(Color.ink)
-            Text(message)
-                .font(.subheadline)
-                .foregroundStyle(Color.meta)
-                .fixedSize(horizontal: false, vertical: true)
             if let action {
                 Button(action.label, action: action.perform)
                     .font(.subheadline.weight(.semibold))

@@ -20,7 +20,7 @@ struct TagsView: View {
     var body: some View {
         ScrollView {
             if store.tagCounts.isEmpty {
-                EmptyHint(title: "还没有标签", message: "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词")
+                EmptyHint(title: "还没有标签")
             }
             LazyVGrid(columns: columns, spacing: 20) {
                 ForEach(store.tagCounts, id: \.name) { tag in
@@ -72,7 +72,7 @@ struct TagsView: View {
 
     private var subtitle: String {
         let n = store.tagCounts.count
-        return n == 0 ? "" : String(localized: "\(n) 个标签 · 选择后可改名、合并")
+        return n == 0 ? "" : String(localized: "\(n) 个标签")
     }
 
     @ViewBuilder
@@ -192,7 +192,7 @@ struct TagEntriesView: View {
             EntryCardGrid(entries: entries)
         }
         .overlay {
-            if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了", message: "可能已经改名或合并到别的标签") }
+            if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了") }
         }
         .navigationTitle(Text(verbatim: "#\(tag)#"))
         .navigationSubtitle(Text("\(entries.count) 篇"))

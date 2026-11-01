@@ -34,6 +34,8 @@ struct EditorRequest: Identifiable, Hashable {
     let id = UUID()
     let assetID: String
     let mode: DiaryStore.WriteMode
+    /// 预先填进编辑器的文字（例如手记建议里的歌曲）。
+    var seed: String? = nil
 }
 
 /// 每个标签页各自一条导航路径；推入详情时隐藏底部标签栏。

@@ -7,12 +7,11 @@ struct SettingsView: View {
     @Environment(DiaryStore.self) private var store
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
-    @AppStorage("brand") private var brand: BrandColor = .lake
+    @AppStorage(BrandColor.storageKey) private var brandHex = BrandColor.lake.rawValue
+    @AppStorage(BrandColor.customKey) private var customHex = "#C0603A"
+    @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
     @AppStorage(AppLanguage.storageKey) private var language: AppLanguage = .system
     @State private var confirmRebuild = false
-    @State private var hiddenCaptions = CaptionFilter.patterns
-    @State private var addingCaption = false
-    @State private var newCaption = ""
 
     var body: some View {
         NavigationStack {
@@ -41,58 +40,79 @@ struct SettingsView: View {
                     Button("完成", systemImage: "checkmark") { dismiss() }
                 }
             }
-            .alert("隐藏这段说明", isPresented: $addingCaption) {
-                TextField("说明文字，例如 0", text: $newCaption)
-                Button("取消", role: .cancel) { newCaption = "" }
-                Button("隐藏") { hide(newCaption); newCaption = "" }
-            } message: {
-                Text("说明和这段文字完全一样的照片，不再出现在日记里。")
-            }
             .confirmationDialog("重建索引？", isPresented: $confirmRebuild, titleVisibility: .visible) {
                 Button("重新读取整个照片库") { store.rebuildIndex(); dismiss() }
-            } message: {
-                Text("会重新读取所有照片的说明，照片多时需要一些时间。")
             }
         }
-        .tint(brand.color)
+        .tint(.brand(hex: brandHex))
     }
 
-    // MARK: 主题色
+    // MARK: 外观：浅色 / 深色 + 主题色
 
     private var themeSection: some View {
-        Section("主题色") {
-            HStack(spacing: 0) {
-                ForEach(BrandColor.allCases) { option in
-                    let selected = brand == option
-                    Button {
-                        withAnimation(.snappy) { brand = option }
-                    } label: {
-                        VStack(spacing: 8) {
-                            Circle()
-                                .fill(option.color.gradient)
-                                .frame(width: 44, height: 44)
-                                .overlay {
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 15, weight: .bold))
-                                        .foregroundStyle(.white)
-                                        .opacity(selected ? 1 : 0)
-                                        .scaleEffect(selected ? 1 : 0.5)
-                                }
-                                .padding(3)
-                                .overlay(Circle().strokeBorder(selected ? option.color : .clear, lineWidth: 2))
-                            Text(option.name)
-                                .font(.caption)
-                                .foregroundStyle(selected ? Color.ink : Color.meta)
-                        }
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.press)
-                    .accessibilityAddTraits(selected ? .isSelected : [])
+        Section("外观") {
+            Picker("外观", selection: $appearance) {
+                ForEach(Appearance.allCases) { option in
+                    Image(systemName: option.symbol)
+                        .accessibilityLabel(option.name)
+                        .tag(option)
                 }
             }
+            .pickerStyle(.segmented)
+            .labelsHidden()
             .padding(.vertical, Metrics.Spacing.xs)
-            .sensoryFeedback(.selection, trigger: brand)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: 5), spacing: Metrics.Spacing.m) {
+                ForEach(BrandColor.allCases) { option in
+                    swatch(option)
+                }
+                customSwatch
+            }
+            .padding(.vertical, Metrics.Spacing.xs)
+            .sensoryFeedback(.selection, trigger: brandHex)
         }
+    }
+
+    private func swatch(_ option: BrandColor) -> some View {
+        let selected = brandHex == option.rawValue
+        return Button {
+            withAnimation(.snappy) { brandHex = option.rawValue }
+        } label: {
+            Circle()
+                .fill(option.color.gradient)
+                .frame(width: 40, height: 40)
+                .overlay {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 14, weight: .bold))
+                        .foregroundStyle(.white)
+                        .opacity(selected ? 1 : 0)
+                        .scaleEffect(selected ? 1 : 0.5)
+                }
+                .padding(3)
+                .overlay(Circle().strokeBorder(selected ? option.color : .clear, lineWidth: 2))
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(.press)
+        .accessibilityLabel(option.name)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// 最后一格是系统调色板，圆环里显示自选的颜色。
+    private var customSwatch: some View {
+        let selected = !BrandColor.allCases.contains { $0.rawValue == brandHex }
+        return ColorPicker("自定义颜色", selection: Binding {
+            Color(hex: selected ? brandHex : customHex)
+        } set: { color in
+            customHex = color.hex
+            brandHex = customHex
+        }, supportsOpacity: false)
+        .labelsHidden()
+        .scaleEffect(1.45)
+        .frame(width: 40, height: 40)
+        .padding(3)
+        .overlay(Circle().strokeBorder(selected ? Color(hex: brandHex) : .clear, lineWidth: 2))
+        .frame(maxWidth: .infinity)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     // MARK: Apple Watch
@@ -116,9 +136,7 @@ struct SettingsView: View {
                     .disabled(bridge.isSending)
                 }
             } footer: {
-                if bridge.status == .ready {
-                    Text("最近的日记、那年今日和还没写的照片会自动发到手表上；在手表上口述的感想会写进照片说明。")
-                } else if bridge.status == .appNotInstalled {
+                if bridge.status == .appNotInstalled {
                     Text("在 iPhone 的 Watch App 里安装“照片日记”，就能在手表上回看日记、口述感想。")
                 }
             }
@@ -189,7 +207,7 @@ struct SettingsView: View {
                 SettingsLabel("重建索引", symbol: "arrow.clockwise", color: .gray)
             }
         } footer: {
-            Text("日记保存在照片的“说明”里，随照片经 iCloud 同步。本 App 只保存可以随时重建的索引，删除 App 不会丢失日记。")
+            Text("日记在照片的说明里，删除 App 不会丢失。")
         }
     }
 
@@ -199,9 +217,6 @@ struct SettingsView: View {
         Section("说明格式") {
             Text("风很舒服，第一次用新镜头拍日落 #旅行#\n— 2026.10.31\n\n三年后再看，还是喜欢这张\n— 2029.11.02")
                 .font(.system(.footnote, design: .monospaced))
-                .foregroundStyle(Color.meta)
-            Text("每段末尾一行是写作日期；#话题# 会同步为照片关键词。在照片 App 的说明栏里按这个格式写，也会出现在日记里。")
-                .font(.footnote)
                 .foregroundStyle(Color.meta)
         }
     }
@@ -237,53 +252,17 @@ struct SettingsView: View {
 
     private var captionFilterSection: some View {
         Section {
-            ForEach(hiddenCaptions, id: \.self) { caption in
-                Text(verbatim: caption)
-                    .font(.body.monospaced())
-            }
-            .onDelete { offsets in
-                hiddenCaptions.remove(atOffsets: offsets)
-                saveHiddenCaptions()
-            }
-            Button {
-                addingCaption = true
+            NavigationLink {
+                HiddenCaptionsView()
             } label: {
-                SettingsLabel("添加…", symbol: "plus", color: .gray)
-            }
-            ForEach(store.frequentShortCaptions(), id: \.caption) { item in
-                Button {
-                    hide(item.caption)
+                LabeledContent {
+                    let count = store.hiddenCaptionCounts().values.reduce(0, +)
+                    if count > 0 { Text("\(count) 张").monospacedDigit() }
                 } label: {
-                    LabeledContent {
-                        Text("\(item.count) 张").monospacedDigit()
-                    } label: {
-                        Label {
-                            Text(verbatim: item.caption).font(.body.monospaced()).foregroundStyle(Color.ink)
-                        } icon: {
-                            Image(systemName: "eye.slash")
-                        }
-                    }
+                    SettingsLabel("隐藏的说明", symbol: "eye.slash", color: .gray)
                 }
-                .accessibilityLabel("隐藏“\(item.caption)”，\(item.count) 张照片")
             }
-        } header: {
-            Text("隐藏的说明")
-        } footer: {
-            Text("说明和这些文字完全一样的照片不算日记，不会出现在列表、日历和搜索里；给它们写日记时会直接覆盖。下方带眼睛图标的是照片库里常见的短说明，点一下就隐藏。")
         }
-    }
-
-    private func hide(_ caption: String) {
-        let text = caption.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty,
-              !hiddenCaptions.contains(where: { CaptionFilter.normalized($0) == CaptionFilter.normalized(text) }) else { return }
-        withAnimation(.snappy) { hiddenCaptions.append(text) }
-        saveHiddenCaptions()
-    }
-
-    private func saveHiddenCaptions() {
-        CaptionFilter.patterns = hiddenCaptions
-        store.captionFilterChanged()
     }
 }
 

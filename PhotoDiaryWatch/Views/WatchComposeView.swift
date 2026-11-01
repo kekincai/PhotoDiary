@@ -38,16 +38,10 @@ struct WatchComposeView: View {
         .navigationTitle(mode == .append ? "追加感想" : "写日记")
     }
 
-    private var prompt: some View {
-        VStack(spacing: 4) {
-            if let day {
-                Text(day == .today ? String(localized: "今天的照片") : String(localized: "拍摄于 \(DiaryDates.full(day))"))
-                    .font(.footnote.weight(.semibold))
-            }
-            Text("说完会发到 iPhone，写进这张照片的说明")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
+    @ViewBuilder private var prompt: some View {
+        if let day {
+            Text(day == .today ? String(localized: "今天的照片") : String(localized: "拍摄于 \(DiaryDates.full(day))"))
+                .font(.footnote.weight(.semibold))
         }
     }
 
@@ -65,11 +59,6 @@ struct WatchComposeView: View {
                 .foregroundStyle(.secondary)
                 .lineLimit(4)
                 .multilineTextAlignment(.center)
-            if !confirmed {
-                Text("iPhone 收到后会自动写入")
-                    .font(.caption2)
-                    .foregroundStyle(.tertiary)
-            }
             Button("完成") { dismiss() }
                 .padding(.top, 4)
         }

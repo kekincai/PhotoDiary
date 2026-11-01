@@ -1,7 +1,7 @@
 import SwiftUI
-import UIKit
 
-/// 长按一篇日记：预览照片和标题，可以直接追加感想、分享、在照片 App 里打开。
+/// 长按一篇日记：预览照片和标题，可以直接追加感想、编辑、分享。
+/// 没有“在照片 App 中打开”：系统没有公开的方式跳到某一张照片，只能打开照片 App 的首页。
 /// 列表卡片、日历格子、照片网格都挂这一个。
 struct EntryContextMenu: ViewModifier {
     let entry: DiaryEntry
@@ -18,9 +18,6 @@ struct EntryContextMenu: ViewModifier {
             Divider()
             ShareLink(item: SharedPhoto(id: entry.id), message: Text(entry.caption), preview: SharePreview(entry.title)) {
                 Label("分享", systemImage: "square.and.arrow.up")
-            }
-            Button("在“照片”中打开", systemImage: "photo.on.rectangle") {
-                if let url = URL(string: "photos-redirect://") { UIApplication.shared.open(url) }
             }
         } preview: {
             EntryPreview(entry: entry)

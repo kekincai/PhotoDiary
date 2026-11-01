@@ -125,8 +125,11 @@ struct DerivedDataTests {
     @Test func markdownExportIsOldestFirstWithPlace() async {
         let store = await store()
         let text = store.markdownExport()
-        #expect(text.hasPrefix("# 照片日记\n\n## 2024年10月31日 星期四 · 镰仓\n\n两年前 #旅行# #日常#\n\n"))
-        #expect(text.hasSuffix("## 2026年10月30日 星期五 · 镰仓\n\n海边 #旅行#\n— 2026.10.30\n\n"))
+        // 标题和日期跟随界面语言。
+        let first = DiaryDates.fullWithWeekday(DayStamp(year: 2024, month: 10, day: 31)!.date)
+        let last = DiaryDates.fullWithWeekday(DayStamp(year: 2026, month: 10, day: 30)!.date)
+        #expect(text.hasPrefix("# \(String(localized: "照片日记"))\n\n## \(first) · 镰仓\n\n两年前 #旅行# #日常#\n\n"))
+        #expect(text.hasSuffix("## \(last) · 镰仓\n\n海边 #旅行#\n— 2026.10.30\n\n"))
         #expect(!text.contains("导入"))
     }
 }

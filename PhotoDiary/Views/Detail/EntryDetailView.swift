@@ -25,7 +25,7 @@ struct EntryDetailView: View {
             if let entry = store.entry(id) {
                 content(entry)
             } else {
-                EmptyHint(title: "这张照片已经不在了", message: "它可能在照片 App 里被删除，或者说明被清空了")
+                EmptyHint(title: "这张照片已经不在了")
             }
         }
         .modifier(ZoomDestination(id: id, namespace: namespace))
@@ -51,9 +51,6 @@ struct EntryDetailView: View {
                         router.editor = EditorRequest(assetID: id, mode: .edit)
                     }
                     Menu {
-                        Button("在“照片”中打开", systemImage: "photo.on.rectangle") {
-                            if let url = URL(string: "photos-redirect://") { UIApplication.shared.open(url) }
-                        }
                         Button("删除照片…", systemImage: "trash", role: .destructive) { confirmDelete = true }
                     } label: {
                         Label("更多", systemImage: "ellipsis")

@@ -18,12 +18,12 @@ struct EditorView: View {
     @State private var errorMessage: String?
     @State private var savedCount = 0
 
-    init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, onFinish: @escaping (Bool) -> Void) {
+    init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, seed: String? = nil, onFinish: @escaping (Bool) -> Void) {
         self.assetID = assetID
         self.mode = mode
         self.onFinish = onFinish
         let initial = mode == .edit ? (existingCaption ?? "") : ""
-        _controller = State(initialValue: EditorController(text: initial))
+        _controller = State(initialValue: EditorController(text: mode == .edit ? initial : (seed ?? "")))
         _original = State(initialValue: initial)
     }
 
@@ -277,7 +277,8 @@ struct EditorSheet: View {
     var body: some View {
         NavigationStack {
             EditorView(assetID: request.assetID, mode: request.mode,
-                       existingCaption: store.entry(request.assetID)?.caption ?? store.currentCaption(for: request.assetID)) { _ in
+                       existingCaption: store.entry(request.assetID)?.caption ?? store.currentCaption(for: request.assetID),
+                       seed: request.seed) { _ in
                 dismiss()
             }
         }

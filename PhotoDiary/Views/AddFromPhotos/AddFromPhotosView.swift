@@ -59,9 +59,9 @@ struct AddFromPhotosView: View {
 
                     if loaded && sections.isEmpty {
                         if filter == .unwritten {
-                            EmptyHint(title: "最近的照片都写过了", message: "切换到“全部照片”，可以给它们追加感想")
+                            EmptyHint(title: "最近的照片都写过了")
                         } else {
-                            EmptyHint(title: "照片库是空的", message: "拍几张照片再来")
+                            EmptyHint(title: "照片库是空的")
                         }
                     }
                 }

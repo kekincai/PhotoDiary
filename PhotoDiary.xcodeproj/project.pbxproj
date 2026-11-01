@@ -20,6 +20,7 @@
 		36411BAFB6DE0E0A18FCE36A /* CaptionFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BDEAEA7193F206C7622EF9 /* CaptionFilter.swift */; };
 		36E31A99C21D5386E967F44C /* IndexDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44082C169AC3A4A80556CA0B /* IndexDatabaseTests.swift */; };
 		43596D3724AF034030005F2E /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6D263197946BC1AC0CC66F /* DiaryEntry.swift */; };
+		4904885879896B6844953753 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 27E4422BB8D41E715150A70D /* InfoPlist.xcstrings */; };
 		4EF0726700A145FDF1FBA8AD /* Badges.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B823EE6387B56A51B3E23DA /* Badges.swift */; };
 		51BCE91DE8C0DA47D0646FF3 /* AssetImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C8C4E6ED8555AF56B1D7E2 /* AssetImage.swift */; };
 		54406E6A936B7EB3F2CC8B17 /* WatchSyncTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24EFCB1FD1E4B7C5D9890945 /* WatchSyncTests.swift */; };
@@ -36,6 +37,7 @@
 		72510A040C6969B4E8ECF2DC /* IndexDatabase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1BEAD628F0752376CC2819 /* IndexDatabase.swift */; };
 		77A8E024EFFE2FBE8F3A91B2 /* TagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521DEBEADDA2BB9672301AD5 /* TagsView.swift */; };
 		78BF9975FF44061E55D97EBC /* DayStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE36142E20AD20527851492 /* DayStamp.swift */; };
+		79E9E8A5FE9B92F0BC92D3FD /* HiddenCaptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28E73AD8E3D785708481735 /* HiddenCaptionsView.swift */; };
 		7A98E6E02EF90DDBEA06619C /* LibraryWriteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C1F72FF362A1897327E8C1 /* LibraryWriteTests.swift */; };
 		7D20321DA14379EEED70D52A /* WatchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEA72F745B3FC75B3F6DF5B /* WatchBridge.swift */; };
 		7DA73302436A6079A0315E59 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 27E4422BB8D41E715150A70D /* InfoPlist.xcstrings */; };
@@ -158,6 +160,7 @@
 		8CBA724A865B13A243726AC0 /* PhotoDiaryApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoDiaryApp.swift; sourceTree = "<group>"; };
 		8E3388A1E4175CE442977C3A /* DiaryTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryTextView.swift; sourceTree = "<group>"; };
 		94AB6343B51BCC98F61F83A3 /* DiaryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryStoreTests.swift; sourceTree = "<group>"; };
+		A28E73AD8E3D785708481735 /* HiddenCaptionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HiddenCaptionsView.swift; sourceTree = "<group>"; };
 		A3113D297645B635A311DB77 /* Motion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Motion.swift; sourceTree = "<group>"; };
 		A5C8C4E6ED8555AF56B1D7E2 /* AssetImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssetImage.swift; sourceTree = "<group>"; };
 		A6FA2FBA5391009D9B0C1D48 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
@@ -438,6 +441,7 @@
 		C40257590D5D9E9C7966D902 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				A28E73AD8E3D785708481735 /* HiddenCaptionsView.swift */,
 				3F5E4F85765B748ADDEFB14E /* SettingsView.swift */,
 			);
 			path = Settings;
@@ -561,6 +565,7 @@
 				en,
 				ja,
 				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = 3928844854610370C16C332E;
 			minimizedProjectReferenceProxies = 1;
@@ -582,6 +587,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				9F09E8DE55C9C89543A45C53 /* Assets.xcassets in Resources */,
+				4904885879896B6844953753 /* InfoPlist.xcstrings in Resources */,
 				95099515A987EF90896B99F3 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -639,6 +645,7 @@
 				23A15291EB5BC210D490C50F /* EntryActions.swift in Sources */,
 				A62694CB8B58EE6289927356 /* EntryCard.swift in Sources */,
 				EE8DCBCDD53037A104E4E7C7 /* EntryDetailView.swift in Sources */,
+				79E9E8A5FE9B92F0BC92D3FD /* HiddenCaptionsView.swift in Sources */,
 				72510A040C6969B4E8ECF2DC /* IndexDatabase.swift in Sources */,
 				E20147D6183094AB13594D2F /* JournalContents.swift in Sources */,
 				639A8EA5FE0F0B0305F18824 /* JournalView.swift in Sources */,
@@ -745,8 +752,8 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
-				INFOPLIST_KEY_CFBundleDisplayName = "照片日记";
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
+				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.kejincai.photodiary;
@@ -903,8 +910,8 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
-				INFOPLIST_KEY_CFBundleDisplayName = "照片日记";
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
+				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
 				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.kejincai.photodiary;
@@ -928,10 +935,10 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
-				INFOPLIST_KEY_CFBundleDisplayName = "照片日记";
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
+				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo Diary keeps your diary in each photo's caption. It needs to read and edit captions, and never copies or uploads your photos.";
 				INFOPLIST_KEY_PHPhotoLibraryPreventAutomaticLimitedAccessAlert = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
@@ -959,10 +966,10 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = "zh-Hans";
-				INFOPLIST_KEY_CFBundleDisplayName = "照片日记";
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
+				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo Diary keeps your diary in each photo's caption. It needs to read and edit captions, and never copies or uploads your photos.";
 				INFOPLIST_KEY_PHPhotoLibraryPreventAutomaticLimitedAccessAlert = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;

@@ -147,7 +147,7 @@
         }
       }
     },
-    "%lld 个标签 · 选择后可改名、合并": {
+    "%lld 个标签": {
       "localizations": {
         "en": {
           "variations": {
@@ -155,13 +155,13 @@
               "one": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld tag · Select to rename or merge"
+                  "value": "%lld tag"
                 }
               },
               "other": {
                 "stringUnit": {
                   "state": "translated",
-                  "value": "%lld tags · Select to rename or merge"
+                  "value": "%lld tags"
                 }
               }
             }
@@ -170,7 +170,7 @@
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "%lld個のタグ · 選択して名前変更・統合"
+            "value": "%lld個のタグ"
           }
         }
       }
@@ -463,22 +463,6 @@
         }
       }
     },
-    "iPhone 收到后会自动写入": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Your iPhone will write it in when it receives it"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "iPhone が受信すると自動的に書き込まれます"
-          }
-        }
-      }
-    },
     "不复制照片": {
       "localizations": {
         "en": {
@@ -527,22 +511,6 @@
         }
       }
     },
-    "主题色": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accent Color"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "テーマカラー"
-          }
-        }
-      }
-    },
     "今天": {
       "localizations": {
         "en": {
@@ -555,22 +523,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "今日"
-          }
-        }
-      }
-    },
-    "今天写下的，明年的这一天会出现在这里": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "What you write today will show up here on this day next year"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "今日書いたことは、来年の今日ここに表示されます"
           }
         }
       }
@@ -683,22 +635,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "関連するすべての写真のキャプションを変更し、写真のキーワードも同期します。"
-          }
-        }
-      }
-    },
-    "会重新读取所有照片的说明，照片多时需要一些时间。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All photo captions will be read again. This may take a while for large libraries."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "すべての写真のキャプションを読み直します。写真が多い場合は時間がかかります。"
           }
         }
       }
@@ -895,22 +831,6 @@
         }
       }
     },
-    "切换到“全部照片”，可以给它们追加感想": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Switch to “All Photos” to add reflections to them"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「すべての写真」に切り替えると、感想を追加できます"
-          }
-        }
-      }
-    },
     "列表": {
       "localizations": {
         "en": {
@@ -1039,6 +959,22 @@
         }
       }
     },
+    "取消隐藏“%@”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unhide “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "「%@」の非表示を解除"
+          }
+        }
+      }
+    },
     "口述感想": {
       "localizations": {
         "en": {
@@ -1099,38 +1035,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "アクセスを許可した写真だけが表示されています"
-          }
-        }
-      }
-    },
-    "可以搜正文和地点，输入 # 按标签筛选": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Search text and places. Type # to filter by tag"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "本文や場所を検索できます。# を入力するとタグで絞り込めます"
-          }
-        }
-      }
-    },
-    "可能已经改名或合并到别的标签": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "It may have been renamed or merged into another tag"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "名前が変更されたか、別のタグに統合された可能性があります"
           }
         }
       }
@@ -1263,22 +1167,6 @@
         }
       }
     },
-    "在“照片”中打开": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open in Photos"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「写真」で開く"
-          }
-        }
-      }
-    },
     "在“设置”中修改": {
       "localizations": {
         "en": {
@@ -1295,22 +1183,6 @@
         }
       }
     },
-    "在日记里写 #话题#，这里就会出现，也会同步成照片的关键词": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Write #topic# in an entry and it appears here, synced as a photo keyword"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "日記に #話題# と書くとここに表示され、写真のキーワードにも同期されます"
-          }
-        }
-      }
-    },
     "在照片 App 的说明栏写，也会出现在这里": {
       "localizations": {
         "en": {
@@ -1323,22 +1195,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "「写真」アプリのキャプション欄に書いた内容もここに表示されます"
-          }
-        }
-      }
-    },
-    "在说明里写 #话题#，就会出现在这里": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Write #topic# in a caption and it shows up here"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャプションに #話題# と書くとここに表示されます"
           }
         }
       }
@@ -1375,6 +1231,22 @@
         }
       }
     },
+    "外观": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Appearance"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外観"
+          }
+        }
+      }
+    },
     "好": {
       "localizations": {
         "en": {
@@ -1387,22 +1259,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "OK"
-          }
-        }
-      }
-    },
-    "它可能在照片 App 里被删除，或者说明被清空了": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "It may have been deleted in Photos, or its caption was cleared"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "「写真」アプリで削除されたか、キャプションが消去された可能性があります"
           }
         }
       }
@@ -1621,6 +1477,38 @@
         }
       }
     },
+    "已隐藏": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hidden"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非表示"
+          }
+        }
+      }
+    },
+    "常见的短说明": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Common Short Captions"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "よくある短いキャプション"
+          }
+        }
+      }
+    },
     "往年的今天还没有日记": {
       "localizations": {
         "en": {
@@ -1637,6 +1525,22 @@
         }
       }
     },
+    "手记建议": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Journaling Suggestions"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ジャーナルの提案"
+          }
+        }
+      }
+    },
     "把日记写在\n照片的说明里": {
       "localizations": {
         "en": {
@@ -1649,22 +1553,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記を\n写真のキャプションに"
-          }
-        }
-      }
-    },
-    "拍几张照片再来": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Take some photos and come back"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "写真を撮ってから、また来てください"
           }
         }
       }
@@ -1861,22 +1749,6 @@
         }
       }
     },
-    "日记保存在照片的“说明”里，随照片经 iCloud 同步。本 App 只保存可以随时重建的索引，删除 App 不会丢失日记。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Entries live in each photo’s caption and sync with your photos through iCloud. This app only keeps an index that can be rebuilt anytime, so deleting the app never loses your diary."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "日記は写真の「キャプション」に保存され、写真と一緒に iCloud で同期されます。このアプリはいつでも再作成できるインデックスだけを保存するため、アプリを削除しても日記は失われません。"
-          }
-        }
-      }
-    },
     "日记内容、地点、#标签#": {
       "localizations": {
         "en": {
@@ -1921,6 +1793,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記はこの写真のキャプションにあるため、写真を削除すると日記も削除されます。写真は「最近削除した項目」に移動します。"
+          }
+        }
+      }
+    },
+    "日记在照片的说明里，删除 App 不会丢失。": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your diary lives in photo captions, so deleting the app won’t lose it."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日記は写真のキャプションにあるので、Appを削除しても消えません。"
           }
         }
       }
@@ -2081,22 +1969,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "過去1年間"
-          }
-        }
-      }
-    },
-    "最近的日记、那年今日和还没写的照片会自动发到手表上；在手表上口述的感想会写进照片说明。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recent entries, On This Day and unwritten photos are sent to your watch automatically. Reflections dictated on the watch are written into the photo caption."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "最近の日記、あの日の今日、まだ書いていない写真は自動的に Watch に送られます。Watch で口述した感想は写真の説明に書き込まれます。"
           }
         }
       }
@@ -2289,23 +2161,6 @@
         }
       }
     },
-    "权限": {
-      "extractionState": "stale",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Permission"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "権限"
-          }
-        }
-      }
-    },
     "松绿": {
       "localizations": {
         "en": {
@@ -2434,22 +2289,6 @@
         }
       }
     },
-    "每段末尾一行是写作日期；#话题# 会同步为照片关键词。在照片 App 的说明栏里按这个格式写，也会出现在日记里。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Each part ends with a line giving the date it was written; #topic# syncs as a photo keyword. Captions in this format written in the Photos app also appear in your diary."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "各段落の最後の行は記入日です。#話題# は写真のキーワードとして同期されます。「写真」アプリのキャプション欄にこの形式で書いた内容も日記に表示されます。"
-          }
-        }
-      }
-    },
     "没有保存": {
       "localizations": {
         "en": {
@@ -2494,6 +2333,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "日付なし"
+          }
+        }
+      }
+    },
+    "浅色": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Light"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライト"
+          }
+        }
+      }
+    },
+    "深色": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dark"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダーク"
           }
         }
       }
@@ -2658,6 +2529,22 @@
         }
       }
     },
+    "琥珀": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amber"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アンバー"
+          }
+        }
+      }
+    },
     "用过的标签": {
       "localizations": {
         "en": {
@@ -2686,6 +2573,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "表示言語"
+          }
+        }
+      }
+    },
+    "石墨": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Graphite"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "グラファイト"
           }
         }
       }
@@ -2734,22 +2637,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "%2$lld件中%1$lld件目"
-          }
-        }
-      }
-    },
-    "第一次打开要读一遍照片库，之后只读有变化的照片。读到的日记会先显示出来。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "The first launch reads your whole photo library; after that only changed photos are read. Entries appear as they’re found."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "初回は写真ライブラリ全体を読み込みます。次回からは変更のあった写真だけを読み込みます。見つかった日記から順に表示されます。"
           }
         }
       }
@@ -2882,6 +2769,70 @@
         }
       }
     },
+    "胭脂": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rouge"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ルージュ"
+          }
+        }
+      }
+    },
+    "自动": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatic"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自動"
+          }
+        }
+      }
+    },
+    "自定义颜色": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Custom Color"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "カスタムカラー"
+          }
+        }
+      }
+    },
+    "苔绿": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moss"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "モス"
+          }
+        }
+      }
+    },
     "补写日记": {
       "localizations": {
         "en": {
@@ -2962,67 +2913,18 @@
         }
       }
     },
-    "语言": {
-      "extractionState": "stale",
+    "说明和这些文字完全一样的照片不算日记。": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Language"
+            "value": "Photos whose caption exactly matches one of these aren’t treated as diary entries."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "言語"
-          }
-        }
-      }
-    },
-    "说完会发到 iPhone，写进这张照片的说明": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "When you’re done it’s sent to your iPhone and written into this photo’s caption"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "話し終えると iPhone に送られ、この写真の説明に書き込まれます"
-          }
-        }
-      }
-    },
-    "说明和这些文字完全一样的照片不算日记，不会出现在列表、日历和搜索里；给它们写日记时会直接覆盖。下方带眼睛图标的是照片库里常见的短说明，点一下就隐藏。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Photos whose caption exactly matches one of these aren’t treated as entries and won’t appear in the list, calendar or search; writing an entry for one replaces its caption. Rows with an eye icon are short captions common in your library — tap one to hide it."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "キャプションがこれらと完全に一致する写真は日記として扱わず、リスト・カレンダー・検索に表示しません。日記を書くとキャプションは上書きされます。目のアイコンの項目はライブラリによくある短いキャプションです。タップすると非表示になります。"
-          }
-        }
-      }
-    },
-    "说明和这段文字完全一样的照片，不再出现在日记里。": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Photos with exactly this caption will no longer appear in your diary."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "このテキストと完全に一致するキャプションの写真は、日記に表示されなくなります。"
+            "value": "キャプションがこれらと完全に一致する写真は日記として扱いません。"
           }
         }
       }
@@ -3071,22 +2973,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "オーカー"
-          }
-        }
-      }
-    },
-    "趁还记得，写下当时的感受": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Write down how it felt while you still remember"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "覚えているうちに、そのときの気持ちを書こう"
           }
         }
       }
@@ -3295,6 +3181,22 @@
         }
       }
     },
+    "这段时间没有照片": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Photos from This Moment"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この時間の写真はありません"
+          }
+        }
+      }
+    },
     "这篇不在手表上": {
       "localizations": {
         "en": {
@@ -3323,22 +3225,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "感想を追加"
-          }
-        }
-      }
-    },
-    "选一张照片，把当时的感受写进它的说明里": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pick a photo and write how it felt into its caption"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "写真を選んで、そのときの気持ちをキャプションに書きましょう"
           }
         }
       }
@@ -3589,18 +3475,18 @@
         }
       }
     },
-    "需要读写照片说明。选择“有限访问”也可以使用，但只会显示你选的照片。": {
+    "青瓷": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Captions need read and write access. Limited Access works too, but only the photos you pick will appear."
+            "value": "Celadon"
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "キャプションの読み書きが必要です。「制限付きアクセス」でも使えますが、選んだ写真だけが表示されます。"
+            "value": "セラドン"
           }
         }
       }

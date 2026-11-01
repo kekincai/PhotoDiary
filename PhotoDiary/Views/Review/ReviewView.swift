@@ -1,7 +1,10 @@
 import SwiftUI
 import Photos
+#if canImport(JournalingSuggestions) && JOURNALING_SUGGESTIONS
+@preconcurrency import JournalingSuggestions
+#endif
 
-/// 回顾：参照照片 App 的精选集。那年今日、本周写作、还没写的照片、标签。
+/// 回顾：参照照片 App 的精选集。那年今日、本周写作、还没写的照片、手记建议、标签。
 struct ReviewView: View {
     @Environment(Router.self) private var router
 
@@ -13,6 +16,7 @@ struct ReviewView: View {
                     .id("review-top")
                 WeekSection()
                 UnwrittenSection()
+                SuggestionsSection()
                 TagsSection()
             }
             .padding(.top, 8)
@@ -44,13 +48,8 @@ private struct OnThisDaySection: View {
             SectionTitle(title: String(localized: "那年今日"))
                 .padding(.horizontal, 20)
             if memories.isEmpty {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("往年的今天还没有日记")
-                        .font(.headline)
-                    Text("今天写下的，明年的这一天会出现在这里")
-                        .font(.subheadline)
-                        .foregroundStyle(Color.meta)
-                }
+                Text("往年的今天还没有日记")
+                    .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
                 .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
@@ -230,11 +229,6 @@ private struct UnwrittenSection: View {
             }
             .buttonStyle(.press)
             .padding(.horizontal, 20)
-            Text("趁还记得，写下当时的感受")
-                .font(.subheadline)
-                .foregroundStyle(Color.meta)
-                .padding(.horizontal, 20)
-                .padding(.top, 6)
             if !photos.isEmpty {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 8) {
@@ -294,6 +288,72 @@ private struct UnwrittenSection: View {
     }
 }
 
+// MARK: 手记建议：系统整理的最近时刻（地点、照片、听过的歌），挑一个就打开那张照片的编辑器
+
+/// 系统只开放挑选面板，App 读不到建议列表，所以这里是一个打开面板的入口。
+/// 需要付费开发者账号的权限，没开 JOURNALING_SUGGESTIONS 时整组不编译（见 project.yml）；模拟器的 SDK 也没有这个框架。
+private struct SuggestionsSection: View {
+    @Environment(DiaryStore.self) private var store
+    @Environment(Router.self) private var router
+    @State private var picking = false
+    @State private var noPhoto = false
+
+    var body: some View {
+        #if canImport(JournalingSuggestions) && JOURNALING_SUGGESTIONS
+        Button { picking = true } label: {
+            HStack(spacing: 14) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .background(
+                        LinearGradient(colors: [.orange, .pink, .purple], startPoint: .topLeading, endPoint: .bottomTrailing),
+                        in: .rect(cornerRadius: 12, style: .continuous)
+                    )
+                Text("手记建议")
+                    .font(.headline)
+                    .foregroundStyle(Color.ink)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(Color(.tertiaryLabel))
+            }
+            .padding(14)
+            .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
+            .contentShape(.rect(cornerRadius: 24))
+        }
+        .buttonStyle(.press)
+        .padding(.horizontal, 16)
+        .journalingSuggestionsPicker(isPresented: $picking) { suggestion in
+            await open(suggestion)
+        }
+        .alert("这段时间没有照片", isPresented: $noPhoto) {
+            Button("好") {}
+        }
+        #endif
+    }
+
+    #if canImport(JournalingSuggestions) && JOURNALING_SUGGESTIONS
+    /// 找回建议里那张照片（或那段时间的第一张），歌曲、播客预先写进正文。
+    private func open(_ suggestion: JournalingSuggestion) async {
+        let photos = await suggestion.content(forType: JournalingSuggestion.Photo.self)
+        let livePhotos = await suggestion.content(forType: JournalingSuggestion.LivePhoto.self)
+        let dates = photos.compactMap(\.date) + livePhotos.compactMap(\.date)
+        let interval = suggestion.date
+        let id = await Task.detached { AssetImages.asset(takenAt: dates, orIn: interval) }.value
+        guard let id else { noPhoto = true; return }
+
+        let songs = await suggestion.content(forType: JournalingSuggestion.Song.self)
+            .map { [$0.song, $0.artist].compactMap { $0 }.joined(separator: " – ") }
+        let podcasts = await suggestion.content(forType: JournalingSuggestion.Podcast.self)
+            .map { [$0.episode, $0.show].compactMap { $0 }.joined(separator: " – ") }
+        let lines = (songs + podcasts).filter { !$0.isEmpty }.map { "♪ \($0)" }
+        router.editor = EditorRequest(assetID: id, mode: store.entry(id) == nil ? .new : .append,
+                                      seed: lines.isEmpty ? nil : lines.joined(separator: "\n") + "\n")
+    }
+    #endif
+}
+
 // MARK: 标签：两列封面（前 4 个）
 
 private struct TagsSection: View {
@@ -305,19 +365,14 @@ private struct TagsSection: View {
 
     var body: some View {
         let tags = store.tagCounts
-        VStack(alignment: .leading, spacing: 12) {
-            NavigationLink(value: Route.tags) {
-                SectionTitle(title: String(localized: "标签"), chevron: !tags.isEmpty)
-            }
-            .buttonStyle(.press)
-            .disabled(tags.isEmpty)
-            .padding(.horizontal, 20)
-            if tags.isEmpty {
-                Text("在说明里写 #话题#，就会出现在这里")
-                    .font(.subheadline)
-                    .foregroundStyle(Color.meta)
-                    .padding(.horizontal, 20)
-            } else {
+        // 没有标签时整组不显示。
+        if !tags.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                NavigationLink(value: Route.tags) {
+                    SectionTitle(title: String(localized: "标签"), chevron: true)
+                }
+                .buttonStyle(.press)
+                .padding(.horizontal, 20)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(tags.prefix(4), id: \.name) { tag in
                         NavigationLink(value: Route.tag(tag.name)) {

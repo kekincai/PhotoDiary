@@ -28,6 +28,8 @@ final class DiaryStore {
         var changeDelay: Duration = .milliseconds(350)
         /// 两次反向地理编码之间的间隔（频率限制）。
         var geocodeInterval: Duration = .milliseconds(600)
+        /// 地名用的语言（界面语言）。
+        var placeLanguage: () -> String = { AppLanguage.current.rawValue }
     }
 
     private let deps: Dependencies
@@ -112,6 +114,10 @@ final class DiaryStore {
     private var pendingIncremental = false
     /// 反向地理编码失败过的照片，本次运行不再重试。
     private var placeFailures = Set<String>()
+    /// 界面语言变了就加一，旧语言那一轮查到的地名不再写回。
+    private var placeGeneration = 0
+    /// 已有地名是用哪种语言查的；全部查完才写入。
+    static let placeLanguageKey = "placeLanguage"
 
     private var database: IndexDatabase?
     private var preparing: Task<(IndexDatabase, IndexDatabase.Loaded), Never>?
@@ -170,6 +176,7 @@ final class DiaryStore {
             entries = Dictionary(loaded.entries.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
             // 刚从库里读出来的不算变化。
             clearDirty()
+            placeLanguageChanged()
         }
         hasLoaded = true
         registerObserver()
@@ -523,6 +530,16 @@ final class DiaryStore {
             .map { $0 }
     }
 
+    /// 每条隐藏规则各隐藏了几张照片，按规则的规范化文字索引。
+    func hiddenCaptionCounts() -> [String: Int] {
+        var counts: [String: Int] = [:]
+        for id in hiddenIDs {
+            guard let caption = entries[id]?.caption else { continue }
+            counts[CaptionFilter.normalized(caption), default: 0] += 1
+        }
+        return counts
+    }
+
     var allTags: [String] { tagCounts.map(\.name) }
 
     func entries(tagged tag: String) -> [DiaryEntry] { byTag[tag] ?? [] }
@@ -555,8 +572,27 @@ final class DiaryStore {
 
     private var placeTask: Task<Void, Never>?
 
+    /// 地名跟着界面语言：语言和查地名时用的不一样时，丢掉旧地名，按新语言重新查（时区不变）。
+    func placeLanguageChanged() {
+        let language = deps.placeLanguage()
+        guard deps.defaults.string(forKey: Self.placeLanguageKey) != language,
+              !placeCache.isEmpty || entries.values.contains(where: { $0.placeName != nil }) else { return }
+        Log.places.info("地名改用 \(language, privacy: .public) 重新查询")
+        placeGeneration += 1
+        placeTask?.cancel()
+        placeTask = nil
+        placeCache.removeAll()
+        placeFailures.removeAll()
+        var copy = entries
+        for id in copy.keys { copy[id]?.placeName = nil }
+        entries = copy
+        resolvePlaces()
+    }
+
     private func resolvePlaces() {
         guard placeTask == nil else { return }
+        let generation = placeGeneration
+        let language = deps.placeLanguage()
         placeTask = Task {
             // 一次列出还缺地名的坐标；同一坐标只查一次。
             var pending: [String: CLLocationCoordinate2D] = [:]
@@ -577,6 +613,7 @@ final class DiaryStore {
                     filled += 1
                     resolved[key] = (cached, timeZoneCache[key])
                 } else if let coordinate = pending[key], let place = await deps.placeNamer.place(for: coordinate), let name = place.name {
+                    guard generation == placeGeneration else { break }
                     looked += 1
                     filled += 1
                     placeCache[key] = name
@@ -596,8 +633,10 @@ final class DiaryStore {
                     lastFlush = .now
                 }
             }
+            guard generation == placeGeneration else { return }
             applyPlaces(resolved)
             if looked > 0 { Log.places.info("地名解析结束：查询 \(looked) 次，失败 \(failures) 次") }
+            if !Task.isCancelled { deps.defaults.set(language, forKey: Self.placeLanguageKey) }
             placeTask = nil
             // 有条目补上了地名才需要保存。
             if filled > 0 { scheduleSave() }
@@ -679,10 +718,9 @@ final class DiaryStore {
     // MARK: 导出
 
     func markdownExport() -> String {
-        let header = DateFormatter.zh("yyyy年M月d日 EEEE")
-        var out = "# 照片日记\n\n"
+        var out = "# \(String(localized: "照片日记"))\n\n"
         for e in diaries.reversed() {
-            var title = header.string(from: e.displayDate)
+            var title = DiaryDates.fullWithWeekday(e.displayDate)
             if let place = e.placeName { title += " · \(place)" }
             out += "## \(title)\n\n\(e.caption)\n\n"
         }

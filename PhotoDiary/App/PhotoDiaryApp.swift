@@ -6,7 +6,9 @@ import OSLog
 struct PhotoDiaryApp: App {
     @State private var store: DiaryStore
     @State private var router = Router()
-    @AppStorage("brand") private var brand: BrandColor = .lake
+    /// 主题色的十六进制值：预设或在调色板里自选的。
+    @AppStorage(BrandColor.storageKey) private var brandHex = BrandColor.lake.rawValue
+    @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
     /// 设置里改语言时先调用 AppLanguage.apply，再写入这里，界面整体按新语言重建。
     @AppStorage(AppLanguage.storageKey) private var language: AppLanguage = .system
     @Environment(\.scenePhase) private var scenePhase
@@ -26,10 +28,13 @@ struct PhotoDiaryApp: App {
             RootView()
                 .environment(store)
                 .environment(router)
-                .environment(\.brand, brand.color)
-                .tint(brand.color)
+                .environment(\.brand, .brand(hex: brandHex))
+                .tint(.brand(hex: brandHex))
                 .environment(\.locale, AppLanguage.current.locale)
                 .id(language)
+                .onChange(of: language) { store.placeLanguageChanged() }
+                .onAppear { appearance.apply() }
+                .onChange(of: appearance) { appearance.apply() }
                 .task {
                     // 作为单元测试宿主启动时不读照片库：测试用自己的假照片库，不能改到模拟器里的照片。
                     guard !Self.isHostingUnitTests else { return }

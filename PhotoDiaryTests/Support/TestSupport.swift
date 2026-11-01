@@ -44,17 +44,17 @@ final class TestClock {
 
 func makeStore(library: FakeLibrary, places: FakePlaceNamer = FakePlaceNamer(),
                directory: URL = temporaryDirectory(), defaults: UserDefaults = isolatedDefaults(),
-               clock: TestClock = TestClock(), saveDelay: Duration = .zero) -> DiaryStore {
+               clock: TestClock = TestClock(), saveDelay: Duration = .zero, language: String = "zh-Hans") -> DiaryStore {
     DiaryStore(.init(library: library, indexDirectory: directory, placeNamer: places,
                      defaults: defaults, now: { clock.now }, saveDelay: saveDelay, changeDelay: .zero,
-                     geocodeInterval: .zero))
+                     geocodeInterval: .zero, placeLanguage: { language }))
 }
 
 /// 启动并等第一次同步结束。
 func startedStore(_ library: FakeLibrary, places: FakePlaceNamer = FakePlaceNamer(),
                   directory: URL = temporaryDirectory(), defaults: UserDefaults = isolatedDefaults(),
-                  clock: TestClock = TestClock()) async -> DiaryStore {
-    let store = makeStore(library: library, places: places, directory: directory, defaults: defaults, clock: clock)
+                  clock: TestClock = TestClock(), language: String = "zh-Hans") async -> DiaryStore {
+    let store = makeStore(library: library, places: places, directory: directory, defaults: defaults, clock: clock, language: language)
     await store.start()
     _ = await eventually { store.hasSynced && store.syncState == .idle }
     return store

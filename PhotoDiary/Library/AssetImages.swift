@@ -105,4 +105,30 @@ final class AssetImages {
         result.enumerateObjects { asset, _, _ in out.append((asset.localIdentifier, asset.creationDate)) }
         return out
     }
+
+    /// 手记建议里的照片是系统给的副本，没有 localIdentifier；按拍摄时间（±1 秒）找回照片库里的原片。
+    /// 对不上时退回到这段时间里的第一张照片。
+    nonisolated static func asset(takenAt dates: [Date], orIn interval: DateInterval?) -> String? {
+        if let first = dates.min(), let last = dates.max() {
+            let matches = assets(from: first.addingTimeInterval(-1), to: last.addingTimeInterval(1))
+            if let hit = matches.first(where: { match in dates.contains { abs($0.timeIntervalSince(match.date)) <= 1 } }) {
+                return hit.id
+            }
+        }
+        guard let interval else { return nil }
+        return assets(from: interval.start, to: interval.end).first?.id
+    }
+
+    private nonisolated static func assets(from start: Date, to end: Date) -> [(id: String, date: Date)] {
+        let options = PHFetchOptions()
+        options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate <= %@", start as NSDate, end as NSDate)
+        options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: true)]
+        options.includeAssetSourceTypes = LibraryScanner.sourceTypes
+        let result = PHAsset.fetchAssets(with: .image, options: options)
+        var out: [(String, Date)] = []
+        result.enumerateObjects { asset, _, _ in
+            if let date = asset.creationDate { out.append((asset.localIdentifier, date)) }
+        }
+        return out
+    }
 }

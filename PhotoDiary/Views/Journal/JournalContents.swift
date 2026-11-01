@@ -66,7 +66,6 @@ struct ListContent: View {
             FirstScanView()
         } else {
             EmptyHint(title: "还没有写过说明的照片",
-                      message: "选一张照片，把当时的感受写进它的说明里",
                       action: ("从照片开始", { router.showAddFromPhotos = true }))
         }
     }
@@ -122,11 +121,6 @@ struct FirstScanView: View {
                     .tint(brand)
                     .padding(.top, 4)
                     .animation(.snappy, value: progress?.done)
-                Text("第一次打开要读一遍照片库，之后只读有变化的照片。读到的日记会先显示出来。")
-                    .font(.caption)
-                    .foregroundStyle(Color.meta)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .padding(.top, 2)
             }
         }
         .padding(Metrics.Spacing.l)

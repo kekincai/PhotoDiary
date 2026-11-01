@@ -68,7 +68,7 @@ struct SearchView: View {
 
     @ViewBuilder private var browse: some View {
         if store.timeline.isEmpty {
-            EmptyHint(title: "搜索日记", message: "可以搜正文和地点，输入 # 按标签筛选")
+            EmptyHint(title: "搜索日记")
         } else {
             if !store.tagCounts.isEmpty {
                 groupTitle("标签").padding(.top, 16)

@@ -25,6 +25,12 @@ targets:
       - path: Shared
     dependencies:
       - target: PhotoDiaryWatch
+    # 手记建议（JournalingSuggestions）需要付费开发者账号的 com.apple.developer.journal.allow 权限，个人团队签不了。
+    # 加入 Apple Developer Program 后，取消下面的注释，并在 SWIFT_ACTIVE_COMPILATION_CONDITIONS 里加上 JOURNALING_SUGGESTIONS。
+    # entitlements:
+    #   path: PhotoDiary/PhotoDiary.entitlements
+    #   properties:
+    #     com.apple.developer.journal.allow: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kejincai.photodiary
@@ -34,13 +40,13 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: PhotoDiary/Info.plist
-        INFOPLIST_KEY_CFBundleDisplayName: 照片日记
+        INFOPLIST_KEY_CFBundleDisplayName: Photo Diary
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.lifestyle
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: 日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Photo Diary keeps your diary in each photo's caption. It needs to read and edit captions, and never copies or uploads your photos.
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: zh-Hans
+        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
         INFOPLIST_KEY_PHPhotoLibraryPreventAutomaticLimitedAccessAlert: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
@@ -53,6 +59,7 @@ targets:
       - path: PhotoDiaryWatch
       - path: Shared
       - path: PhotoDiary/Resources/Localizable.xcstrings
+      - path: PhotoDiary/Resources/InfoPlist.xcstrings
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kejincai.photodiary.watchkitapp
@@ -61,8 +68,8 @@ targets:
         CURRENT_PROJECT_VERSION: "2"
         TARGETED_DEVICE_FAMILY: "4"
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: 照片日记
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: zh-Hans
+        INFOPLIST_KEY_CFBundleDisplayName: Photo Diary
+        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.kejincai.photodiary
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"

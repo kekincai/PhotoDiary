@@ -108,12 +108,13 @@ struct IndexPersistenceTests {
 
     @Test func placesSurviveCorruptedEntriesStore() async throws {
         let dir = temporaryDirectory()
+        let defaults = isolatedDefaults()
         let library = FakeLibrary()
         library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
         do {
             let places = FakePlaceNamer()
             places.set("横滨", timeZone: "Asia/Tokyo", latitude: 35.44, longitude: 139.64)
-            let first = await startedStore(library, places: places, directory: dir)
+            let first = await startedStore(library, places: places, directory: dir, defaults: defaults)
             #expect(await eventually { first.entry("a")?.placeName == "横滨" })
             await first.saveNow()
         }
@@ -122,11 +123,38 @@ struct IndexPersistenceTests {
         try Data("not a database".utf8).write(to: store)
 
         let namer = FakePlaceNamer()
-        let second = await startedStore(library, places: namer, directory: dir)
+        let second = await startedStore(library, places: namer, directory: dir, defaults: defaults)
         #expect(library.fullScans == 2)
         #expect(await eventually { second.entry("a")?.placeName == "横滨" })
         #expect(second.entry("a")?.timeZoneID == "Asia/Tokyo")
         #expect(namer.lookups == 0)
+    }
+
+    /// 换了界面语言：地名按新语言重查一遍，并记住；同一语言再启动不再查。
+    @Test func placesFollowInterfaceLanguage() async throws {
+        let dir = temporaryDirectory()
+        let defaults = isolatedDefaults()
+        let library = FakeLibrary()
+        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
+        do {
+            let places = FakePlaceNamer()
+            places.set("横滨", timeZone: "Asia/Tokyo", latitude: 35.44, longitude: 139.64)
+            let first = await startedStore(library, places: places, directory: dir, defaults: defaults)
+            #expect(await eventually { first.entry("a")?.placeName == "横滨" })
+            await first.saveNow()
+        }
+        let english = FakePlaceNamer()
+        english.set("Yokohama", timeZone: "Asia/Tokyo", latitude: 35.44, longitude: 139.64)
+        do {
+            let second = await startedStore(library, places: english, directory: dir, defaults: defaults, language: "en")
+            #expect(await eventually { second.entry("a")?.placeName == "Yokohama" })
+            #expect(english.lookups == 1)
+            await second.saveNow()
+        }
+        let again = FakePlaceNamer()
+        let third = await startedStore(library, places: again, directory: dir, defaults: defaults, language: "en")
+        #expect(await eventually { third.entry("a")?.placeName == "Yokohama" })
+        #expect(again.lookups == 0)
     }
 
     @Test func saveNowSkipsDebounce() async throws {

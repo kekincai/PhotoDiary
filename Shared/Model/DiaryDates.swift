@@ -3,19 +3,7 @@ import Foundation
 // MARK: 日期文案（iPhone 和 Apple Watch 共用）
 
 extension DateFormatter {
-    private static var cache: [String: DateFormatter] = [:]
     private static var localizedCache: [String: DateFormatter] = [:]
-
-    /// 固定中文格式，只给导出等不随界面语言变化的地方用。
-    static func zh(_ format: String) -> DateFormatter {
-        if let f = cache[format] { return f }
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "zh_CN")
-        f.calendar = .diary
-        f.dateFormat = format
-        cache[format] = f
-        return f
-    }
 
     /// 按界面语言排列的格式（模板，如 "MMMd"）。
     static func localized(_ template: String) -> DateFormatter {
