@@ -78,7 +78,7 @@ struct IndexDatabaseTests {
     }
 }
 
-/// DiaryStore 和数据库：只写变化的行、旧版 JSON 迁移、后台落盘。
+/// DiaryStore 和数据库：只写变化的行、损坏重建、后台落盘。
 struct IndexPersistenceTests {
     @Test func incrementalSyncWritesOnlyChangedRows() async {
         let library = FakeLibrary()
@@ -104,46 +104,6 @@ struct IndexPersistenceTests {
         store.rebuildIndex()
         #expect(await eventually { library.fullScans == 2 && store.syncState == .idle })
         #expect(await eventually { store.lastSaveStats == .init(upserted: 1, deleted: 1) })
-    }
-
-    @Test func legacyJSONIndexIsMigratedWithoutRescanning() async throws {
-        let dir = temporaryDirectory()
-        let library = FakeLibrary()
-        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
-        let legacy = LegacyIndex(directory: dir)
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let old = IndexSnapshot(entries: [sampleEntry("a", caption: "港口", place: "横滨")],
-                                changeToken: FakeLibrary.archive(0), writtenInApp: ["a"])
-        try JSONEncoder().encode(old).write(to: legacy.fileURL)
-        try JSONEncoder().encode(PlaceCache(names: ["35.44,139.64": "横滨"], timeZones: [:])).write(to: legacy.placesURL)
-
-        let namer = FakePlaceNamer()
-        let store = await startedStore(library, places: namer, directory: dir)
-        #expect(library.fullScans == 0)
-        #expect(library.incrementals == 1)
-        #expect(store.entry("a")?.placeName == "横滨")
-        #expect(store.entry("a")?.writtenInApp == true)
-        #expect(namer.lookups == 0)
-        #expect(!FileManager.default.fileExists(atPath: legacy.fileURL.path()))
-        #expect(!FileManager.default.fileExists(atPath: legacy.placesURL.path()))
-        #expect(await loadIndex(dir).places.names == ["35.44,139.64": "横滨"])
-    }
-
-    /// 更早版本的索引（地名写在索引里、版本号不认识）：条目要重读，地名照样搬过来。
-    @Test func unknownLegacyVersionStillMigratesPlaces() async throws {
-        let dir = temporaryDirectory()
-        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        var old = IndexSnapshot(placeCache: ["35.44,139.64": "横滨"], timeZoneCache: ["35.44,139.64": "Asia/Tokyo"])
-        old.version = 1
-        try JSONEncoder().encode(old).write(to: LegacyIndex(directory: dir).fileURL)
-        // 地名只在旧索引里，没有 place-cache.json；版本不认识时 load() 读不出地名，所以这一项要单独处理。
-        let library = FakeLibrary()
-        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
-        let namer = FakePlaceNamer()
-        let store = await startedStore(library, places: namer, directory: dir)
-        #expect(library.fullScans == 1)
-        #expect(await eventually { store.entry("a")?.placeName == "横滨" })
-        #expect(namer.lookups == 0)
     }
 
     @Test func placesSurviveCorruptedEntriesStore() async throws {

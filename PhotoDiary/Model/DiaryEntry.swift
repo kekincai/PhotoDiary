@@ -36,8 +36,9 @@ nonisolated struct CaptionDisplay: Hashable, Codable, Sendable {
 /// 本地索引里的一条记录：一张带说明的照片。可以随时从照片库完整重建。
 ///
 /// 列表、日历每次刷新都会读日期、标题、预览，所以这些派生值在说明或时区变化时算一次存起来，
-/// 不在每次访问时重新解析说明、重新做日历换算。派生值不写进索引文件。
-nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
+/// 不在每次访问时重新解析说明、重新做日历换算。解析结果（display）随条目存进索引数据库；
+/// 照片日期由拍摄时间和时区算出，不存。
+nonisolated struct DiaryEntry: Identifiable, Hashable, Sendable {
     /// PHAsset.localIdentifier
     let id: String
     var caption: String { didSet { if caption != oldValue { reparse() } } }
@@ -69,10 +70,6 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
     /// 用于显示星期、日期的时间点（拍摄地当天的正午）。
     private(set) var displayDate: Date = .distantPast
 
-    private enum CodingKeys: String, CodingKey {
-        case id, caption, keywords, creationDate, latitude, longitude, mediaKind, isCloudShared,
-             pixelWidth, pixelHeight, placeName, timeZoneID, writtenInApp
-    }
 
     init(id: String, caption: String, keywords: [String], creationDate: Date?, latitude: Double?,
          longitude: Double?, mediaKind: MediaKind, isCloudShared: Bool, pixelWidth: Int,
@@ -95,23 +92,6 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Codable, Sendable {
         if let display { apply(display) } else { reparse() }
     }
 
-    init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        id = try c.decode(String.self, forKey: .id)
-        caption = try c.decode(String.self, forKey: .caption)
-        keywords = try c.decode([String].self, forKey: .keywords)
-        creationDate = try c.decodeIfPresent(Date.self, forKey: .creationDate)
-        latitude = try c.decodeIfPresent(Double.self, forKey: .latitude)
-        longitude = try c.decodeIfPresent(Double.self, forKey: .longitude)
-        mediaKind = try c.decode(MediaKind.self, forKey: .mediaKind)
-        isCloudShared = try c.decode(Bool.self, forKey: .isCloudShared)
-        pixelWidth = try c.decode(Int.self, forKey: .pixelWidth)
-        pixelHeight = try c.decode(Int.self, forKey: .pixelHeight)
-        placeName = try c.decodeIfPresent(String.self, forKey: .placeName)
-        timeZoneID = try c.decodeIfPresent(String.self, forKey: .timeZoneID)
-        writtenInApp = try c.decodeIfPresent(Bool.self, forKey: .writtenInApp) ?? false
-        reparse()
-    }
 
     mutating func reparse() {
         apply(CaptionDisplay(caption: caption))

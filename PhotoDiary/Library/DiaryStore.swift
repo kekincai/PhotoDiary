@@ -16,7 +16,7 @@ final class DiaryStore {
     /// 外部依赖。默认值就是真实实现；测试换成假照片库、临时目录和固定时间。
     struct Dependencies {
         var library: any PhotoLibraryClient = PhotoKitLibrary()
-        /// 索引数据库放在这个目录下的 Index/ 里；旧版 JSON 索引也在这里找。
+        /// 索引数据库放在这个目录下的 Index/ 里。
         var indexDirectory: URL = .applicationSupportDirectory
         var placeNamer: any PlaceNaming = PlaceNamer()
         /// 说明过滤规则存在这里。
@@ -150,7 +150,6 @@ final class DiaryStore {
         // detached：不等主线程有空才开始。
         preparing = Task.detached(priority: .userInitiated) {
             let database = await IndexDatabase.open(directory: directory)
-            await database.importLegacy(from: LegacyIndex(directory: directory))
             return (database, await database.load())
         }
     }
@@ -160,7 +159,7 @@ final class DiaryStore {
         Log.app.notice("启动，照片权限 \(self.authorization.rawValue, privacy: .public)")
         guard canRead else { return }
         if !hasLoaded {
-            // 打开、迁移、读取都在数据库自己的线程上，一次回到主线程。
+            // 打开、读取都在数据库自己的线程上，一次回到主线程。
             prepare()
             guard let (database, loaded) = await preparing?.value else { return }
             self.database = database

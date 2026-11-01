@@ -103,8 +103,8 @@ nonisolated final class PlaceRecord {
     }
 }
 
-/// 地名缓存在内存里的样子（也是旧版 place-cache.json 的格式）。
-nonisolated struct PlaceCache: Codable, Sendable, Equatable {
+/// 地名缓存在内存里的样子。
+nonisolated struct PlaceCache: Sendable, Equatable {
     var names: [String: String] = [:]
     var timeZones: [String: String] = [:]
 }
@@ -281,36 +281,5 @@ actor IndexDatabase {
     /// 谓词里的 IN 列表不宜太长。
     private static func chunks<T>(_ items: [T], size: Int = 500) -> [ArraySlice<T>] {
         stride(from: 0, to: items.count, by: size).map { items[$0..<min($0 + size, items.count)] }
-    }
-
-    // MARK: 迁移
-
-    /// 旧版本的索引是 JSON 文件。库还是空的时候把它整个搬进来（照片库不用重读），然后删掉旧文件。
-    func importLegacy(from legacy: LegacyIndex) async {
-        guard ((try? modelContext.fetchCount(FetchDescriptor<SyncRecord>())) ?? 0) == 0 else { return }
-        let snapshot = await legacy.load()
-        let places = await legacy.loadPlaces()
-        guard snapshot != nil || places != nil else { return }
-        var changes = Changes()
-        if let snapshot, snapshot.version != IndexSnapshot.currentVersion {
-            Log.index.notice("旧版索引版本 \(snapshot.version) 不认识，只迁移地名，条目从照片库重读")
-        } else if let snapshot {
-            changes.upserts = snapshot.entries.map { entry in
-                var entry = entry
-                entry.writtenInApp = snapshot.writtenInApp.contains(entry.id)
-                return entry
-            }
-            changes.changeToken = snapshot.changeToken
-        }
-        let names = places?.names ?? snapshot?.placeCache ?? [:]
-        let zones = places?.timeZones ?? snapshot?.timeZoneCache ?? [:]
-        for (key, name) in names { changes.places[key] = (name, zones[key]) }
-        do {
-            try apply(changes)
-            legacy.remove()
-            Log.index.notice("旧版 JSON 索引已迁入数据库：\(changes.upserts.count) 条，地名 \(changes.places.count) 个")
-        } catch {
-            Log.index.error("迁移旧版索引失败：\(error, privacy: .public)")
-        }
     }
 }

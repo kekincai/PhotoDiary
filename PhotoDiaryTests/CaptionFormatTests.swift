@@ -112,17 +112,11 @@ struct CaptionFormatTests {
         #expect(CaptionFormat.appending("夕阳", to: "0", on: day, hidden: hides) == "夕阳\n— 2026.10.31")
     }
 
-    @Test func indexRoundTripRebuildsDerivedFields() throws {
+    @Test func timeZoneChangesPhotoDay() {
         var entry = DiaryEntry(id: "1", caption: sample, keywords: [], creationDate: Date(timeIntervalSince1970: 1_792_000_000),
                                latitude: nil, longitude: nil, mediaKind: .photo, isCloudShared: false, pixelWidth: 4, pixelHeight: 3)
-        // 旧索引里带着 segments、tags 两个键，新格式忽略它们，读入后重新解析。
-        var json = try JSONSerialization.jsonObject(with: JSONEncoder().encode(entry)) as! [String: Any]
-        json["segments"] = []
-        json["tags"] = ["旧"]
-        let decoded = try JSONDecoder().decode(DiaryEntry.self, from: JSONSerialization.data(withJSONObject: json))
-        #expect(decoded.title == "风很舒服，第一次用新镜头拍日落")
-        #expect(decoded.tags == ["旅行", "镜头测试"])
-        #expect(decoded == entry)
+        #expect(entry.title == "风很舒服，第一次用新镜头拍日落")
+        #expect(entry.tags == ["旅行", "镜头测试"])
 
         // 时区变了，照片日期跟着变。
         entry.timeZoneID = "Pacific/Kiritimati"

@@ -139,7 +139,7 @@
 - `DiaryStore` 在 `entries` 每次赋值时记下变了的行，保存时只写这些；token 和条目在同一个事务里。全量重读（token 失效、手动重建）也是和库里比，只写不一样的行。
 - 启动直接用存着的解析结果；解析规则改了就把 `CaptionDisplay.version` 加一，旧结果会在下次启动时重算并写回。
 - 条目库打不开（文件损坏、模型改得不兼容）就删掉重建，地名库保留；都不行时退回内存库。
-- 旧版 `diary-index.json` / `place-cache.json` 在第一次启动时整个搬进库里，然后删掉，不重读照片库。模拟器上实测：15 条、12 个地名迁入，之后走增量同步。
+- 旧版 JSON 索引不迁移：App 还没有人在用，直接舍弃。设备上留下的 `diary-index.json` 不会再被读取，删除重装 App 即可清掉。
 - App 初始化时就在后台打开并读入索引（`DiaryStore.prepare()`），和第一帧界面绘制并行；`start()` 时数据已经读好。
 
 1 万条的耗时（模拟器、Release，`TEST_RUNNER_PERF=1` 跑 `PerformanceTests`）：
