@@ -65,7 +65,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
         }
         current = choice.resolved
         bundle = Bundle.main.path(forResource: current.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))
-        DateFormatter.resetLocalized()
+        DiaryDates.locale = current.locale
         LocalizedBundle.install()
     }
 }

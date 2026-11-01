@@ -33,7 +33,7 @@ struct LaunchSplash: View {
     /// 启动画面里书签的宽度（Tools/AppIcon/make-icon.swift 生成的 LaunchMark）。
     private static let markWidth: CGFloat = 64
 
-    private var palette: SplashPalette { colorScheme == .dark ? .dark : .light }
+    private var palette: MarkPalette { colorScheme == .dark ? .dark : .light }
     private var markScale: CGFloat {
         guard !reduceMotion else { return 1 }
         return (popped ? 1.25 : 1) * (crouch ? 0.88 : 1)
@@ -206,81 +206,6 @@ private struct IrisZoom: ViewModifier, Animatable {
             }
             .scaleEffect(scale, anchor: UnitPoint(x: focus.x / size.width, y: focus.y / size.height))
             .offset(x: (size.width / 2 - focus.x) * progress, y: (size.height / 2 - focus.y) * progress)
-    }
-}
-
-private struct SplashPalette {
-    let background: Color
-    let glyph: Color
-    let sun: Color
-    let mountains: LinearGradient
-    let mountainEdge: Color
-
-    static let light = SplashPalette(
-        background: Color(hex: "#2F6690"),
-        glyph: .white,
-        sun: Color(hex: "#FFC65C"),
-        mountains: LinearGradient(colors: [Color(hex: "#8FD3B6"), Color(hex: "#3E8F78")], startPoint: .top, endPoint: .bottom),
-        mountainEdge: Color(hex: "#5FAF95"))
-    static let dark = SplashPalette(
-        background: Color(hex: "#0E151C"),
-        glyph: Color(hex: "#8EC0E6"),
-        sun: Color(hex: "#F2B85B"),
-        mountains: LinearGradient(colors: [Color(hex: "#4F9C86"), Color(hex: "#2D6457")], startPoint: .top, endPoint: .bottom),
-        mountainEdge: Color(hex: "#3F8070"))
-}
-
-/// 和 App 图标同一个图形（Tools/AppIcon/make-icon.swift），坐标是 1024 画布上的。
-nonisolated private enum MarkGeometry {
-    static let bounds = CGRect(x: 322, y: 176, width: 380, height: 672)
-    static var aspect: CGFloat { bounds.height / bounds.width }
-    static let sunRect = CGRect(x: 548, y: 286, width: 92, height: 92)
-    static var sunRadius: CGFloat { sunRect.width / 2 }
-    /// 太阳中心在书签框里的位置（缩放锚点）。
-    static var sunAnchor: UnitPoint {
-        UnitPoint(x: (sunRect.midX - bounds.minX) / bounds.width, y: (sunRect.midY - bounds.minY) / bounds.height)
-    }
-    /// 太阳中心相对书签中心的偏移。
-    static var sunCenter: CGPoint { CGPoint(x: sunRect.midX - bounds.midX, y: sunRect.midY - bounds.midY) }
-    static let mountains: [CGPoint] = [
-        CGPoint(x: 376, y: 590), CGPoint(x: 476, y: 432), CGPoint(x: 540, y: 520),
-        CGPoint(x: 586, y: 466), CGPoint(x: 648, y: 590),
-    ]
-
-    static func bookmark(_ p: inout Path) {
-        let left: CGFloat = 322, right: CGFloat = 702, top: CGFloat = 176, bottom: CGFloat = 848, notch: CGFloat = 132, r: CGFloat = 46
-        p.move(to: CGPoint(x: left, y: top + r))
-        p.addArc(tangent1End: CGPoint(x: left, y: top), tangent2End: CGPoint(x: left + r, y: top), radius: r)
-        p.addArc(tangent1End: CGPoint(x: right, y: top), tangent2End: CGPoint(x: right, y: top + r), radius: r)
-        p.addLine(to: CGPoint(x: right, y: bottom))
-        p.addLine(to: CGPoint(x: (left + right) / 2, y: bottom - notch))
-        p.addLine(to: CGPoint(x: left, y: bottom))
-        p.closeSubpath()
-    }
-}
-
-nonisolated private enum MarkPart: Shape {
-    case glyph, sun, mountains
-
-    func path(in rect: CGRect) -> Path {
-        var p = Path()
-        switch self {
-        case .glyph:
-            MarkGeometry.bookmark(&p)
-            p.addEllipse(in: MarkGeometry.sunRect)
-            p.addLines(MarkGeometry.mountains)
-            p.closeSubpath()
-        case .sun:
-            p.addEllipse(in: MarkGeometry.sunRect)
-        case .mountains:
-            p.addLines(MarkGeometry.mountains)
-            p.closeSubpath()
-        }
-        let b = MarkGeometry.bounds
-        let s = rect.width / b.width
-        return p.applying(CGAffineTransform(translationX: rect.minX, y: rect.minY)
-            .scaledBy(x: s, y: s)
-            .translatedBy(x: -b.minX, y: -b.minY))
     }
 }
 

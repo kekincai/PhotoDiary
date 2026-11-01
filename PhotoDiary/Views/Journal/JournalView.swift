@@ -192,12 +192,3 @@ struct LimitedAccessBanner: View {
         .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
     }
 }
-
-enum LimitedLibrary {
-    static func present() {
-        guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-              var top = scene.keyWindow?.rootViewController else { return }
-        while let presented = top.presentedViewController { top = presented }
-        PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: top)
-    }
-}
