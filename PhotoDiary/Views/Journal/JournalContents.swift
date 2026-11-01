@@ -323,20 +323,28 @@ private struct MonthGrid: View {
             .modifier(OptionalEntryMenu(entry: entries.count == 1 ? first : nil))
             .accessibilityLabel("\(DiaryDates.full(day))，\(entries.count) 篇")
         } else if day == today {
-            Text("\(day.day)")
-                .font(.body.weight(.semibold).monospacedDigit())
-                .foregroundStyle(.white)
-                .frame(width: 34, height: 34)
-                .background(brand, in: .circle)
-                .frame(maxWidth: .infinity)
+            // 和照片格子一样先撑出正方形，再把日期放进去；否则整行没有照片时格子会被压扁，两位数被截成“…”。
+            Color.clear
                 .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    Text("\(day.day)")
+                        .font(.body.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(brand, in: .circle)
+                }
+                .accessibilityElement()
                 .accessibilityLabel("今天，\(DiaryDates.full(day))")
         } else {
-            Text("\(day.day)")
-                .font(.body.monospacedDigit())
-                .foregroundStyle(day > today ? Color(.tertiaryLabel) : Color.inkSecondary)
-                .frame(maxWidth: .infinity)
+            Color.clear
                 .aspectRatio(1, contentMode: .fit)
+                .overlay {
+                    Text("\(day.day)")
+                        .font(.body.monospacedDigit())
+                        .foregroundStyle(day > today ? Color(.tertiaryLabel) : Color.inkSecondary)
+                        .fixedSize()
+                }
+                .accessibilityElement()
                 .accessibilityLabel(DiaryDates.full(day))
         }
     }

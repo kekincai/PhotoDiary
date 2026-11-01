@@ -13,6 +13,30 @@ enum JournalMode: String, CaseIterable, Identifiable {
         case .map: String(localized: "地图")
         }
     }
+
+    /// 顶部视图按钮上的图标，随当前视图变化。
+    var symbol: String {
+        switch self {
+        case .list: "rectangle.grid.1x2"
+        case .calendar: "calendar"
+        case .media: "square.grid.3x3"
+        case .map: "map"
+        }
+    }
+}
+
+/// 选视图的菜单内容：带勾选的四项。顶部按钮和长按“日记”标签共用。
+struct JournalModePicker: View {
+    @Binding var mode: JournalMode
+
+    var body: some View {
+        Picker("视图", selection: $mode) {
+            ForEach(JournalMode.allCases) { option in
+                Label(option.title, systemImage: option.symbol).tag(option)
+            }
+        }
+        .pickerStyle(.inline)
+    }
 }
 
 extension EnvironmentValues {
@@ -20,7 +44,7 @@ extension EnvironmentValues {
 }
 
 /// 日记：同一份日记的四种视图。白底，大标题随内容滚走；颜色交给照片。
-/// 视图切换在底部的浮动玻璃分段控件里（RootView）。
+/// 视图切换在右上角的按钮里（图标就是当前视图），长按底部的“日记”标签也能切。
 struct JournalView: View {
     @Binding var mode: JournalMode
     @Environment(DiaryStore.self) private var store
@@ -55,8 +79,13 @@ struct JournalView: View {
                     .accessibilityHidden(!(pastTitle || mode == .map))
             }
             WideAddButton()
-            ToolbarItem(placement: .topBarTrailing) { moreMenu }
+            // 视图按钮和 ⋯ 合在一个玻璃胶囊里。
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                modeMenu
+                moreMenu
+            }
         }
+        .sensoryFeedback(.selection, trigger: mode)
     }
 
     // MARK: 列表、日历
@@ -142,6 +171,19 @@ struct JournalView: View {
         // 按写作日期数；下面的月份标题按照片日期数，所以这里不写月份名，免得两个“10月”数字对不上。
         let n = store.writtenThisMonth
         return n == 0 ? String(localized: "本月还没写") : String(localized: "本月写了 \(n) 篇")
+    }
+
+    private var modeMenu: some View {
+        Menu {
+            JournalModePicker(mode: $mode)
+        } label: {
+            Label {
+                Text("视图：\(mode.title)")
+            } icon: {
+                Image(systemName: mode.symbol)
+                    .contentTransition(.symbolEffect(.replace))
+            }
+        }
     }
 
     private var moreMenu: some View {

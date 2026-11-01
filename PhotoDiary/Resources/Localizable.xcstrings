@@ -2290,6 +2290,7 @@
       }
     },
     "权限": {
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2897,6 +2898,38 @@
         }
       }
     },
+    "视图": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示"
+          }
+        }
+      }
+    },
+    "视图：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "表示：%@"
+          }
+        }
+      }
+    },
     "视频": {
       "localizations": {
         "en": {
@@ -2930,6 +2963,7 @@
       }
     },
     "语言": {
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {

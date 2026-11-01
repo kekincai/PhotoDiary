@@ -45,8 +45,7 @@ private struct MainTabs: View {
     private var wide: Bool { sizeClass == .regular }
     private var showsTabBar: Bool { !wide && router.isAtRoot && router.tab != .search }
     /// 搜索页的搜索框自己画渐隐；放在这里会盖在搜索框上面，看起来发灰。
-    private var showsFade: Bool { (showsTabBar || (wide && router.isAtRoot && router.tab == .journal)) && !(router.tab == .journal && mode == .map) }
-    private var showsModeSwitcher: Bool { router.tab == .journal && router.isAtRoot && (wide || !router.tabBarCollapsed) }
+    private var showsFade: Bool { showsTabBar && !(router.tab == .journal && mode == .map) }
 
     var body: some View {
         @Bindable var router = router
@@ -69,25 +68,16 @@ private struct MainTabs: View {
         .environment(\.isWide, wide)
         .overlay(alignment: .bottom) {
             if showsFade {
-                BottomFade(height: router.tabBarCollapsed || wide ? 120 : 190)
+                BottomFade(height: router.tabBarCollapsed ? 110 : 140)
                     .ignoresSafeArea(edges: .bottom)
                     .transition(.opacity)
             }
         }
         .overlay(alignment: .bottom) {
-            VStack(spacing: Metrics.Spacing.l) {
-                if showsModeSwitcher {
-                    // 再点当前视图也回到顶部，和点标签一样。
-                    GlassSegmented(options: JournalMode.allCases, selection: $mode, title: \.title,
-                                   onReselect: { router.scrollToTop(.journal) })
-                        .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .bottom)))
-                }
-                if showsTabBar {
-                    FloatingTabBar()
-                        .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
-                }
+            if showsTabBar {
+                FloatingTabBar(mode: $mode)
+                    .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
             }
-            .padding(.bottom, wide ? Metrics.Spacing.l : 0)
         }
         .animation(.move, value: router.isAtRoot)
         .animation(.move, value: router.tab == .search)
@@ -150,6 +140,7 @@ struct WideAddButton: ToolbarContent {
 
 /// 玻璃胶囊［日记 · 回顾 · 搜索］+ 主题色“+”。收起时只剩当前标签的小胶囊，两个玻璃体之间会融合过渡。
 private struct FloatingTabBar: View {
+    @Binding var mode: JournalMode
     @Environment(Router.self) private var router
     @Environment(\.brand) private var brand
     @Namespace private var selection
@@ -234,6 +225,13 @@ private struct FloatingTabBar: View {
         }
         .buttonStyle(.press)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        // 长按“日记”直接换视图（快捷方式；主入口在右上角）。
+        .contextMenu {
+            if tab == .journal {
+                // 从别的标签长按时，选完也切回日记。
+                JournalModePicker(mode: Binding(get: { mode }, set: { mode = $0; router.tab = .journal }))
+            }
+        }
     }
 
     /// 收起时的小胶囊：当前标签的实心图标 + 名字。
