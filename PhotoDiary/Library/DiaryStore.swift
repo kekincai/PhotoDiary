@@ -718,7 +718,7 @@ final class DiaryStore {
     // MARK: 导出
 
     func markdownExport() -> String {
-        var out = "# \(String(localized: "照片日记"))\n\n"
+        var out = "# \(String(localized: "照片日记", bundle: .app, locale: .app))\n\n"
         for e in diaries.reversed() {
             var title = DiaryDates.fullWithWeekday(e.displayDate)
             if let place = e.placeName { title += " · \(place)" }

@@ -559,22 +559,6 @@
         }
       }
     },
-    "从": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "From"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "開始"
-          }
-        }
-      }
-    },
     "从照片写日记": {
       "localizations": {
         "en": {
@@ -895,22 +879,6 @@
         }
       }
     },
-    "到": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "To"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "終了"
-          }
-        }
-      }
-    },
     "刷新": {
       "localizations": {
         "en": {
@@ -955,6 +923,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "キャンセル"
+          }
+        }
+      }
+    },
+    "取消隐藏": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unhide"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非表示を解除"
           }
         }
       }
@@ -1526,6 +1510,7 @@
       }
     },
     "手记建议": {
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
@@ -2317,6 +2302,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "完了できませんでした"
+          }
+        }
+      }
+    },
+    "没有找到": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No Results"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "見つかりません"
           }
         }
       }
@@ -3182,6 +3183,7 @@
       }
     },
     "这段时间没有照片": {
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {

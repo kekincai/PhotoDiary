@@ -25,7 +25,7 @@ struct LaunchSplash: View {
     @State private var leaving = false
     @State private var exit: CGFloat = 0
 
-    private let title = Array(String(localized: "照片日记"))
+    private let title = Array(String(localized: "照片日记", bundle: .app, locale: .app))
     /// 启动画面里拍立得的宽度（Tools/AppIcon/make-icon.swift 生成的 LaunchMark）。
     static let markWidth: CGFloat = 88
 

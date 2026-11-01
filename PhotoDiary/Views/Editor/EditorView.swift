@@ -48,7 +48,7 @@ struct EditorView: View {
             if mode != .edit { context.padding(.bottom, 24) }
             if isShared { sharedWarning.padding(.bottom, 16) }
             if mode != .edit {
-                SegmentDivider(primary: String(localized: "今天"), secondary: DiaryDates.short(.today))
+                SegmentDivider(primary: String(localized: "今天", bundle: .app, locale: .app), secondary: DiaryDates.short(.today))
                     .padding(.horizontal, 6)
                     .padding(.bottom, 16)
             }
@@ -81,6 +81,7 @@ struct EditorView: View {
         }
         .confirmationDialog("清除这张照片的说明？", isPresented: $confirmClear, titleVisibility: .visible) {
             Button("清除说明", role: .destructive) { save() }
+            Button("取消", role: .cancel) {}
         } message: {
             Text("日记写在照片说明里，清除后在照片 App 里也看不到了。")
         }
@@ -132,9 +133,9 @@ struct EditorView: View {
 
     private var subtitle: String {
         switch mode {
-        case .new: entry == nil ? String(localized: "写日记") : String(localized: "补写日记")
-        case .append: String(localized: "追加感想")
-        case .edit: String(localized: "编辑")
+        case .new: entry == nil ? String(localized: "写日记", bundle: .app, locale: .app) : String(localized: "补写日记", bundle: .app, locale: .app)
+        case .append: String(localized: "追加感想", bundle: .app, locale: .app)
+        case .edit: String(localized: "编辑", bundle: .app, locale: .app)
         }
     }
 
@@ -160,7 +161,7 @@ struct EditorView: View {
 
     private var contextText: String {
         guard let entry else {
-            return String(localized: "拍摄于 \(DiaryDates.full(DayStamp(photoDate)))")
+            return String(localized: "拍摄于 \(DiaryDates.full(DayStamp(photoDate)))", bundle: .app, locale: .app)
         }
         let segs = entry.displaySegments
         if segs.count > 1, let last = segs.last { return entry.title + "…… " + last.text }
@@ -262,7 +263,7 @@ struct EditorView: View {
             } catch {
                 let nsError = error as NSError
                 if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.userCancelled.rawValue { return }
-                errorMessage = String(localized: "写入照片说明失败：\(error.localizedDescription)")
+                errorMessage = String(localized: "写入照片说明失败：\(error.localizedDescription)", bundle: .app, locale: .app)
             }
         }
     }

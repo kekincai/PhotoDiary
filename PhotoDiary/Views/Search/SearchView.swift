@@ -8,11 +8,11 @@ struct SearchView: View {
 
         var title: String {
             switch self {
-            case .any: String(localized: "全部时间")
-            case .month: String(localized: "最近 30 天")
-            case .year: String(localized: "最近一年")
-            case .onThisDay: String(localized: "那年今日")
-            case .custom: String(localized: "选择日期…")
+            case .any: String(localized: "全部时间", bundle: .app, locale: .app)
+            case .month: String(localized: "最近 30 天", bundle: .app, locale: .app)
+            case .year: String(localized: "最近一年", bundle: .app, locale: .app)
+            case .onThisDay: String(localized: "那年今日", bundle: .app, locale: .app)
+            case .custom: String(localized: "选择日期…", bundle: .app, locale: .app)
             }
         }
     }
@@ -61,7 +61,13 @@ struct SearchView: View {
         .navigationTitle("搜索")
         .toolbarTitleDisplayMode(.large)
         .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
-        .sheet(isPresented: $showCustom) { customRangeSheet }
+        .sheet(isPresented: $showCustom) {
+            DateRangeCalendar(initial: range == .custom ? (DayStamp(customFrom), DayStamp(customTo)) : nil) { from, to in
+                customFrom = from.date
+                customTo = to.date
+                range = .custom
+            }
+        }
     }
 
     // MARK: 输入前：标签、地点、时间
@@ -101,9 +107,9 @@ struct SearchView: View {
             FlowLayout(spacing: 8) {
                 ForEach([Range.month, .year, .onThisDay, .custom], id: \.self) { option in
                     Button {
-                        range = option
                         focused = false
-                        if option == .custom { showCustom = true }
+                        // 自选日期：在日历里点完“完成”才生效。
+                        if option == .custom { showCustom = true } else { range = option }
                     } label: {
                         Chip { Text(option.title) }
                             .font(.system(size: 15, weight: .medium))
@@ -196,8 +202,8 @@ struct SearchView: View {
         let results = self.results
         activeFilters
         if results.isEmpty {
-            ContentUnavailableView.search(text: trimmed)
-                .padding(.top, 40)
+            // 不用系统的 ContentUnavailableView.search：它的文字跟系统语言，App 内切换语言时不会变。
+            EmptyHint(title: "没有找到")
         } else {
             Text("\(results.count) 篇")
                 .font(.footnote.weight(.semibold))
@@ -334,22 +340,5 @@ struct SearchView: View {
             if !tags.contains(tag) { tags.append(tag) }
             query = ""
         }
-    }
-
-    private var customRangeSheet: some View {
-        NavigationStack {
-            Form {
-                DatePicker("从", selection: $customFrom, displayedComponents: .date)
-                DatePicker("到", selection: $customTo, displayedComponents: .date)
-            }
-            .navigationTitle("日期范围")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("完成", systemImage: "checkmark") { showCustom = false }
-                }
-            }
-        }
-        .presentationDetents([.medium])
     }
 }

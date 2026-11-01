@@ -6,6 +6,7 @@ import SwiftUI
 struct EntryContextMenu: ViewModifier {
     let entry: DiaryEntry
     @Environment(Router.self) private var router
+    @Environment(\.brand) private var brand
 
     func body(content: Content) -> some View {
         content.contextMenu {
@@ -16,7 +17,8 @@ struct EntryContextMenu: ViewModifier {
                 router.editor = EditorRequest(assetID: entry.id, mode: .edit)
             }
             Divider()
-            ShareLink(item: SharedPhoto(id: entry.id), message: Text(entry.caption), preview: SharePreview(entry.title)) {
+            let shared = SharedDiary(entry: entry, brand: brand)
+            ShareLink(item: shared, preview: SharePreview(entry.title, image: shared)) {
                 Label("分享", systemImage: "square.and.arrow.up")
             }
         } preview: {

@@ -23,15 +23,15 @@ enum BrandColor: String, CaseIterable, Identifiable {
     var color: Color { Color(hex: rawValue) }
     var name: String {
         switch self {
-        case .lake: String(localized: "湖蓝")
-        case .dusk: String(localized: "暮紫")
-        case .rouge: String(localized: "胭脂")
-        case .ochre: String(localized: "赭石")
-        case .amber: String(localized: "琥珀")
-        case .moss: String(localized: "苔绿")
-        case .pine: String(localized: "松绿")
-        case .celadon: String(localized: "青瓷")
-        case .graphite: String(localized: "石墨")
+        case .lake: String(localized: "湖蓝", bundle: .app, locale: .app)
+        case .dusk: String(localized: "暮紫", bundle: .app, locale: .app)
+        case .rouge: String(localized: "胭脂", bundle: .app, locale: .app)
+        case .ochre: String(localized: "赭石", bundle: .app, locale: .app)
+        case .amber: String(localized: "琥珀", bundle: .app, locale: .app)
+        case .moss: String(localized: "苔绿", bundle: .app, locale: .app)
+        case .pine: String(localized: "松绿", bundle: .app, locale: .app)
+        case .celadon: String(localized: "青瓷", bundle: .app, locale: .app)
+        case .graphite: String(localized: "石墨", bundle: .app, locale: .app)
         }
     }
 }
@@ -51,9 +51,9 @@ enum Appearance: String, CaseIterable, Identifiable {
 
     var name: String {
         switch self {
-        case .system: String(localized: "自动")
-        case .light: String(localized: "浅色")
-        case .dark: String(localized: "深色")
+        case .system: String(localized: "自动", bundle: .app, locale: .app)
+        case .light: String(localized: "浅色", bundle: .app, locale: .app)
+        case .dark: String(localized: "深色", bundle: .app, locale: .app)
         }
     }
 

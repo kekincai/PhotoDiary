@@ -7,8 +7,8 @@ struct AddFromPhotosView: View {
         case unwritten, all
         var title: String {
             switch self {
-            case .unwritten: String(localized: "还没写")
-            case .all: String(localized: "全部照片")
+            case .unwritten: String(localized: "还没写", bundle: .app, locale: .app)
+            case .all: String(localized: "全部照片", bundle: .app, locale: .app)
             }
         }
     }
@@ -159,13 +159,13 @@ struct AddFromPhotosView: View {
         for photo in photos {
             if filter == .unwritten, store.entry(photo.id) != nil { continue }
             guard let date = photo.date else {
-                add(1, photo.id) { (String(localized: "没有日期"), nil) }
+                add(1, photo.id) { (String(localized: "没有日期", bundle: .app, locale: .app), nil) }
                 continue
             }
-            if date >= startOfToday { add(2, photo.id) { (String(localized: "今天"), DiaryDates.short(DayStamp(now))) } }
-            else if date >= startOfYesterday { add(3, photo.id) { (String(localized: "昨天"), nil) } }
-            else if date >= startOfWeek { add(4, photo.id) { (String(localized: "本周早些时候"), nil) } }
-            else if date >= startOfMonth { add(5, photo.id) { (String(localized: "本月早些时候"), nil) } }
+            if date >= startOfToday { add(2, photo.id) { (String(localized: "今天", bundle: .app, locale: .app), DiaryDates.short(DayStamp(now))) } }
+            else if date >= startOfYesterday { add(3, photo.id) { (String(localized: "昨天", bundle: .app, locale: .app), nil) } }
+            else if date >= startOfWeek { add(4, photo.id) { (String(localized: "本周早些时候", bundle: .app, locale: .app), nil) } }
+            else if date >= startOfMonth { add(5, photo.id) { (String(localized: "本月早些时候", bundle: .app, locale: .app), nil) } }
             else {
                 let c = cal.dateComponents([.year, .month], from: date)
                 let year = c.year ?? 0

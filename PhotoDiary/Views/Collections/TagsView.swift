@@ -72,7 +72,7 @@ struct TagsView: View {
 
     private var subtitle: String {
         let n = store.tagCounts.count
-        return n == 0 ? "" : String(localized: "\(n) 个标签")
+        return n == 0 ? "" : String(localized: "\(n) 个标签", bundle: .app, locale: .app)
     }
 
     @ViewBuilder
@@ -110,9 +110,9 @@ struct TagsView: View {
 
     /// 8 篇 · 最近 10月24日；只有一篇时直接写日期。
     private func coverDetail(_ tag: DiaryStore.TagCount) -> String {
-        guard let latest = store.entries(tagged: tag.name).first else { return String(localized: "\(tag.count) 篇") }
+        guard let latest = store.entries(tagged: tag.name).first else { return String(localized: "\(tag.count) 篇", bundle: .app, locale: .app) }
         let date = DiaryDates.short(latest.day)
-        return tag.count == 1 ? String(localized: "\(tag.count) 篇 · \(date)") : String(localized: "\(tag.count) 篇 · 最近 \(date)")
+        return tag.count == 1 ? String(localized: "\(tag.count) 篇 · \(date)", bundle: .app, locale: .app) : String(localized: "\(tag.count) 篇 · 最近 \(date)", bundle: .app, locale: .app)
     }
 
     private var renameTitle: Text {
@@ -129,7 +129,7 @@ struct TagsView: View {
         renaming = nil
         let name = newName.trimmingCharacters(in: .whitespaces).trimmingCharacters(in: CharacterSet(charactersIn: "#＃"))
         guard CaptionFormat.isValidTagName(name) else {
-            errorMessage = String(localized: "标签不能为空、不能包含 # 或换行，最多 \(CaptionFormat.maxTagLength) 个字。")
+            errorMessage = String(localized: "标签不能为空、不能包含 # 或换行，最多 \(CaptionFormat.maxTagLength) 个字。", bundle: .app, locale: .app)
             return
         }
         working = true

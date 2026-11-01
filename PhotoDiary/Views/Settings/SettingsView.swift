@@ -42,6 +42,7 @@ struct SettingsView: View {
             }
             .confirmationDialog("重建索引？", isPresented: $confirmRebuild, titleVisibility: .visible) {
                 Button("重新读取整个照片库") { store.rebuildIndex(); dismiss() }
+                Button("取消", role: .cancel) {}
             }
         }
         .tint(.brand(hex: brandHex))
@@ -146,13 +147,14 @@ struct SettingsView: View {
     private func watchStatusText(_ bridge: WatchBridge) -> String {
         switch bridge.status {
         case .unsupported: ""
-        case .notPaired: String(localized: "未配对")
-        case .appNotInstalled: String(localized: "未安装")
+        case .notPaired: String(localized: "未配对", bundle: .app, locale: .app)
+        case .appNotInstalled: String(localized: "未安装", bundle: .app, locale: .app)
         case .ready:
             if let sent = bridge.lastSent {
-                String(localized: "已同步 · \(sent.formatted(.relative(presentation: .named)))")
+                // 相对时间按界面语言写，不跟系统语言。
+                String(localized: "已同步 · \(sent.formatted(.relative(presentation: .named).locale(AppLanguage.current.locale)))", bundle: .app, locale: .app)
             } else {
-                String(localized: "已连接")
+                String(localized: "已连接", bundle: .app, locale: .app)
             }
         }
     }
@@ -183,10 +185,10 @@ struct SettingsView: View {
 
     private var accessText: String {
         switch store.authorization {
-        case .authorized: String(localized: "完整访问")
-        case .limited: String(localized: "有限访问")
-        case .denied, .restricted: String(localized: "未允许")
-        default: String(localized: "未设置")
+        case .authorized: String(localized: "完整访问", bundle: .app, locale: .app)
+        case .limited: String(localized: "有限访问", bundle: .app, locale: .app)
+        case .denied, .restricted: String(localized: "未允许", bundle: .app, locale: .app)
+        default: String(localized: "未设置", bundle: .app, locale: .app)
         }
     }
 
@@ -194,7 +196,7 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         Section {
-            let export = MarkdownExport(text: store.markdownExport(), filename: String(localized: "照片日记") + ".md")
+            let export = MarkdownExport(text: store.markdownExport(), filename: String(localized: "照片日记", bundle: .app, locale: .app) + ".md")
             ShareLink(item: export, preview: SharePreview(export.filename, image: Image(systemName: "doc.text"))) {
                 SettingsLabel("导出全部日记（Markdown）", symbol: "square.and.arrow.up", color: .orange)
             }

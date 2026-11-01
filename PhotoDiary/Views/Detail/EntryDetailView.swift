@@ -60,6 +60,7 @@ struct EntryDetailView: View {
         }
         .confirmationDialog("删除这张照片？", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("删除照片和日记", role: .destructive) { delete() }
+            Button("取消", role: .cancel) {}
         } message: {
             Text("日记写在这张照片的说明里，删除照片后日记也会一起删除。照片会移到“最近删除”。")
         }
@@ -146,7 +147,7 @@ struct EntryDetailView: View {
                             let gap = DiaryDates.gap(from: segments[index - 1].date, to: day)
                             SegmentDivider(primary: gap.relative, secondary: gap.date)
                         } else {
-                            SegmentDivider(primary: String(localized: "未注明日期"))
+                            SegmentDivider(primary: String(localized: "未注明日期", bundle: .app, locale: .app))
                         }
                     }
                     .padding(.top, 32)
@@ -208,8 +209,9 @@ struct EntryDetailView: View {
     /// 左边分享，右边主题色“追加感想”。
     private func bottomBar(_ entry: DiaryEntry) -> some View {
         HStack {
-            ShareLink(item: SharedPhoto(id: entry.id), message: Text(entry.caption),
-                      preview: SharePreview(entry.title)) {
+            // 分享一张图：照片和日记排在一起。
+            let shared = SharedDiary(entry: entry, brand: brand)
+            ShareLink(item: shared, preview: SharePreview(entry.title, image: shared)) {
                 Image(systemName: "square.and.arrow.up")
                     .font(.system(size: 20, weight: .medium))
                     .foregroundStyle(Color.ink)
@@ -358,26 +360,5 @@ private struct LivePhotoView: UIViewRepresentable {
         Task {
             view.livePhoto = await AssetImages.shared.livePhoto(for: id, pixelSize: px)
         }
-    }
-}
-
-/// 分享出去的照片（JPEG）；正文作为附言。
-nonisolated struct SharedPhoto: Transferable, Sendable {
-    let id: String
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .jpeg) { photo in
-            try await photo.jpegData()
-        }
-    }
-
-    @MainActor private func jpegData() async throws -> Data {
-        var last: UIImage?
-        let size = CGSize(width: 2400, height: 2400)
-        for await image in AssetImages.shared.images(for: id, pixelSize: size, contentMode: .aspectFit, allowNetwork: true) {
-            last = image
-        }
-        guard let data = last?.jpegData(compressionQuality: 0.9) else { throw CocoaError(.fileReadUnknown) }
-        return data
     }
 }

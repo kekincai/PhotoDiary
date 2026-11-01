@@ -15,10 +15,11 @@ struct HiddenCaptionsView: View {
             Section {
                 ForEach(captions, id: \.self) { caption in
                     row(caption, count: counts[CaptionFilter.normalized(caption)] ?? 0, hidden: true)
-                }
-                .onDelete { offsets in
-                    captions.remove(atOffsets: offsets)
-                    save()
+                        // 自己写左滑按钮：系统 onDelete 的“删除”跟系统语言，App 内切换语言时不会变。
+                        .swipeActions {
+                            Button("取消隐藏", systemImage: "eye") { show(caption) }
+                                .tint(.red)
+                        }
                 }
                 Button("添加…", systemImage: "plus") { adding = true }
             } header: {

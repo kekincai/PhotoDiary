@@ -120,7 +120,7 @@ struct DiaryTextView: UIViewRepresentable {
         tv.delegate = context.coordinator
         tv.tintColor = UIColor(brand)
         tv.text = controller.text
-        tv.accessibilityLabel = String(localized: "日记正文")
+        tv.accessibilityLabel = String(localized: "日记正文", bundle: .app, locale: .app)
         controller.textView = tv
         controller.brand = UIColor(brand)
         controller.highlight(tv)

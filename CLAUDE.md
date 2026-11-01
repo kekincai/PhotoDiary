@@ -10,6 +10,8 @@
 ## 文字和多语言
 
 - 所有界面文字都要进 `PhotoDiary/Resources/Localizable.xcstrings`，并补齐 `en`、`ja` 翻译（源语言是简体中文）。命令行构建不会自动把新文字写进 catalog，要手动加；去掉的文字也从 catalog 删掉。
+- 代码里取文字写 `String(localized: …, bundle: .app, locale: .app)`：系统的 `String(localized:)` 按启动时的语言查表，不传 bundle 的话 App 内切换语言后不会变（见 `Shared/Model/AppLocalization.swift`）。SwiftUI 的 `Text("…")` 不受影响。
+- 不用系统自带文字的控件（`ContentUnavailableView.search`、`onDelete` 的“删除”、不写取消按钮的 confirmationDialog、不带标题的 `Tab(role: .search)`）：它们跟系统语言走。
 - 数量用复数变体（英文 one / other）。
 - Info.plist 里的文字（App 名、权限说明）在 `InfoPlist.xcstrings`，iPhone 和 Watch 共用。系统语言不在支持之列时回退到英语（`CFBundleDevelopmentRegion = en`）。
 - 日期一律用 `DiaryDates` 按界面语言格式化，不写死中文格式。

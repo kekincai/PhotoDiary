@@ -7,10 +7,10 @@ enum JournalMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .list: String(localized: "列表")
-        case .calendar: String(localized: "日历")
-        case .media: String(localized: "照片")
-        case .map: String(localized: "地图")
+        case .list: String(localized: "列表", bundle: .app, locale: .app)
+        case .calendar: String(localized: "日历", bundle: .app, locale: .app)
+        case .media: String(localized: "照片", bundle: .app, locale: .app)
+        case .map: String(localized: "地图", bundle: .app, locale: .app)
         }
     }
 
@@ -166,11 +166,11 @@ struct JournalView: View {
     private var subtitle: String {
         if case .scanning(let done, let total) = store.syncState, total > 0 {
             let percent = Int(Double(done) / Double(total) * 100)
-            return String(localized: "正在读取照片说明 \(percent)%")
+            return String(localized: "正在读取照片说明 \(percent)%", bundle: .app, locale: .app)
         }
         // 按写作日期数；下面的月份标题按照片日期数，所以这里不写月份名，免得两个“10月”数字对不上。
         let n = store.writtenThisMonth
-        return n == 0 ? String(localized: "本月还没写") : String(localized: "本月写了 \(n) 篇")
+        return n == 0 ? String(localized: "本月还没写", bundle: .app, locale: .app) : String(localized: "本月写了 \(n) 篇", bundle: .app, locale: .app)
     }
 
     private var modeMenu: some View {

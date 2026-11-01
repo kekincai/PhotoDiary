@@ -45,7 +45,7 @@ private struct OnThisDaySection: View {
     var body: some View {
         let memories = store.onThisDay
         VStack(alignment: .leading, spacing: 12) {
-            SectionTitle(title: String(localized: "那年今日"))
+            SectionTitle(title: String(localized: "那年今日", bundle: .app, locale: .app))
                 .padding(.horizontal, 20)
             if memories.isEmpty {
                 Text("往年的今天还没有日记")
@@ -143,7 +143,7 @@ private struct OnThisDaySection: View {
     private func detail(_ entry: DiaryEntry) -> String? {
         var parts: [String] = []
         if let place = entry.placeName { parts.append(place) }
-        if entry.segments.count > 1 { parts.append(String(localized: "\(entry.segments.count) 段")) }
+        if entry.segments.count > 1 { parts.append(String(localized: "\(entry.segments.count) 段", bundle: .app, locale: .app)) }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 }
@@ -211,7 +211,7 @@ private struct WeekSection: View {
 
     private var headline: String {
         let n = store.writtenThisWeek
-        return n == 0 ? String(localized: "这周还没写") : String(localized: "这周写了 \(n) 篇")
+        return n == 0 ? String(localized: "这周还没写", bundle: .app, locale: .app) : String(localized: "这周写了 \(n) 篇", bundle: .app, locale: .app)
     }
 }
 
@@ -225,7 +225,7 @@ private struct UnwrittenSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Button { router.showAddFromPhotos = true } label: {
-                SectionTitle(title: String(localized: "还没写的照片"), chevron: true)
+                SectionTitle(title: String(localized: "还没写的照片", bundle: .app, locale: .app), chevron: true)
             }
             .buttonStyle(.press)
             .padding(.horizontal, 20)
@@ -284,7 +284,7 @@ private struct UnwrittenSection: View {
 
     private func dateLabel(_ date: Date) -> String {
         let day = DayStamp(date)
-        return day == .today ? String(localized: "今天") : DiaryDates.short(day)
+        return day == .today ? String(localized: "今天", bundle: .app, locale: .app) : DiaryDates.short(day)
     }
 }
 
@@ -369,14 +369,14 @@ private struct TagsSection: View {
         if !tags.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 NavigationLink(value: Route.tags) {
-                    SectionTitle(title: String(localized: "标签"), chevron: true)
+                    SectionTitle(title: String(localized: "标签", bundle: .app, locale: .app), chevron: true)
                 }
                 .buttonStyle(.press)
                 .padding(.horizontal, 20)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(tags.prefix(4), id: \.name) { tag in
                         NavigationLink(value: Route.tag(tag.name)) {
-                            TagCover(name: tag.name, detail: String(localized: "\(tag.count) 篇"))
+                            TagCover(name: tag.name, detail: String(localized: "\(tag.count) 篇", bundle: .app, locale: .app))
                         }
                         .buttonStyle(.press)
                     }

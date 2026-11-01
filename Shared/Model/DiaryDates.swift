@@ -55,12 +55,12 @@ enum DiaryDates {
         let n = previous.days(to: day)
         let relative: String
         switch n {
-        case ..<1: relative = String(localized: "同一天")
-        case 1: relative = String(localized: "第二天")
-        case 2: relative = String(localized: "两天后")
-        case 3..<30: relative = String(localized: "\(n) 天后")
-        case 30..<365: relative = String(localized: "\(n / 30) 个月后")
-        default: relative = String(localized: "\(n / 365) 年后")
+        case ..<1: relative = String(localized: "同一天", bundle: .app, locale: .app)
+        case 1: relative = String(localized: "第二天", bundle: .app, locale: .app)
+        case 2: relative = String(localized: "两天后", bundle: .app, locale: .app)
+        case 3..<30: relative = String(localized: "\(n) 天后", bundle: .app, locale: .app)
+        case 30..<365: relative = String(localized: "\(n / 30) 个月后", bundle: .app, locale: .app)
+        default: relative = String(localized: "\(n / 365) 年后", bundle: .app, locale: .app)
         }
         return (relative, dated(day, relativeTo: previous))
     }
@@ -71,11 +71,11 @@ enum DiaryDates {
     }
 
     static func yearsAgo(_ day: DayStamp) -> String {
-        String(localized: "\(DayStamp.today.year - day.year) 年前")
+        String(localized: "\(DayStamp.today.year - day.year) 年前", bundle: .app, locale: .app)
     }
 
     /// “3 年前的今天”
     static func onThisDay(_ day: DayStamp) -> String {
-        String(localized: "\(DayStamp.today.year - day.year) 年前的今天")
+        String(localized: "\(DayStamp.today.year - day.year) 年前的今天", bundle: .app, locale: .app)
     }
 }

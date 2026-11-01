@@ -58,7 +58,8 @@ private struct MainTabs: View {
                 NavigationStack(path: $router.reviewPath) { ReviewView().routes() }
                     .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
             }
-            Tab(value: AppTab.search, role: .search) {
+            // 写明标题：系统默认的“搜索”跟系统语言，App 内切换语言时不会变。
+            Tab(AppTab.search.title, systemImage: AppTab.search.symbol, value: AppTab.search, role: .search) {
                 NavigationStack(path: $router.searchPath) { SearchView().routes() }
                     .toolbarVisibility(wide ? .automatic : .hidden, for: .tabBar)
             }
