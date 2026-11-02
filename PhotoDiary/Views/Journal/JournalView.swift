@@ -205,10 +205,10 @@ private struct TitleBlock: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text("日记")
-                .font(.system(size: 34, weight: .bold))
+                .font(.largeTitle.bold())
                 .accessibilityAddTraits(.isHeader)
             Text(subtitle)
-                .font(.system(size: 15, weight: onPhoto ? .medium : .regular))
+                .font(.subheadline.weight(onPhoto ? .medium : .regular))
                 .foregroundStyle(onPhoto ? Color.white : Color.meta)
                 .contentTransition(.numericText())
                 .animation(.snappy, value: subtitle)

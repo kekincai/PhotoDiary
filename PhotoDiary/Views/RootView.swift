@@ -6,6 +6,7 @@ struct RootView: View {
     @Environment(Router.self) private var router
     /// 只在冷启动时出现一次；切换语言重建界面时不再出现。
     @State private var splash = !LaunchSplash.finished
+    @Environment(\.legibilityWeight) private var legibilityWeight
 
     var body: some View {
         Group {
@@ -15,6 +16,10 @@ struct RootView: View {
                 PermissionView()
             }
         }
+        // 日记正文的宋体不会自己跟着“粗体文本”变粗：这个设置一变就重建界面（导航位置在 Router 里，不会丢）。
+        .id(legibilityWeight == .bold)
+        // 开屏盖在上面时，下面的界面不让 VoiceOver 读到。
+        .accessibilityHidden(splash)
         .animation(.move, value: store.canRead)
         .overlay {
             if splash {
@@ -159,6 +164,7 @@ private struct FloatingTabBar: View {
                         }
                         .buttonStyle(.press)
                         .accessibilityLabel(Text("展开标签栏，当前是\(router.tab.title)"))
+                        .largeContent(router.tab.title, systemImage: router.tab.symbol)
                     } else {
                         HStack(spacing: 0) {
                             ForEach(AppTab.allCases, id: \.self) { tab in
@@ -189,11 +195,16 @@ private struct FloatingTabBar: View {
                 .glassEffect(.regular.tint(brand).interactive(), in: .circle)
                 .glassEffectID("plus", in: glass)
                 .accessibilityLabel("从照片写日记")
+                .largeContent(String(localized: "从照片写日记", bundle: .app, locale: .app), systemImage: "plus")
                 .sensoryFeedback(.impact(weight: .light), trigger: router.showAddFromPhotos) { _, new in new }
             }
         }
         .padding(.horizontal, Metrics.page)
         .padding(.bottom, 6)
+        // 和系统标签栏一样：字号固定在一定范围，更大的字号长按看大字。
+        .dynamicTypeSize(...DynamicTypeSize.xLarge)
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isTabBar)
     }
 
     private var plusSize: CGFloat { collapsed ? 48 : Metrics.primaryAction }
@@ -226,6 +237,7 @@ private struct FloatingTabBar: View {
         }
         .buttonStyle(.press)
         .accessibilityAddTraits(selected ? .isSelected : [])
+        .largeContent(tab.title, systemImage: tab.symbol)
         // 长按“日记”直接换视图（快捷方式；主入口在右上角）。
         .contextMenu {
             if tab == .journal {

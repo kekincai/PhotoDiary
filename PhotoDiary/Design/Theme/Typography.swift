@@ -41,14 +41,18 @@ final class DiaryFonts {
     @ObservationIgnored private var fallbackCache: [String: Font] = [:]
 
     func fallbackFont(size: CGFloat, bold: Bool, style: Font.TextStyle) -> Font {
-        let key = "\(size)|\(bold)|\(style)"
+        let key = "\(size)|\(bold || Self.boldText)|\(style)"
         if let font = fallbackCache[key] { return font }
         let font = Font(uiFont(size: size, bold: bold, textStyle: style.uiKit))
         fallbackCache[key] = font
         return font
     }
 
+    /// 系统设置里开了“粗体文本”：宋体没有中间字重，正文直接用粗体（系统字体由系统自己加粗）。
+    static var boldText: Bool { UIAccessibility.isBoldTextEnabled }
+
     func uiFont(size: CGFloat, bold: Bool = false, textStyle: UIFont.TextStyle = .body) -> UIFont {
+        let bold = bold || Self.boldText
         let base: UIFont
         if songtiReady, let f = UIFont(name: bold ? Self.boldName : Self.regularName, size: size) {
             base = f
@@ -61,9 +65,10 @@ final class DiaryFonts {
 }
 
 extension Font {
-    /// 日记正文字体，随动态字体缩放。
+    /// 日记正文字体，随动态字体缩放；开了“粗体文本”时用粗体（RootView 在这个设置变化时重建界面）。
     static func diary(_ size: CGFloat, bold: Bool = false, relativeTo style: Font.TextStyle = .body) -> Font {
         if DiaryFonts.shared.songtiReady {
+            let bold = bold || DiaryFonts.boldText
             return .custom(bold ? DiaryFonts.boldName : DiaryFonts.regularName, size: size, relativeTo: style)
         }
         return DiaryFonts.shared.fallbackFont(size: size, bold: bold, style: style)

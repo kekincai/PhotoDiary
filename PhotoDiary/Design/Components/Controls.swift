@@ -17,7 +17,7 @@ struct GlassSegmented<Value: Hashable>: View {
                     if selected { onReselect?() } else { selection = option }
                 } label: {
                     Text(title(option))
-                        .font(.system(size: 14, weight: selected ? .semibold : .medium))
+                        .font(.subheadline.weight(selected ? .semibold : .medium))
                         .foregroundStyle(selected ? Color.ink : Color.inkSecondary)
                         .lineLimit(1)
                         .padding(.horizontal, Metrics.Spacing.m)
@@ -37,6 +37,8 @@ struct GlassSegmented<Value: Hashable>: View {
         }
         .padding(Metrics.Spacing.xs)
         .glassEffect(.regular.interactive(), in: .capsule)
+        // 浮在内容上，不能无限变大；再大的字号靠长按看大字。
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .animation(.snappy, value: selection)
         .sensoryFeedback(.selection, trigger: selection)
     }
@@ -54,8 +56,9 @@ struct SectionTitle: View {
                 .foregroundStyle(Color.ink)
             if chevron {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.headline)
                     .foregroundStyle(Color(.tertiaryLabel))
+                    .accessibilityHidden(true)
             }
         }
         .accessibilityElement(children: .combine)
@@ -70,9 +73,11 @@ struct Chip<Content: View>: View {
     @ViewBuilder var content: Content
 
     var body: some View {
+        // 最小高度：字号调大时胶囊跟着长高，不把字裁掉。
         HStack(spacing: 6) { content }
             .padding(.horizontal, Metrics.Spacing.l)
-            .frame(height: height)
+            .padding(.vertical, 6)
+            .frame(minHeight: height)
             .background(fill, in: .capsule)
     }
 }

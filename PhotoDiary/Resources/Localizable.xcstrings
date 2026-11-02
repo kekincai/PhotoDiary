@@ -33,6 +33,22 @@
         }
       }
     },
+    "%@，%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@、%2$@"
+          }
+        }
+      }
+    },
     "%@，%lld 篇": {
       "localizations": {
         "en": {
@@ -655,6 +671,22 @@
         }
       }
     },
+    "全屏查看": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "View full screen"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "全画面で表示"
+          }
+        }
+      }
+    },
     "全部时间": {
       "localizations": {
         "en": {
@@ -811,6 +843,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記を書く"
+          }
+        }
+      }
+    },
+    "写过的日子：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Days written: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書いた日：%@"
           }
         }
       }
@@ -1263,6 +1311,22 @@
         }
       }
     },
+    "在范围内": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In range"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "範囲内"
+          }
+        }
+      }
+    },
     "地图": {
       "localizations": {
         "en": {
@@ -1291,6 +1355,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "場所"
+          }
+        }
+      }
+    },
+    "地点：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Place: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "場所：%@"
           }
         }
       }
@@ -1375,6 +1455,22 @@
         }
       }
     },
+    "实况照片": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live Photo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Live Photo"
+          }
+        }
+      }
+    },
     "导出全部日记（Markdown）": {
       "localizations": {
         "en": {
@@ -1435,6 +1531,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記を書いた写真"
+          }
+        }
+      }
+    },
+    "已写日记的照片，%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photo with an entry, %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日記を書いた写真、%@"
           }
         }
       }
@@ -2274,6 +2386,22 @@
         }
       }
     },
+    "标签“%@”": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tag “%@”"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タグ「%@」"
+          }
+        }
+      }
+    },
     "标签不能为空、不能包含 # 或换行，最多 %lld 个字。": {
       "localizations": {
         "en": {
@@ -2302,6 +2430,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "タグ名"
+          }
+        }
+      }
+    },
+    "标签：%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tags: %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タグ：%@"
           }
         }
       }
@@ -2494,6 +2638,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "消去"
+          }
+        }
+      }
+    },
+    "清除筛选": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Filters"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "絞り込みを解除"
           }
         }
       }
@@ -2786,6 +2946,22 @@
         }
       }
     },
+    "终点": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "End"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終了日"
+          }
+        }
+      }
+    },
     "给%@的照片写日记": {
       "localizations": {
         "en": {
@@ -2962,6 +3138,22 @@
         }
       }
     },
+    "补全标签": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Completes the tag"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "タグを補完します"
+          }
+        }
+      }
+    },
     "补写日记": {
       "localizations": {
         "en": {
@@ -3106,6 +3298,22 @@
         }
       }
     },
+    "起点": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "開始日"
+          }
+        }
+      }
+    },
     "跟随系统": {
       "localizations": {
         "en": {
@@ -3166,6 +3374,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記をまだ書いていない写真"
+          }
+        }
+      }
+    },
+    "还没写日记的照片，%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Photo without an entry, %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "まだ日記のない写真、%@"
           }
         }
       }

@@ -96,16 +96,16 @@ struct EditorView: View {
                 SegmentDivider(primary: String(localized: "今天", bundle: .app, locale: .app), secondary: DiaryDates.short(.today))
                     .padding(.bottom, 14)
             }
-            DiaryTextView(controller: controller)
+            DiaryTextView(controller: controller, hint: placeholder)
                 .overlay(alignment: .topLeading) {
                     if controller.text.isEmpty {
-                        Group {
-                            if mode == .append { Text("过了些日子，再看这张照片…") } else { Text("写下当时的感受，用 #话题# 加标签") }
-                        }
-                        .font(.diary(19))
-                        .foregroundStyle(Color(.placeholderText))
-                        .padding(.top, 4)
-                        .allowsHitTesting(false)
+                        Text(placeholder)
+                            .font(.diary(19))
+                            .foregroundStyle(Color(.placeholderText))
+                            .padding(.top, 4)
+                            .allowsHitTesting(false)
+                            // 提示已经作为正文框的提示读出来了。
+                            .accessibilityHidden(true)
                     }
                 }
         }
@@ -113,6 +113,12 @@ struct EditorView: View {
         .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background { PhotoPaper(assetID: assetID) }
+    }
+
+    private var placeholder: String {
+        mode == .append
+            ? String(localized: "过了些日子，再看这张照片…", bundle: .app, locale: .app)
+            : String(localized: "写下当时的感受，用 #话题# 加标签", bundle: .app, locale: .app)
     }
 
     /// 纸上已经有的字：标题……最后一段。一篇日记只有一段时就是整段，最多露四行。
@@ -195,6 +201,7 @@ struct EditorView: View {
             }
             .buttonStyle(.press)
             .accessibilityLabel("插入标签")
+            .largeContent(String(localized: "插入标签", bundle: .app, locale: .app), systemImage: "number")
 
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
@@ -203,20 +210,24 @@ struct EditorView: View {
                             controller.complete(tag)
                         } label: {
                             Text(verbatim: "#\(tag)#")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.subheadline.weight(.semibold))
                                 .foregroundStyle(brand)
                                 .padding(.horizontal, 12)
-                                .frame(height: 34)
+                                .frame(minHeight: 34)
                                 .background(Color(.systemBackground), in: .capsule)
                                 .overlay(Capsule().strokeBorder(Color(.separator).opacity(0.6), lineWidth: 0.5))
                         }
                         .buttonStyle(.press)
+                        .accessibilityLabel(Spoken.tag(tag))
+                        .accessibilityHint(Text("补全标签"))
                         .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     }
                 }
             }
             .scrollIndicators(.hidden)
             .frame(maxWidth: .infinity)
+            // 容器自己有名字、里面的每个标签照常能选到（直接给滚动视图加 label 会盖掉每个标签的名字）。
+            .accessibilityElement(children: .contain)
             .accessibilityLabel("用过的标签")
 
             if controller.isEditing {
@@ -228,10 +239,12 @@ struct EditorView: View {
                 }
                 .buttonStyle(.press)
                 .accessibilityLabel("收起键盘")
+                .largeContent(String(localized: "收起键盘", bundle: .app, locale: .app), systemImage: "keyboard.chevron.compact.down")
             }
         }
         .padding(.horizontal, 4)
-        .frame(height: 50)
+        .frame(minHeight: 50)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, 8)
         .padding(.bottom, 8)
@@ -257,6 +270,7 @@ struct EditorView: View {
             do {
                 try await store.save(text: controller.text, mode: mode, for: assetID)
                 savedCount += 1
+                AccessibilityNotification.Announcement(String(localized: "已写进照片说明", bundle: .app, locale: .app)).post()
                 original = controller.text
                 onFinish(true)
             } catch {

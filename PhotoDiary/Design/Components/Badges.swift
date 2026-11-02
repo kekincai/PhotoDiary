@@ -7,7 +7,9 @@ struct ParagraphBadge: View {
 
     var body: some View {
         Text("\(count) 段")
-            .font(.system(size: compact ? 11 : 12, weight: .semibold))
+            .font((compact ? Font.caption2 : .caption).weight(.semibold))
+            // 压在照片角上，最多长到盖住一小块；内容已经在卡片的朗读文字里。
+            .dynamicTypeSize(...DynamicTypeSize.xxLarge)
             .foregroundStyle(.white)
             .padding(.horizontal, compact ? 6 : 8)
             .padding(.vertical, compact ? 2 : 4)
@@ -15,6 +17,7 @@ struct ParagraphBadge: View {
                 Capsule().fill(.black.opacity(0.3)).background(.ultraThinMaterial, in: .capsule)
             }
             .environment(\.colorScheme, .dark)
+            .accessibilityHidden(true)
     }
 }
 
@@ -26,8 +29,10 @@ struct MediaBadge: View {
         case .photo: EmptyView()
         case .video:
             Image(systemName: "video.fill").font(.caption2).foregroundStyle(.white).shadow(radius: 2)
+                .accessibilityHidden(true)
         case .livePhoto:
             Image(systemName: "livephoto").font(.caption).foregroundStyle(.white).shadow(radius: 2)
+                .accessibilityHidden(true)
         }
     }
 }

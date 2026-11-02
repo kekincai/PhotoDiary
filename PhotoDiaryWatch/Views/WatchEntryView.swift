@@ -69,12 +69,12 @@ struct WatchEntryView: View {
                 } else {
                     let label = segment.date.map { DiaryDates.gap(from: segments[index - 1].date, to: $0) }
                     HStack(spacing: 6) {
-                        Rectangle().fill(.white.opacity(0.15)).frame(height: 1)
+                        Rectangle().fill(.white.opacity(0.15)).frame(height: 1).accessibilityHidden(true)
                         Text(label.map { $0.relative } ?? String(localized: "未注明日期"))
                             .font(.caption2.weight(.semibold))
                             .foregroundStyle(.secondary)
                             .fixedSize()
-                        Rectangle().fill(.white.opacity(0.15)).frame(height: 1)
+                        Rectangle().fill(.white.opacity(0.15)).frame(height: 1).accessibilityHidden(true)
                     }
                     .padding(.vertical, 4)
                     Text(segment.text)
@@ -90,6 +90,7 @@ struct WatchEntryView: View {
             Text(entry.tags.map { "#\($0)#" }.joined(separator: "  "))
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Color.accentColor)
+                .accessibilityLabel(String(localized: "标签：\(entry.tags.formatted(.list(type: .and)))"))
         }
     }
 }

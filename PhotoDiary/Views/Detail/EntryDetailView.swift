@@ -91,6 +91,8 @@ struct EntryDetailView: View {
                         // 下拉时照片跟着拉伸。
                         .stretchyHeader()
                         .onTapGesture { if entry.mediaKind != .video { showViewer = true } }
+                        // 点照片看大图：VoiceOver 读成按钮，双击就打开。
+                        .modifier(ViewerAction(enabled: entry.mediaKind != .video) { showViewer = true })
                         .matchedTransitionSource(id: "viewer", in: viewerNamespace)
                     article(entry)
                         .padding(.bottom, Self.articleBottomPadding)
@@ -181,25 +183,28 @@ struct EntryDetailView: View {
                     // 点地点看同一地点的其他日记（只有一篇时不跳转）。
                     Button { router.push(.place(place)) } label: {
                         Chip(height: 34) {
-                            Image(systemName: "mappin.and.ellipse").font(.system(size: 13, weight: .semibold))
+                            Image(systemName: "mappin.and.ellipse").font(.footnote.weight(.semibold))
                             Text(place)
                         }
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(Color.ink)
                     }
                     .buttonStyle(.press)
                     .disabled(store.entries(at: place).count < 2)
-                    .accessibilityElement(children: .combine)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Spoken.place(place))
+                    .accessibilityAddTraits(store.entries(at: place).count < 2 ? [] : .isButton)
                 }
                 ForEach(entry.tags, id: \.self) { tag in
                     Button { router.push(.tag(tag)) } label: {
                         Chip(height: 34, fill: brand.soft()) {
                             Text("#\(tag)#")
                         }
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(.subheadline.weight(.semibold))
                         .foregroundStyle(brand)
                     }
                     .buttonStyle(.press)
+                    .accessibilityLabel(Spoken.tag(tag))
                 }
             }
             .padding(.top, 32)
@@ -220,6 +225,7 @@ struct EntryDetailView: View {
             }
             .glassEffect(.regular.interactive(), in: .circle)
             .accessibilityLabel("分享")
+            .largeContent(String(localized: "分享", bundle: .app, locale: .app), systemImage: "square.and.arrow.up")
 
             Spacer()
 
@@ -227,18 +233,21 @@ struct EntryDetailView: View {
                 router.editor = EditorRequest(assetID: entry.id, mode: .append)
             } label: {
                 Label("追加感想", systemImage: "plus")
-                    .font(.system(size: 16, weight: .semibold))
+                    .font(.callout.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.leading, 16)
                     .padding(.trailing, 24)
-                    .frame(height: 52)
+                    .frame(minHeight: 52)
                     .contentShape(.capsule)
             }
             .buttonStyle(.press)
             .glassEffect(.regular.tint(brand).interactive(), in: .capsule)
+            .largeContent(String(localized: "追加感想", bundle: .app, locale: .app), systemImage: "plus")
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 4)
+        // 浮在正文上，最多长到辅助功能第一档；再大的长按看大字。
+        .dynamicTypeSize(...DynamicTypeSize.accessibility1)
         .background(alignment: .bottom) {
             BottomFade(height: 130).ignoresSafeArea(edges: .bottom)
         }
@@ -256,6 +265,23 @@ struct EntryDetailView: View {
                     errorMessage = error.localizedDescription
                 }
             }
+        }
+    }
+}
+
+/// 照片可以点开看大图：给辅助功能加上按钮的身份和默认操作。
+private struct ViewerAction: ViewModifier {
+    let enabled: Bool
+    let open: () -> Void
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(Text("全屏查看"))
+                .accessibilityAction(.default, open)
+        } else {
+            content
         }
     }
 }

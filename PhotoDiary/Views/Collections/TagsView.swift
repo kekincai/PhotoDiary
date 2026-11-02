@@ -105,6 +105,7 @@ struct TagsView: View {
             .contextMenu {
                 Button("改名", systemImage: "pencil") { startRename([tag.name]) }
             }
+            .accessibilityAction(named: Text("改名")) { startRename([tag.name]) }
         }
     }
 
@@ -177,7 +178,8 @@ struct TagCover: View {
                 .lineLimit(1)
         }
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(Spoken.tag(name))，\(detail)")
     }
 }
 

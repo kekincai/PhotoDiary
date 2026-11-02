@@ -26,7 +26,8 @@ struct EntryCard: View {
                 Text(metaLine)
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.meta)
-                    .lineLimit(1)
+                    // 平时一行；大字号时可以换行，不把地点截掉。
+                    .lineLimit(2)
                 if !entry.title.isEmpty {
                     Text(entry.title)
                         .font(.diary(20, bold: true, relativeTo: .title3))
@@ -48,10 +49,13 @@ struct EntryCard: View {
                 }
             }
             .multilineTextAlignment(.leading)
+            // 文字按自己需要的高度排，字号再大也不被压成一行加省略号。
+            .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, Metrics.Spacing.xs)
         }
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.spokenSummary)
     }
 
     /// 周五 · 10月30日 · 杉并区
@@ -67,9 +71,14 @@ struct EntryRow: View {
     let entry: DiaryEntry
     var showsSeparator = true
     var namespace: Namespace.ID?
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .top, spacing: Metrics.Spacing.m) {
+        // 辅助功能大字号时左边的日期栏和右边的缩略图会把正文挤成一字一行：改成上下排。
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: Metrics.Spacing.m))
+            : AnyLayout(HStackLayout(alignment: .top, spacing: Metrics.Spacing.m))
+        layout {
             VStack(spacing: 1) {
                 Text(DiaryDates.weekday(entry.displayDate))
                     .font(.caption2.weight(.semibold))
@@ -78,7 +87,7 @@ struct EntryRow: View {
                     .font(.system(.title2, design: .default, weight: .semibold))
                     .foregroundStyle(Color.ink)
             }
-            .frame(width: 36)
+            .frame(minWidth: 36)
             .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: Metrics.Spacing.xs) {
@@ -115,8 +124,8 @@ struct EntryRow: View {
         .padding(.horizontal, Metrics.text)
         .padding(.vertical, Metrics.Spacing.l)
         .contentShape(.rect)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(DiaryDates.dayTitle(entry.displayDate))的日记：\(entry.title)")
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(entry.spokenSummary)
     }
 
     /// 标签在列表里和地点一样用灰色，主题色留给正文和编辑器。

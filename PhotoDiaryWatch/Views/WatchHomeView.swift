@@ -131,7 +131,7 @@ private struct WeekStrip: View {
                     let isToday = day.day == .today
                     VStack(spacing: 4) {
                         Text(i < names.count ? names[i] : "")
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.caption2.weight(.medium))
                             .foregroundStyle(.secondary)
                         Circle()
                             .fill(day.wrote ? Color.accentColor : Color.white.opacity(0.12))
@@ -145,7 +145,16 @@ private struct WeekStrip: View {
             }
         }
         .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
+        // 七个圆点读出来没有意义：读“这周写了 2 篇”，再说写了哪几天。
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(written == 0 ? String(localized: "这周还没写") : String(localized: "这周写了 \(written) 篇"))
+        .accessibilityValue(writtenDays)
+    }
+
+    private var writtenDays: String {
+        let days = week.filter(\.wrote).map { DiaryDates.weekday($0.day.date) }
+        guard !days.isEmpty else { return "" }
+        return String(localized: "写过的日子：\(days.formatted(.list(type: .and)))")
     }
 }
 
@@ -172,6 +181,7 @@ private struct UnwrittenStrip: View {
                             .clipped()
                             Image(systemName: "mic.fill")
                                 .font(.system(size: 10, weight: .bold))
+                                .accessibilityHidden(true)
                                 .foregroundStyle(.white)
                                 .frame(width: 20, height: 20)
                                 .background(Color.accentColor, in: .circle)

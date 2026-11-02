@@ -112,6 +112,7 @@ private struct OnThisDaySection: View {
             .padding(.trailing, 16)
             .padding(.bottom, 20)
             .accessibilityLabel("追加感想")
+            .largeContent(String(localized: "追加感想", bundle: .app, locale: .app), systemImage: "plus")
         }
     }
 
@@ -172,6 +173,8 @@ private struct PageDots: View {
 private struct WeekSection: View {
     @Environment(DiaryStore.self) private var store
     @Environment(\.brand) private var brand
+    /// 日期圆跟着字号一起变大。
+    @ScaledMetric(relativeTo: .callout) private var circle: CGFloat = 34
 
     var body: some View {
         let week = store.weekWriting
@@ -189,9 +192,9 @@ private struct WeekSection: View {
                             .font(.caption)
                             .foregroundStyle(Color.meta)
                         Text("\(item.day.day)")
-                            .font(.system(size: 16, weight: isToday ? .semibold : .regular).monospacedDigit())
+                            .font(.callout.weight(isToday ? .semibold : .regular).monospacedDigit())
                             .foregroundStyle(isToday ? .white : (item.day > today ? Color(.tertiaryLabel) : Color.ink))
-                            .frame(width: 34, height: 34)
+                            .frame(width: circle, height: circle)
                             .background(isToday ? brand : .clear, in: .circle)
                         Circle()
                             .fill(item.wrote ? brand : .clear)
@@ -199,14 +202,22 @@ private struct WeekSection: View {
                     }
                     .frame(maxWidth: .infinity)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(item.wrote ? Text("\(DiaryDates.short(item.day))，写了日记") : Text(DiaryDates.short(item.day)))
+                    .accessibilityLabel(dayLabel(item, isToday: isToday))
                 }
             }
+            // 一行七天，字号封顶在辅助功能第一档，再大就挤不下了。
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .padding(.horizontal, 8)
             .padding(.vertical, 16)
             .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
             .padding(.horizontal, 16)
         }
+    }
+
+    private func dayLabel(_ item: DiaryStore.WeekDay, isToday: Bool) -> String {
+        let date = DiaryDates.short(item.day)
+        let label = item.wrote ? String(localized: "\(date)，写了日记", bundle: .app, locale: .app) : date
+        return isToday ? String(localized: "今天，\(label)", bundle: .app, locale: .app) : label
     }
 
     private var headline: String {

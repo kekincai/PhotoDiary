@@ -5,8 +5,11 @@ import Photos
 struct PhotoViewer: View {
     let id: String
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.assistiveTechnology) private var assistive
     @State private var image: UIImage?
     @State private var chromeVisible = true
+    /// VoiceOver、切换控制下关闭按钮一直在：点一下藏起来的手势他们用不了。
+    private var showsChrome: Bool { chromeVisible || assistive.isRunning }
 
     var body: some View {
         ZStack {
@@ -15,12 +18,15 @@ struct PhotoViewer: View {
                 ZoomableImage(image: image, onSingleTap: { withAnimation(.snappy) { chromeVisible.toggle() } },
                               onSwipeDown: { dismiss() })
                     .ignoresSafeArea()
+                    .accessibilityElement()
+                    .accessibilityLabel(Text("照片"))
+                    .accessibilityAddTraits(.isImage)
             } else {
                 ProgressView().tint(.white)
             }
         }
         .overlay(alignment: .topTrailing) {
-            if chromeVisible {
+            if showsChrome {
                 Button { dismiss() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16, weight: .semibold))
@@ -33,7 +39,9 @@ struct PhotoViewer: View {
                 .transition(.opacity)
             }
         }
-        .statusBarHidden(!chromeVisible)
+        .statusBarHidden(!showsChrome)
+        // VoiceOver 的“返回”手势（两指画 Z）关闭。
+        .accessibilityAction(.escape) { dismiss() }
         .task {
             // 点开大图时允许从 iCloud 临时下载。
             let px = CGSize(width: 3000, height: 3000)

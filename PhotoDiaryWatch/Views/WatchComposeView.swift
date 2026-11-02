@@ -49,7 +49,8 @@ struct WatchComposeView: View {
         let confirmed = store.lastConfirmed == write.id
         return VStack(spacing: 8) {
             Image(systemName: confirmed ? "checkmark.circle.fill" : "paperplane.fill")
-                .font(.system(size: 32))
+                .font(.title)
+                .accessibilityHidden(true)
                 .foregroundStyle(confirmed ? Color.green : Color.accentColor)
                 .contentTransition(.symbolEffect(.replace))
             Text(confirmed ? "已写进照片说明" : "已发到 iPhone")

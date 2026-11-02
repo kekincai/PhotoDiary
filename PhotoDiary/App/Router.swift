@@ -130,14 +130,19 @@ final class Router {
 }
 
 /// 挂在根页面的滚动视图上，把滚动方向交给 Router，标签栏据此收起、展开。
+/// “减少动态效果”、VoiceOver、切换控制下不收起：VoiceOver 逐项滚动时标签栏一收一放，焦点会跟着跳。
 struct TabBarScrollReporter: ViewModifier {
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.assistiveTechnology) private var assistive
 
     func body(content: Content) -> some View {
         content.onScrollGeometryChange(for: CGFloat.self, of: { $0.contentOffset.y + $0.contentInsets.top }) { old, new in
-            guard !reduceMotion else { return }
+            guard !reduceMotion, !assistive.isRunning else { return }
             router.scrolled(from: old, to: new)
+        }
+        .onChange(of: assistive.isRunning) { _, running in
+            if running { router.expandTabBar() }
         }
     }
 }

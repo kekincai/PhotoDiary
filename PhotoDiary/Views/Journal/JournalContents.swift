@@ -169,20 +169,29 @@ private struct PlaceholderCard: View {
 struct MonthHeading: View {
     let date: Date
     var count: Int? = nil
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text(DiaryDates.monthName(date))
-                .font(.title2.weight(.semibold))
-                .foregroundStyle(Color.ink)
-            Text(DiaryDates.year(date))
-                .font(.subheadline)
-                .foregroundStyle(Color.meta)
-            Spacer(minLength: 0)
+        // 辅助功能大字号时一行放不下：篇数换到下一行，年份不拆开。
+        let layout = typeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 2))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: 8))
+        layout {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(DiaryDates.monthName(date))
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(Color.ink)
+                Text(DiaryDates.year(date))
+                    .font(.subheadline)
+                    .foregroundStyle(Color.meta)
+                    .fixedSize()
+            }
+            if !typeSize.isAccessibilitySize { Spacer(minLength: 0) }
             if let count {
                 Text("\(count) 篇")
                     .font(.footnote.monospacedDigit())
                     .foregroundStyle(Color.meta)
+                    .fixedSize()
             }
         }
         .accessibilityElement(children: .combine)
@@ -241,6 +250,7 @@ struct WeekdayHeader: View {
         }
         .padding(.horizontal, 4)
         .padding(.vertical, 8)
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .background(Color(.systemBackground))
         .overlay(alignment: .bottom) {
             Rectangle().fill(Color(.separator)).frame(height: 0.5)
@@ -287,13 +297,25 @@ private struct MonthGrid: View {
             MonthHeading(date: firstDay, count: total == 0 ? nil : total)
                 .padding(.horizontal, 16)
             LazyVGrid(columns: columns, spacing: 2) {
-                ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit) }
+                ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit).accessibilityHidden(true) }
                 ForEach(days, id: \.self) { day in
                     cell(day: day, entries: store.entries(on: day))
                 }
             }
+            // 七列的格子不能变宽：日期字号封顶，读不清的靠 VoiceOver 和大字查看。
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .padding(.horizontal, 4)
         }
+    }
+
+    /// 只有一篇时连标题一起读；今天的格子前面加“今天”。
+    private func cellLabel(day: DayStamp, entries: [DiaryEntry]) -> String {
+        let date = DiaryDates.full(day)
+        var label = entries.count == 1 && !entries[0].title.isEmpty
+            ? String(localized: "\(date)：\(entries[0].title)", bundle: .app, locale: .app)
+            : String(localized: "\(date)，\(entries.count) 篇", bundle: .app, locale: .app)
+        if day == today { label = String(localized: "今天，\(label)", bundle: .app, locale: .app) }
+        return label
     }
 
     @ViewBuilder
@@ -331,7 +353,7 @@ private struct MonthGrid: View {
             }
             .buttonStyle(.press)
             .modifier(OptionalEntryMenu(entry: entries.count == 1 ? first : nil))
-            .accessibilityLabel("\(DiaryDates.full(day))，\(entries.count) 篇")
+            .accessibilityLabel(cellLabel(day: day, entries: entries))
         } else if day == today {
             // 和照片格子一样先撑出正方形，再把日期放进去；否则整行没有照片时格子会被压扁，两位数被截成“…”。
             Color.clear
@@ -388,7 +410,7 @@ struct MediaGridContent: View {
                 }
                 .buttonStyle(.press)
                 .entryContextMenu(entry)
-                .accessibilityLabel("\(DiaryDates.dayTitle(entry.displayDate))：\(entry.title)")
+                .accessibilityLabel(entry.spokenSummary)
             }
         }
     }
@@ -415,6 +437,7 @@ struct MapContent: View {
                             .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
                     }
                     .buttonStyle(.press)
+                    .accessibilityLabel(entry.spokenSummary)
                 }
                 .annotationTitles(.hidden)
             }

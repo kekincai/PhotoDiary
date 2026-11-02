@@ -106,6 +106,8 @@ final class EditorController {
 /// UITextView：衬线正文、标签高亮、键盘上方由 SwiftUI 提供工具栏。
 struct DiaryTextView: UIViewRepresentable {
     let controller: EditorController
+    /// 空白时的提示，作为 VoiceOver 的提示读出来。
+    var hint: String? = nil
     var autofocus = true
     @Environment(\.brand) private var brand
 
@@ -121,7 +123,9 @@ struct DiaryTextView: UIViewRepresentable {
         tv.tintColor = UIColor(brand)
         tv.text = controller.text
         tv.accessibilityLabel = String(localized: "日记正文", bundle: .app, locale: .app)
+        tv.accessibilityHint = hint
         controller.textView = tv
+        context.coordinator.observeTextSettings(of: tv)
         controller.brand = UIColor(brand)
         controller.highlight(tv)
         if autofocus {
@@ -133,13 +137,32 @@ struct DiaryTextView: UIViewRepresentable {
     func updateUIView(_ tv: UITextView, context: Context) {
         controller.brand = UIColor(brand)
         tv.tintColor = UIColor(brand)
+        tv.accessibilityHint = hint
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(controller) }
 
     final class Coordinator: NSObject, UITextViewDelegate {
         let controller: EditorController
+        private var observers: [NSObjectProtocol] = []
         init(_ controller: EditorController) { self.controller = controller }
+
+        /// 正文的字体属性是自己设的：动态字体、粗体文本一变就重新排一遍，不然要等下一次打字才变。
+        func observeTextSettings(of tv: UITextView) {
+            let center = NotificationCenter.default
+            for name in [UIContentSizeCategory.didChangeNotification, UIAccessibility.boldTextStatusDidChangeNotification] {
+                observers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self, weak tv] _ in
+                    MainActor.assumeIsolated {
+                        guard let tv, tv.markedTextRange == nil else { return }
+                        self?.controller.highlight(tv)
+                    }
+                })
+            }
+        }
+
+        isolated deinit {
+            for observer in observers { NotificationCenter.default.removeObserver(observer) }
+        }
 
         func textViewDidChange(_ tv: UITextView) { controller.textDidChange(in: tv) }
         func textViewDidChangeSelection(_ tv: UITextView) { controller.selectionDidChange(in: tv) }

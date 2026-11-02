@@ -9,7 +9,15 @@ struct EntryContextMenu: ViewModifier {
     @Environment(\.brand) private var brand
 
     func body(content: Content) -> some View {
-        content.contextMenu {
+        content
+            // 长按菜单里的操作，VoiceOver 用户上下轻扫就能选到，不用先打开菜单。
+            .accessibilityAction(named: Text("追加感想")) {
+                router.editor = EditorRequest(assetID: entry.id, mode: .append)
+            }
+            .accessibilityAction(named: Text("编辑")) {
+                router.editor = EditorRequest(assetID: entry.id, mode: .edit)
+            }
+            .contextMenu {
             Button("追加感想", systemImage: "plus.bubble") {
                 router.editor = EditorRequest(assetID: entry.id, mode: .append)
             }

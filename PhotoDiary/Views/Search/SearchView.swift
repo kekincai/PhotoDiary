@@ -34,6 +34,7 @@ struct SearchView: View {
     private static let clearPull: CGFloat = 96
     @FocusState private var focused: Bool
     @Environment(\.isWide) private var wide
+    @Environment(\.assistiveTechnology) private var assistive
 
     private var trimmed: String { query.trimmingCharacters(in: .whitespaces) }
     private var isTypingTag: Bool { trimmed.hasPrefix("#") || trimmed.hasPrefix("＃") }
@@ -213,10 +214,10 @@ struct SearchView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     HStack(spacing: 5) {
                         if option == .custom {
-                            Image(systemName: "calendar").font(.system(size: 14, weight: .semibold))
+                            Image(systemName: "calendar").font(.subheadline.weight(.semibold))
                         }
                         Text(option.title)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.callout.weight(.semibold))
                             .lineLimit(1)
                     }
                     if count > 0 {
@@ -230,6 +231,8 @@ struct SearchView: View {
             }
             .clipShape(shape)
             .contentShape(shape)
+            // 固定高度的照片块：字号封顶，读不清的靠 VoiceOver 和大字查看。
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .accessibilityElement(children: .combine)
     }
 
@@ -242,12 +245,14 @@ struct SearchView: View {
     private func tagChip(_ name: String, count: Int) -> some View {
         Chip(fill: brand.soft()) {
             Text(verbatim: "#\(name)#")
-                .font(.system(size: 15, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(brand)
             Text("\(count)")
                 .font(.footnote.weight(.medium).monospacedDigit())
                 .foregroundStyle(brand.opacity(0.7))
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("\(Spoken.tag(name))，\(count) 篇"))
     }
 
     /// 地点卡片：封面在这个地点的照片里慢慢轮换，各张卡片错开起步。
@@ -263,7 +268,7 @@ struct SearchView: View {
             .overlay(alignment: .bottomLeading) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(item.name)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.callout.weight(.semibold))
                         .lineLimit(2)
                         .multilineTextAlignment(.leading)
                     Text("\(item.count) 篇")
@@ -275,6 +280,7 @@ struct SearchView: View {
                 .padding(.bottom, 12)
             }
             .clipShape(.rect(cornerRadius: 16, style: .continuous))
+            .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .accessibilityElement(children: .combine)
     }
 
@@ -347,10 +353,10 @@ struct SearchView: View {
         ScrollView(.horizontal) {
             HStack(spacing: 8) {
                 ForEach(tags, id: \.self) { tag in
-                    FilterToken(label: "#\(tag)#") { tags.removeAll { $0 == tag } }
+                    FilterToken(label: "#\(tag)#", spoken: Spoken.tag(tag)) { tags.removeAll { $0 == tag } }
                 }
                 if let place {
-                    FilterToken(label: place, symbol: "mappin.and.ellipse") { self.place = nil }
+                    FilterToken(label: place, spoken: Spoken.place(place), symbol: "mappin.and.ellipse") { self.place = nil }
                 }
                 if range != .any {
                     FilterToken(label: range == .custom ? customRangeTitle : range.title, symbol: "calendar",
@@ -365,6 +371,13 @@ struct SearchView: View {
                     }
                     .buttonStyle(.press)
                     .accessibilityLabel(Text(Range.custom.title))
+                }
+                // 下拉清除这个手势 VoiceOver、切换控制做不了：给他们一个按钮。
+                if assistive.isRunning {
+                    Button("清除筛选", action: clearFilters)
+                        .font(.subheadline.weight(.semibold))
+                        .padding(.horizontal, Metrics.Spacing.s)
+                        .frame(minHeight: 38)
                 }
             }
             .padding(.vertical, 10)
@@ -409,6 +422,7 @@ struct SearchView: View {
                     .buttonStyle(.press)
                     .glassEffect(.regular.interactive(), in: .circle)
                     .accessibilityLabel("回到日记")
+                    .largeContent(String(localized: "回到日记", bundle: .app, locale: .app), systemImage: AppTab.journal.symbol)
                 }
 
                 HStack(spacing: 10) {
@@ -433,7 +447,7 @@ struct SearchView: View {
                     }
                 }
                 .padding(.horizontal, 16)
-                .frame(height: 54)
+                .frame(minHeight: 54)
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .onTapGesture { focused = true }
             }
@@ -441,6 +455,7 @@ struct SearchView: View {
         .frame(maxWidth: 640)
         .padding(.horizontal, 16)
         .padding(.bottom, 6)
+        .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .frame(maxWidth: .infinity)
         .background(alignment: .bottom) {
             BottomFade(height: 140).ignoresSafeArea(edges: .bottom)
@@ -494,6 +509,8 @@ private struct ScrollToTop: UIViewRepresentable {
 /// 一个已选的筛选条件。整颗胶囊是主题色（选中态），✕ 是独立的按钮，点得准，也一眼看得出能去掉。
 private struct FilterToken: View {
     let label: String
+    /// 读给 VoiceOver 的（“标签“旅行””），不写就读 label。
+    var spoken: String?
     var symbol: String?
     var edit: (() -> Void)?
     let remove: () -> Void
@@ -504,9 +521,12 @@ private struct FilterToken: View {
             if let edit {
                 Button(action: edit) { content }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(spoken ?? label)
                     .accessibilityHint(Text("选择日期"))
             } else {
                 content
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(spoken ?? label)
             }
             Button(action: remove) {
                 Image(systemName: "xmark")
@@ -518,7 +538,7 @@ private struct FilterToken: View {
                     .contentShape(.rect)
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(Text("去掉“\(label)”"))
+            .accessibilityLabel(Text("去掉“\(spoken ?? label)”"))
         }
         .foregroundStyle(.white)
         .background(brand, in: .capsule)
@@ -528,15 +548,15 @@ private struct FilterToken: View {
     private var content: some View {
         HStack(spacing: 5) {
             if let symbol {
-                Image(systemName: symbol).font(.system(size: 13, weight: .semibold))
+                Image(systemName: symbol).font(.footnote.weight(.semibold))
             }
             Text(verbatim: label)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
         }
         .padding(.leading, 14)
         .padding(.trailing, 2)
-        .frame(height: 38)
+        .frame(minHeight: 38)
         .contentShape(.rect)
     }
 }

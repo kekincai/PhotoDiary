@@ -12,8 +12,11 @@ struct LaunchSplash: View {
     static private(set) var finished = false
     private static let holdForDebugging = ProcessInfo.processInfo.arguments.contains("-holdSplash")
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceMotion) private var motionReduced
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOver
     @Environment(\.colorScheme) private var colorScheme
+    /// “减少动态效果”或 VoiceOver 开着：不做开场表演，淡入淡出后直接进 App。
+    private var reduceMotion: Bool { motionReduced || voiceOver }
     /// ready 的副本。.task 里拿到的是开始时的 self，直接读 ready 永远是旧值；
     /// 索引在开场动画播完前就读好时，就会一直停在开屏上。
     @State private var isReady = false

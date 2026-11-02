@@ -98,14 +98,21 @@ extension Color {
     }
 
     /// 界面用的主题色：深色模式下往白色混三成，深色底上的文字和图标才看得清。设置里的色块仍用原色。
+    /// 打开“增强对比度”时再拉开一截：浅色模式压暗两成，深色模式往白色混一半。
     static func brand(hex: String) -> Color {
         let base = Color(hex: hex)
         var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
         UIColor(base).getRed(&r, green: &g, blue: &b, alpha: &a)
-        let light = UIColor(red: r, green: g, blue: b, alpha: 1)
-        let dark = UIColor(red: r + (1 - r) * 0.3, green: g + (1 - g) * 0.3, blue: b + (1 - b) * 0.3, alpha: 1)
+        func toward(_ target: CGFloat, _ amount: CGFloat) -> UIColor {
+            UIColor(red: r + (target - r) * amount, green: g + (target - g) * amount, blue: b + (target - b) * amount, alpha: 1)
+        }
+        let light = toward(0, 0), lightHigh = toward(0, 0.2)
+        let dark = toward(1, 0.3), darkHigh = toward(1, 0.5)
         // SwiftUI 可能在渲染线程上解析动态颜色：闭包不能带主线程隔离。
-        return Color(UIColor { @Sendable trait in trait.userInterfaceStyle == .dark ? dark : light })
+        return Color(UIColor { @Sendable trait in
+            let high = trait.accessibilityContrast == .high
+            return trait.userInterfaceStyle == .dark ? (high ? darkHigh : dark) : (high ? lightHigh : light)
+        })
     }
 
     /// "#RRGGBB"，存主题色用。
@@ -116,17 +123,32 @@ extension Color {
         return String(format: "#%02X%02X%02X", byte(r), byte(g), byte(b))
     }
 
-    /// 标签胶囊等浅色底：主题色 10%。
-    func soft() -> Color { opacity(0.1) }
+    /// 标签胶囊等浅色底：主题色 10%；“增强对比度”时 18%，胶囊的边界才看得出。
+    func soft() -> Color {
+        let base = UIColor(self)
+        return Color(UIColor { @Sendable trait in
+            base.resolvedColor(with: trait).withAlphaComponent(trait.accessibilityContrast == .high ? 0.18 : 0.1)
+        })
+    }
 
     /// 正文。
     static let ink = Color(.label)
-    /// 正文的次要层：预览、追加的段落。比系统 secondaryLabel 深一点，宋体小字才够清楚。
-    static let inkSecondary = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 0.78, alpha: 1) : UIColor(red: 0.33, green: 0.33, blue: 0.35, alpha: 1) })
+    /// 正文的次要层：预览、追加的段落。比系统 secondaryLabel 深一点，宋体小字才够清楚；“增强对比度”时再深（浅）一层。
+    static let inkSecondary = Color(UIColor { @Sendable trait in
+        let high = trait.accessibilityContrast == .high
+        return trait.userInterfaceStyle == .dark
+            ? UIColor(white: high ? 0.9 : 0.78, alpha: 1)
+            : UIColor(red: high ? 0.2 : 0.33, green: high ? 0.2 : 0.33, blue: high ? 0.22 : 0.35, alpha: 1)
+    })
     /// 元信息：日期、地点、篇数。
     static let meta = Color(.secondaryLabel)
-    /// 分隔细线。
-    static let hairline = Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(white: 1, alpha: 0.12) : UIColor(red: 0.925, green: 0.925, blue: 0.937, alpha: 1) })
+    /// 分隔细线；“增强对比度”时加深，和系统分隔线一样。
+    static let hairline = Color(UIColor { @Sendable trait in
+        let high = trait.accessibilityContrast == .high
+        return trait.userInterfaceStyle == .dark
+            ? UIColor(white: 1, alpha: high ? 0.3 : 0.12)
+            : (high ? UIColor(white: 0.72, alpha: 1) : UIColor(red: 0.925, green: 0.925, blue: 0.937, alpha: 1))
+    })
     static let card = Color(.secondarySystemGroupedBackground)
     /// 白底上的灰色块：那年今日横幅、编辑器的照片卡片、胶囊。
     static let tile = Color(.secondarySystemBackground)

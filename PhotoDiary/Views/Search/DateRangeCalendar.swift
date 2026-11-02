@@ -104,19 +104,37 @@ private struct RangeMonthGrid: View {
             MonthHeading(date: firstDay, count: total == 0 ? nil : total)
                 .padding(.horizontal, 16)
             LazyVGrid(columns: columns, spacing: 2) {
-                ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit) }
+                ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit).accessibilityHidden(true) }
                 ForEach(days, id: \.self) { day in
                     Button { select(day) } label: { cell(day) }
                         .buttonStyle(.press)
-                        .accessibilityLabel(DiaryDates.full(day))
+                        .accessibilityLabel(label(day))
+                        .accessibilityValue(value(day))
                         .accessibilityAddTraits(isEndpoint(day) ? .isSelected : [])
                 }
             }
+            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .padding(.horizontal, 4)
         }
     }
 
     private func isEndpoint(_ day: DayStamp) -> Bool { day == start || day == end }
+
+    /// 日期，有日记时带篇数，今天前面加“今天”。
+    private func label(_ day: DayStamp) -> String {
+        let count = store.entries(on: day).count
+        let date = DiaryDates.full(day)
+        let label = count > 0 ? String(localized: "\(date)，\(count) 篇", bundle: .app, locale: .app) : date
+        return day == today ? String(localized: "今天，\(label)", bundle: .app, locale: .app) : label
+    }
+
+    /// 起点 / 终点 / 在范围里：只靠颜色看得出来的，读出来。
+    private func value(_ day: DayStamp) -> String {
+        if day == start { return String(localized: "起点", bundle: .app, locale: .app) }
+        if day == end { return String(localized: "终点", bundle: .app, locale: .app) }
+        if inRange(day) { return String(localized: "在范围内", bundle: .app, locale: .app) }
+        return ""
+    }
 
     private func inRange(_ day: DayStamp) -> Bool {
         guard let start else { return false }

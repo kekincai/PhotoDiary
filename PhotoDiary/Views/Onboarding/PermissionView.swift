@@ -13,12 +13,24 @@ struct PermissionView: View {
     private var denied: Bool { store.authorization == .denied || store.authorization == .restricted }
 
     var body: some View {
+        // 大字号时一屏放不下：可以滚动，字号小时内容不够一屏就照常居中。
+        ViewThatFits(in: .vertical) {
+            page
+            ScrollView { page.padding(.vertical, Metrics.Spacing.xl) }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
+        .opacity(appeared ? 1 : 0)
+        .onAppear { withAnimation(.easeOut(duration: 0.35)) { appeared = true } }
+    }
+
+    private var page: some View {
         VStack(alignment: .leading, spacing: 0) {
             Spacer(minLength: 0)
             icon
                 .padding(.bottom, Metrics.Spacing.xl)
             Text("把日记写在\n照片的说明里")
-                .font(.system(size: 34, weight: .bold))
+                .font(.largeTitle.bold())
                 .tracking(-0.5)
                 .lineSpacing(2)
                 .foregroundStyle(Color.ink)
@@ -44,7 +56,7 @@ struct PermissionView: View {
                 (denied ? Text("前往“设置”允许访问照片") : Text("允许访问照片"))
                     .font(.headline)
                     .frame(maxWidth: .infinity)
-                    .frame(height: 54)
+                    .frame(minHeight: 54)
             }
             .buttonStyle(.glassProminent)
             .buttonBorderShape(.capsule)
@@ -64,10 +76,7 @@ struct PermissionView: View {
         .padding(.horizontal, 28)
         .padding(.bottom, Metrics.Spacing.m)
         .frame(maxWidth: 520)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
-        .opacity(appeared ? 1 : 0)
-        .onAppear { withAnimation(.easeOut(duration: 0.35)) { appeared = true } }
+        .frame(maxWidth: .infinity)
     }
 
     /// 和 App 图标一样的书签，放在主题色的圆角方块上。
@@ -85,9 +94,10 @@ struct PermissionView: View {
     private func point(_ symbol: String, _ title: LocalizedStringKey, _ text: LocalizedStringKey) -> some View {
         HStack(alignment: .top, spacing: Metrics.Spacing.l) {
             Image(systemName: symbol)
-                .font(.system(size: 26, weight: .regular))
+                .font(.title)
                 .foregroundStyle(brand)
-                .frame(width: 40, height: 40)
+                .frame(minWidth: 40, minHeight: 40)
+                .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.headline).foregroundStyle(Color.ink)
                 Text(text).font(.subheadline).foregroundStyle(Color.meta)

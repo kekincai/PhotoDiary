@@ -18,6 +18,8 @@ struct AddFromPhotosView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var filter: Filter = .unwritten
     @State private var photos: [(id: String, date: Date?)] = []
+    /// 拍摄时间，读给 VoiceOver：一格格照片只说“还没写日记的照片”分不出是哪张。
+    @State private var dates: [String: Date] = [:]
     @State private var loaded = false
     /// 分组结果缓存：照片多时每次刷新都重新分组会卡。
     @State private var sections: [Section] = []
@@ -47,7 +49,8 @@ struct AddFromPhotosView: View {
                         .padding(.horizontal, 16)
                         .padding(.top, 4)
                         .padding(.bottom, 12)
-                                .accessibilityAddTraits(.isHeader)
+                        .accessibilityElement(children: .combine)
+                        .accessibilityAddTraits(.isHeader)
 
                         LazyVGrid(columns: columns, spacing: 2) {
                             ForEach(section.items, id: \.self) { id in
@@ -100,6 +103,7 @@ struct AddFromPhotosView: View {
             photos = await Task.detached(priority: .userInitiated) {
                 AssetImages.recentAssets(limit: Self.limit)
             }.value
+            dates = Dictionary(photos.compactMap { p in p.date.map { (p.id, $0) } }, uniquingKeysWith: { a, _ in a })
             rebuildSections()
             loaded = true
         }
@@ -126,7 +130,13 @@ struct AddFromPhotosView: View {
                 .matchedTransitionSource(id: id, in: zoom)
         }
         .buttonStyle(.press)
-        .accessibilityLabel(hasDiary ? Text("已写日记的照片") : Text("还没写日记的照片"))
+        .accessibilityLabel(cellLabel(id, hasDiary: hasDiary))
+    }
+
+    private func cellLabel(_ id: String, hasDiary: Bool) -> Text {
+        guard let date = dates[id] else { return hasDiary ? Text("已写日记的照片") : Text("还没写日记的照片") }
+        let when = date.formatted(.dateTime.month().day().hour().minute().locale(.app))
+        return hasDiary ? Text("已写日记的照片，\(when)") : Text("还没写日记的照片，\(when)")
     }
 
     // MARK: 分组：今天 / 昨天 / 本周早些时候 / 本月早些时候 / 按月
