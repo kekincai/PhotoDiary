@@ -15,3 +15,8 @@
 - 数量用复数变体（英文 one / other）。
 - Info.plist 里的文字（App 名、权限说明）在 `InfoPlist.xcstrings`，iPhone 和 Watch 共用。系统语言不在支持之列时回退到英语（`CFBundleDevelopmentRegion = en`）。
 - 日期一律用 `DiaryDates` 按界面语言格式化，不写死中文格式。
+
+## 测试
+
+- 每一条用户操作都要有测试：改了写入、同步、界面流程，就在 `PhotoDiaryTests`（逻辑）或 `PhotoDiaryUITests`（流程）里补上，交付前跑 `Tools/test.sh`。
+- 系统在后台队列上调用的代码（PhotoKit 的观察者和回调、`performChanges` 的闭包、WCSession 代理、`requestPlayerItem` 等）必须是 `nonisolated` 或 `@Sendable` 闭包：工程默认主线程隔离，写错了不会编译报错，运行时直接闪退。新加这类回调要在 `PhotoKitIntegrationTests` 里真的触发一次。

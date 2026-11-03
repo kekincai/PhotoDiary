@@ -83,9 +83,12 @@ nonisolated final class EntryRecord {
 @Model
 nonisolated final class SyncRecord {
     var changeToken: Data?
+    /// 拿到这个 token 时的照片权限（PHAuthorizationStatus 的 rawValue）。
+    var access: Int?
 
-    init(changeToken: Data?) {
+    init(changeToken: Data?, access: Int?) {
         self.changeToken = changeToken
+        self.access = access
     }
 }
 
@@ -114,6 +117,7 @@ actor IndexDatabase {
     struct Loaded: Sendable {
         var entries: [DiaryEntry] = []
         var changeToken: Data?
+        var tokenAccess: Int?
         var places = PlaceCache()
     }
 
@@ -122,6 +126,7 @@ actor IndexDatabase {
         var upserts: [DiaryEntry] = []
         var deletions: Set<String> = []
         var changeToken: Data?
+        var tokenAccess: Int?
         var places: [String: (name: String, timeZone: String?)] = [:]
     }
 
@@ -208,6 +213,7 @@ actor IndexDatabase {
             }
             if let sync = try modelContext.fetch(FetchDescriptor<SyncRecord>()).first {
                 loaded.changeToken = sync.changeToken
+                loaded.tokenAccess = sync.access
             }
             for place in try modelContext.fetch(FetchDescriptor<PlaceRecord>()) {
                 loaded.places.names[place.key] = place.name
@@ -255,8 +261,9 @@ actor IndexDatabase {
 
         if let sync = try modelContext.fetch(FetchDescriptor<SyncRecord>()).first {
             sync.changeToken = changes.changeToken
+            sync.access = changes.tokenAccess
         } else {
-            modelContext.insert(SyncRecord(changeToken: changes.changeToken))
+            modelContext.insert(SyncRecord(changeToken: changes.changeToken, access: changes.tokenAccess))
         }
 
         if !changes.places.isEmpty {

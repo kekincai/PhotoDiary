@@ -1,5 +1,6 @@
 import Testing
 import Foundation
+import Photos
 @testable import PhotoDiary
 
 /// 同步的并发与取消：任何时刻只有一个同步在跑，被取消的读取不留下任何痕迹。
@@ -75,5 +76,40 @@ struct SyncTests {
 
         #expect(await eventually { first.syncState == .idle && first.diaries.count == 3 })
         #expect(library.fullScans == 3)
+    }
+
+    /// 回归：有限访问时建的索引，改成完整访问后只走增量，之前看不到的日记一直不出现。
+    @Test func accessChangeWhileRunningRescansLibrary() async {
+        let library = FakeLibrary()
+        library.seed("a", caption: "一", date: date(2026, 10, 1))
+        library.setAuthorization(.limited)
+        let store = await startedStore(library)
+        #expect(library.fullScans == 1)
+
+        library.setAuthorization(.authorized)
+        store.refreshAuthorization()
+        #expect(await eventually { library.fullScans == 2 && store.syncState == .idle })
+        #expect(library.incrementals == 0)
+    }
+
+    @Test func accessChangeWhileClosedRescansOnLaunch() async {
+        let library = FakeLibrary()
+        library.seed("a", caption: "一", date: date(2026, 10, 1))
+        library.setAuthorization(.limited)
+        let dir = temporaryDirectory()
+        let first = await startedStore(library, directory: dir)
+        await first.saveNow()
+
+        // 权限没变：增量。
+        let second = await startedStore(library, directory: dir)
+        await second.saveNow()
+        #expect(library.fullScans == 1)
+        #expect(library.incrementals == 1)
+
+        // 关着 App 时在系统设置里改成完整访问：全库重读。
+        library.setAuthorization(.authorized)
+        let third = await startedStore(library, directory: dir)
+        #expect(library.fullScans == 2)
+        #expect(third.diaries.count == 1)
     }
 }

@@ -330,6 +330,9 @@ private struct MediaHeader: View {
                   let item = await AssetImages.shared.playerItem(for: entry.id) else { return }
             player = AVPlayer(playerItem: item)
         }
+        // 照片本身对辅助功能是隐藏的，要在这里自己成为一个元素，否则 VoiceOver 摸不到它、也就点不开大图。
+        // 视频保留播放器自己的控件。
+        .accessibilityElement(children: entry.mediaKind == .video ? .contain : .ignore)
         .accessibilityLabel(entry.mediaKind == .video ? Text("视频") : Text("照片"))
         .accessibilityAddTraits(.isImage)
     }

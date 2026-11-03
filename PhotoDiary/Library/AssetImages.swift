@@ -2,6 +2,7 @@ import Photos
 import UIKit
 import AVFoundation
 import OSLog
+import Synchronization
 
 /// 只从照片库取图，不复制、不存储。缩略图只用本地数据；大图允许从 iCloud 临时下载。
 ///
@@ -199,7 +200,7 @@ final class AssetImages {
             let interval = Log.signposter.beginInterval("取图", id: signpostID)
             nonisolated(unsafe) var gotDegraded = false
             let requestID = manager.requestImage(for: asset, targetSize: pixelSize, contentMode: contentMode,
-                                                 options: options) { image, info in
+                                                 options: options) { @Sendable image, info in
                 let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
                 let cancelled = (info?[PHImageCancelledKey] as? Bool) ?? false
                 let error = info?[PHImageErrorKey] as? Error
@@ -253,19 +254,23 @@ final class AssetImages {
         let options = PHLivePhotoRequestOptions()
         options.deliveryMode = .highQualityFormat
         options.isNetworkAccessAllowed = true
-        return await withCheckedContinuation { continuation in
-            var resumed = false
+        // 回调可能不在主线程（系统没有保证），所以都标 @Sendable，不继承主线程隔离。
+        let box: PHLivePhotoBox = await withCheckedContinuation { continuation in
+            let resumed = Mutex(false)
             PHImageManager.default().requestLivePhoto(for: asset, targetSize: pixelSize, contentMode: .aspectFit,
-                                                      options: options) { photo, info in
+                                                      options: options) { @Sendable photo, info in
                 let degraded = (info?[PHImageResultIsDegradedKey] as? Bool) ?? false
-                guard !degraded, !resumed else { return }
-                if let error = info?[PHImageErrorKey] as? Error {
+                let error = info?[PHImageErrorKey] as? Error
+                // 出错或取消时不会再有清晰版，低清的也要收下，否则一直等不到。
+                guard !degraded || error != nil || photo == nil else { return }
+                guard resumed.withLock({ let was = $0; $0 = true; return !was }) else { return }
+                if let error {
                     Log.images.error("取实况照片失败 \(id)：\(error, privacy: .public)")
                 }
-                resumed = true
-                continuation.resume(returning: photo)
+                continuation.resume(returning: PHLivePhotoBox(value: photo))
             }
         }
+        return box.value
     }
 
     func playerItem(for id: String) async -> AVPlayerItem? {
@@ -273,14 +278,16 @@ final class AssetImages {
         let options = PHVideoRequestOptions()
         options.isNetworkAccessAllowed = true
         options.deliveryMode = .automatic
-        return await withCheckedContinuation { continuation in
-            PHImageManager.default().requestPlayerItem(forVideo: asset, options: options) { item, info in
+        // 照片库在任意一条后台队列上回调（文档如此），回调必须是 @Sendable，不能继承主线程隔离。
+        let box: PlayerItemBox = await withCheckedContinuation { continuation in
+            PHImageManager.default().requestPlayerItem(forVideo: asset, options: options) { @Sendable item, info in
                 if let error = info?[PHImageErrorKey] as? Error {
                     Log.images.error("取视频失败 \(id)：\(error, privacy: .public)")
                 }
-                continuation.resume(returning: item)
+                continuation.resume(returning: PlayerItemBox(value: item))
             }
         }
+        return box.value
     }
 
     /// 最近的照片（不读说明），用于“从照片添加”。
@@ -328,9 +335,19 @@ private struct AssetBatch: @unchecked Sendable {
     let assets: [String: PHAsset]
 }
 
+/// 系统在后台队列上交过来的对象，交出去之后那边不会再碰它。
+private struct PHLivePhotoBox: @unchecked Sendable {
+    let value: PHLivePhoto?
+}
+
+private struct PlayerItemBox: @unchecked Sendable {
+    let value: AVPlayerItem?
+}
+
 /// 把 PHChange 送回主线程，让缓存只换掉变了的照片。
-private final class ChangeObserver: NSObject, PHPhotoLibraryChangeObserver, @unchecked Sendable {
-    var onChange: (@MainActor (PHChange) -> Void)?
+/// 照片库在自己的后台队列上回调：这个类必须是 nonisolated，否则默认的主线程隔离会让运行时检查直接终止 App（保存说明就闪退）。
+nonisolated final class ChangeObserver: NSObject, PHPhotoLibraryChangeObserver, @unchecked Sendable {
+    nonisolated(unsafe) var onChange: (@MainActor (PHChange) -> Void)?
 
     func photoLibraryDidChange(_ changeInstance: PHChange) {
         Task { @MainActor [onChange] in onChange?(changeInstance) }

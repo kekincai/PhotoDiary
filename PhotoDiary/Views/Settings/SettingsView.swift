@@ -215,13 +215,13 @@ struct SettingsView: View {
             }
             if store.isLimited {
                 Button {
-                    LimitedLibrary.present()
+                    LimitedLibrary.present(store: store)
                 } label: {
                     SettingsLabel("选择更多照片", symbol: "photo.badge.plus", color: .blue)
                 }
             }
             Button {
-                if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                if let url = URL.photoAccessSettings { openURL(url) }
             } label: {
                 SettingsLabel("在“设置”中修改", symbol: "gear", color: .gray)
             }

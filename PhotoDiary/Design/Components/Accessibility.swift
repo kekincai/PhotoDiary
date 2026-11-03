@@ -16,6 +16,16 @@ enum Spoken {
         String(localized: "地点：\(name)", bundle: .app, locale: .app)
     }
 
+    /// 用句号连起来；本来就以句末标点结尾的不再加（“发亮。”后面不读成“发亮。。”）。
+    static func sentences(_ parts: [String]) -> String {
+        var out = ""
+        for part in parts where !part.isEmpty {
+            if let last = out.last, !"。！？!?…".contains(last) { out += "。" }
+            out += part
+        }
+        return out
+    }
+
     /// 标签：旅行、登山
     static func tags(_ names: [String]) -> String? {
         guard !names.isEmpty else { return nil }
@@ -40,7 +50,7 @@ extension DiaryEntry {
         case .video: parts.append(String(localized: "视频", bundle: .app, locale: .app))
         case .livePhoto: parts.append(String(localized: "实况照片", bundle: .app, locale: .app))
         }
-        return parts.joined(separator: "。")
+        return Spoken.sentences(parts)
     }
 }
 

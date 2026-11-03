@@ -223,13 +223,15 @@ private struct TitleBlock: View {
 
 /// 只给了“有限访问”时：提示可以扩大范围。
 struct LimitedAccessBanner: View {
+    @Environment(DiaryStore.self) private var store
+
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text("只显示了你允许访问的照片")
                 .font(.footnote)
                 .foregroundStyle(Color.meta)
             Spacer(minLength: 0)
-            Button("选择更多") { LimitedLibrary.present() }
+            Button("选择更多") { LimitedLibrary.present(store: store) }
                 .font(.footnote.weight(.semibold))
         }
         .padding(.horizontal, 16)

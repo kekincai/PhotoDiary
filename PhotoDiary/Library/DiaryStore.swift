@@ -105,6 +105,10 @@ final class DiaryStore {
     private var changeToken: Data? {
         didSet { if changeToken != oldValue { tokenDirty = true } }
     }
+    /// changeToken 是在哪种照片权限下拿到的。权限变了（有限 → 完整），之前看不到的照片不会出现在增量里，要全库重读。
+    private var tokenAccess: PHAuthorizationStatus? {
+        didSet { if tokenAccess != oldValue { tokenDirty = true } }
+    }
     private var writtenInApp: Set<String> = []
     private var placeCache: [String: String] = [:]
     private var timeZoneCache: [String: String] = [:]
@@ -112,6 +116,10 @@ final class DiaryStore {
     private var syncTask: Task<Void, Never>?
     private var saveTask: Task<Void, Never>?
     private var pendingIncremental = false
+    /// 本 App 写过的照片 → 写入序号。同步是先读、过一会儿才交回主线程的：
+    /// 读的时候还没写、交回来时已经写过的照片，同步的结果是旧的，要按照片库现在的内容重读。
+    private var localWrites: [String: Int] = [:]
+    private var writeSequence = 0
     /// 反向地理编码失败过的照片，本次运行不再重试。
     private var placeFailures = Set<String>()
     /// 界面语言变了就加一，旧语言那一轮查到的地名不再写回。
@@ -173,6 +181,7 @@ final class DiaryStore {
             timeZoneCache = loaded.places.timeZones
             writtenInApp = Set(loaded.entries.lazy.filter(\.writtenInApp).map(\.id))
             changeToken = loaded.changeToken
+            tokenAccess = loaded.tokenAccess.flatMap(PHAuthorizationStatus.init(rawValue:))
             entries = Dictionary(loaded.entries.map { ($0.id, $0) }, uniquingKeysWith: { _, b in b })
             // 刚从库里读出来的不算变化。
             clearDirty()
@@ -208,8 +217,9 @@ final class DiaryStore {
     /// 进行中再调用只记下“结束后再增量一次”。
     func sync() {
         guard syncTask == nil else { pendingIncremental = true; return }
+        let started = writeSequence
         syncTask = Task {
-            if let token = changeToken {
+            if let token = changeToken, tokenAccess == authorization {
                 Log.sync.debug("增量同步开始")
                 let state = Log.signposter.beginInterval("sync.incremental")
                 do {
@@ -217,7 +227,7 @@ final class DiaryStore {
                     Log.signposter.endInterval("sync.incremental", state)
                     guard !Task.isCancelled else { return }
                     Log.sync.info("增量同步：更新 \(result.updated.count)，移除 \(result.removed.count)")
-                    apply(result)
+                    apply(result, writesSince: started)
                 } catch {
                     Log.signposter.endInterval("sync.incremental", state)
                     guard !Task.isCancelled else { return }
@@ -225,12 +235,17 @@ final class DiaryStore {
                     await fullScan()
                 }
             } else {
+                if changeToken != nil {
+                    Log.sync.notice("照片权限变了（\(self.tokenAccess?.rawValue ?? -1, privacy: .public) → \(self.authorization.rawValue, privacy: .public)），全量读取")
+                }
                 await fullScan()
             }
             // 被 rebuildIndex 取消的任务已经被新任务取代，不能再动任何状态（包括 syncTask）。
             guard !Task.isCancelled else { return }
             syncTask = nil
             hasSynced = true
+            // 这次同步开始前的写入已经不会再被旧结果盖掉了。
+            localWrites = localWrites.filter { $0.value > started }
             if pendingIncremental {
                 pendingIncremental = false
                 sync()
@@ -260,6 +275,8 @@ final class DiaryStore {
     private func fullScan() async {
         let state = Log.signposter.beginInterval("sync.fullScan")
         defer { Log.signposter.endInterval("sync.fullScan", state) }
+        let access = authorization
+        let started = writeSequence
         var fresh: [String: DiaryEntry] = [:]
         for await event in library.fullScan() {
             switch event {
@@ -276,15 +293,19 @@ final class DiaryStore {
                 if case .scanning(_, let total) = syncState {
                     syncState = .scanning(processed: processed, total: total)
                 }
-                // 建好的部分先可用。
+                // 建好的部分先可用。读取开始后本 App 写过的照片不拿旧结果盖掉。
+                let written = writes(since: started)
+                decorated.removeAll { written.contains($0.0) }
                 if !decorated.isEmpty {
                     entries.merge(decorated, uniquingKeysWith: { _, b in b })
                 }
             case .finished(let token):
                 if let token {
                     Log.sync.info("全量读取完成：\(fresh.count) 篇日记")
+                    reread(writes(since: started), into: &fresh)
                     entries = fresh
                     changeToken = token
+                    tokenAccess = access
                 }
             }
         }
@@ -298,19 +319,42 @@ final class DiaryStore {
         afterSync(ids: Array(entries.keys))
     }
 
-    private func apply(_ result: LibraryScanner.IncrementalResult) {
+    private func apply(_ result: LibraryScanner.IncrementalResult, writesSince started: Int) {
         var copy = entries
         for id in result.removed { copy.removeValue(forKey: id) }
         for var entry in result.updated {
             decorate(&entry)
             copy[entry.id] = entry
         }
+        reread(writes(since: started), into: &copy)
         // 没有变化时不重写索引（每次启动都会走一遍增量）；地名补查照常进行。
         let changed = copy != entries || result.token != changeToken
         if copy != entries { entries = copy }
         changeToken = result.token
         if changed { scheduleSave() }
         afterSync(ids: result.updated.map(\.id))
+    }
+
+    /// 同步开始之后本 App 写过的照片。
+    private func writes(since started: Int) -> Set<String> {
+        Set(localWrites.compactMap { $0.value > started ? $0.key : nil })
+    }
+
+    /// 同步读到的可能是写入之前的样子：这些照片按照片库现在的内容重读（不是简单跳过，免得漏掉同一时间在别处的修改）。
+    private func reread(_ ids: Set<String>, into copy: inout [String: DiaryEntry]) {
+        guard !ids.isEmpty else { return }
+        let fetched = library.fetchEntries(ids: Array(ids))
+        for id in ids { copy.removeValue(forKey: id) }
+        for var entry in fetched {
+            decorate(&entry)
+            copy[entry.id] = entry
+        }
+        Log.sync.debug("同步期间本 App 写过 \(ids.count) 张，按现在的照片库重读")
+    }
+
+    private func noteLocalWrite(_ ids: some Sequence<String>) {
+        writeSequence += 1
+        for id in ids { localWrites[id] = writeSequence }
     }
 
     /// 补上本地才有的信息：曾在本 App 写过、地点名称。
@@ -399,11 +443,13 @@ final class DiaryStore {
             throw error
         }
         Log.library.info("删除照片 \(id)")
+        noteLocalWrite([id])
         entries.removeValue(forKey: id)
         scheduleSave()
     }
 
     private func refresh(ids: [String]) {
+        noteLocalWrite(ids)
         var copy = entries
         let fetched = library.fetchEntries(ids: ids)
         for id in ids where !fetched.contains(where: { $0.id == id }) { copy.removeValue(forKey: id) }
@@ -679,7 +725,7 @@ final class DiaryStore {
     /// 只把上次保存以来变化的行写进数据库。
     private func persist() async {
         guard let database, hasPendingChanges else { return }
-        var changes = IndexDatabase.Changes(changeToken: changeToken, places: dirtyPlaces)
+        var changes = IndexDatabase.Changes(changeToken: changeToken, tokenAccess: tokenAccess?.rawValue, places: dirtyPlaces)
         changes.upserts = dirtyIDs.compactMap { entries[$0] }
         changes.deletions = removedIDs
         clearDirty()

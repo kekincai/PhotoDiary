@@ -32,21 +32,42 @@ final class WatchBridge: NSObject {
     /// 上次发出去的内容（不含生成时间），内容没变就不重发。
     private var lastPayload: WatchSnapshot?
 
+    /// 已经写进照片说明的段落。表那边消息的回复丢了会改走 userInfo 队列再发一遍，同一段不能写两次。
+    private var written: [UUID] = [] {
+        didSet { UserDefaults.standard.set(written.map(\.uuidString), forKey: Self.writtenKey) }
+    }
+
     private static let queueKey = "watchWriteQueue"
+    private static let writtenKey = "watchWritten"
 
     override private init() {
         super.init()
         pendingWrites = Self.restore()
+        written = (UserDefaults.standard.stringArray(forKey: Self.writtenKey) ?? []).compactMap(UUID.init(uuidString:))
     }
 
     // MARK: 启动
 
     func start(store: DiaryStore) {
-        self.store = store
+        attach(store: store)
         guard WCSession.isSupported() else { status = .unsupported; return }
         let session = WCSession.default
         session.delegate = self
         session.activate()
+    }
+
+    /// 只连上日记库、不激活 WCSession（测试直接调 handle）。
+    func attach(store: DiaryStore) {
+        self.store = store
+    }
+
+    /// 测试之间清空队列和状态。
+    func resetForTesting() {
+        pendingWrites = []
+        written = []
+        draining = false
+        lastPayload = nil
+        store = nil
     }
 
     /// 回到前台：补写队列里的，再同步一次。
@@ -154,6 +175,13 @@ final class WatchBridge: NSObject {
     // MARK: Watch → iPhone
 
     private func enqueue(_ write: WatchWrite) {
+        if written.contains(write.id) {
+            // 已经写过：只再确认一次，让表把它移出待发列表。
+            if WCSession.default.isReachable {
+                WCSession.default.sendMessageData(WatchMessage.wrote(write.id).data, replyHandler: nil)
+            }
+            return
+        }
         guard !pendingWrites.contains(where: { $0.id == write.id }) else { return }
         pendingWrites.append(write)
         lastWriteReceived = .now
@@ -170,6 +198,7 @@ final class WatchBridge: NSObject {
                 do {
                     try await store.save(text: write.text, mode: write.mode == .new ? .new : .append, for: write.assetID)
                     pendingWrites.removeAll { $0.id == write.id }
+                    written = Array((written + [write.id]).suffix(200))
                     if WCSession.default.isReachable {
                         WCSession.default.sendMessageData(WatchMessage.wrote(write.id).data, replyHandler: nil)
                     }
@@ -202,7 +231,7 @@ final class WatchBridge: NSObject {
     }
 
     /// 表发来的消息；要回复的在这里现算。
-    private func handle(_ message: WatchMessage) async -> WatchMessage {
+    func handle(_ message: WatchMessage) async -> WatchMessage {
         switch message {
         case .refresh:
             await syncNow()

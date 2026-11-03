@@ -47,7 +47,7 @@ struct PermissionView: View {
 
             Button {
                 if denied {
-                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                    if let url = URL.photoAccessSettings { openURL(url) }
                 } else {
                     requesting = true
                     Task { await store.requestAccess(); requesting = false }

@@ -35,6 +35,20 @@
                ReferencedContainer = "container:PhotoDiary.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "NO"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "9D562E948392EE8A4D945DDD"
+               BuildableName = "PhotoDiaryUITests.xctest"
+               BlueprintName = "PhotoDiaryUITests"
+               ReferencedContainer = "container:PhotoDiary.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
       </BuildActionEntries>
    </BuildAction>
    <TestAction
@@ -61,6 +75,17 @@
                BlueprintIdentifier = "971FA32ABDB3FDF2773A54DE"
                BuildableName = "PhotoDiaryTests.xctest"
                BlueprintName = "PhotoDiaryTests"
+               ReferencedContainer = "container:PhotoDiary.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+         <TestableReference
+            skipped = "NO"
+            parallelizable = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "9D562E948392EE8A4D945DDD"
+               BuildableName = "PhotoDiaryUITests.xctest"
+               BlueprintName = "PhotoDiaryUITests"
                ReferencedContainer = "container:PhotoDiary.xcodeproj">
             </BuildableReference>
          </TestableReference>

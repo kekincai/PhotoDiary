@@ -33,6 +33,11 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
         /// 打开后，全量读取交出第一批就停住，等 `releaseScans()`。
         var holdScans = false
         var scanWaiters: [CheckedContinuation<Void, Never>] = []
+        /// 打开后，增量读取读好结果但先不交出，等 `releaseIncrementals()`（真实照片库读完到交回主线程之间也有空档）。
+        var holdIncrementals = false
+        var incrementalWaiters: [CheckedContinuation<Void, Never>] = []
+        /// 本 App 写入后像真实照片库一样通知观察者。
+        var notifyOwnWrites = false
     }
 
     let state = Mutex(State())
@@ -50,6 +55,11 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
             $0.assets[id] = Asset(caption: caption, keywords: keywords, date: date,
                                   latitude: latitude, longitude: longitude, kind: kind)
         }
+    }
+
+    /// 用户在系统设置里改了照片权限。
+    func setAuthorization(_ status: PHAuthorizationStatus) {
+        state.withLock { $0.authorization = status }
     }
 
     /// 在别的 App 里改了说明（nil 表示删除照片），并像 PHPhotoLibraryChangeObserver 一样通知。
@@ -101,6 +111,22 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
             if !held { c.resume() }
         }
     }
+
+    func holdIncrementals() { state.withLock { $0.holdIncrementals = true } }
+
+    func releaseIncrementals() {
+        let waiters = state.withLock { s in
+            s.holdIncrementals = false
+            defer { s.incrementalWaiters = [] }
+            return s.incrementalWaiters
+        }
+        for waiter in waiters { waiter.resume() }
+    }
+
+    /// 有增量读取停在半路上。
+    var incrementalIsHeld: Bool { state.withLock { !$0.incrementalWaiters.isEmpty } }
+
+    func notifyOwnWrites(_ on: Bool) { state.withLock { $0.notifyOwnWrites = on } }
 
     func expireTokens() {
         state.withLock { $0.oldestValidToken = $0.token + 1 }
@@ -159,6 +185,18 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
     }
 
     func incremental(since tokenData: Data) async throws -> LibraryScanner.IncrementalResult {
+        let result = try readIncremental(since: tokenData)
+        await withCheckedContinuation { (c: CheckedContinuation<Void, Never>) in
+            let held = state.withLock { s in
+                if s.holdIncrementals { s.incrementalWaiters.append(c) }
+                return s.holdIncrementals
+            }
+            if !held { c.resume() }
+        }
+        return result
+    }
+
+    private func readIncremental(since tokenData: Data) throws -> LibraryScanner.IncrementalResult {
         try state.withLock { s in
             s.incrementals += 1
             guard let since = Self.unarchive(tokenData), since >= s.oldestValidToken else {
@@ -183,14 +221,16 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
     func currentCaption(for id: String) -> String? { caption(of: id) }
 
     func write(_ captions: [String: String?]) async throws {
-        state.withLock { s in
+        let handler = state.withLock { s in
             s.writes.append(captions)
             for (id, caption) in captions {
                 s.assets[id, default: Asset()].caption = caption ?? ""
                 s.assets[id]?.keywords = CaptionFormat.tags(in: caption ?? "")
             }
             s.recordChange(touched: Set(captions.keys))
+            return s.notifyOwnWrites ? s.onChange : nil
         }
+        if let handler { await handler() }
     }
 
     func reconcileKeywords(ids: [String]) async throws {
@@ -205,11 +245,13 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
     }
 
     func delete(ids: [String]) async throws {
-        state.withLock { s in
+        let handler = state.withLock { s in
             s.deleted.append(ids)
             for id in ids { s.assets.removeValue(forKey: id) }
             s.recordChange(deleted: Set(ids))
+            return s.notifyOwnWrites ? s.onChange : nil
         }
+        if let handler { await handler() }
     }
 
     // MARK: 内部

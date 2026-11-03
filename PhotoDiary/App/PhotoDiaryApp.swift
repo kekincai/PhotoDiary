@@ -1,5 +1,6 @@
 import SwiftUI
 import Photos
+import UIKit
 import OSLog
 
 @main
@@ -15,16 +16,21 @@ struct PhotoDiaryApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        // 界面测试每次都从“跟随系统”开始（系统语言由测试指定），上一个测试切过的语言不留下来。
+        if Self.isUITesting { UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey) }
         AppLanguage.apply(AppLanguage.stored)
         // 读索引之前就定下一周从哪天开始，按周归并的数据才对。
         Calendar.diaryFirstWeekday = WeekStart.stored.rawValue
         let store = DiaryStore()
         // 第一帧还没画就开始读索引。
         if !Self.isHostingUnitTests { store.prepare() }
+        if Self.isUITesting { UIView.setAnimationsEnabled(false) }
         _store = State(initialValue: store)
     }
 
     static let isHostingUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    /// 界面测试启动时传 -uiTesting：关掉动画。系统菜单打开后一直等不到“动画结束”，每一步都要白等 60 秒。
+    static let isUITesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
 
     var body: some Scene {
         WindowGroup {
@@ -36,7 +42,10 @@ struct PhotoDiaryApp: App {
                 .environment(\.locale, AppLanguage.current.locale)
                 .id(language)
                 .onChange(of: language) { store.placeLanguageChanged() }
-                .onAppear { appearance.apply() }
+                .onAppear {
+                    appearance.apply()
+                    Self.limitMacWindowSize()
+                }
                 .onChange(of: appearance) { appearance.apply() }
                 .onChange(of: weekStart) {
                     Calendar.diaryFirstWeekday = weekStart.rawValue
@@ -62,6 +71,16 @@ struct PhotoDiaryApp: App {
                 // 日记列表一变就在后台把这些照片的 PHAsset 取齐，界面上滚动时不再查照片库。
                 .onChange(of: store.diaries, initial: true) { AssetImages.shared.warm(ids: store.diaries.map(\.id)) }
         }
+        .commands { AppCommands(router: router, canRead: store.canRead) }
+    }
+
+    /// Mac 上窗口别缩得比 iPad 竖屏还窄：再窄就退成手机布局，标签栏和“+”会挤在一起。
+    private static func limitMacWindowSize() {
+        #if targetEnvironment(macCatalyst)
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            scene.sizeRestrictions?.minimumSize = CGSize(width: 760, height: 600)
+        }
+        #endif
     }
 
     /// 进入后台时立即保存索引，并向系统要一点时间保证写完。
@@ -71,6 +90,33 @@ struct PhotoDiaryApp: App {
         Task {
             await store.saveNow()
             task.end()
+        }
+    }
+}
+
+/// 菜单栏（Mac）和硬件键盘（iPad）的快捷键。
+/// 菜单不在界面的环境里，拿不到 App 内选的语言，文字要自己按 .app 查表。
+private struct AppCommands: Commands {
+    let router: Router
+    let canRead: Bool
+
+    var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button(String(localized: "设置…", bundle: .app, locale: .app)) { router.showSettings = true }
+                .keyboardShortcut(",")
+        }
+        CommandGroup(replacing: .newItem) {
+            Button(String(localized: "从照片写日记", bundle: .app, locale: .app)) { router.showAddFromPhotos = true }
+                .keyboardShortcut("n")
+                .disabled(!canRead)
+        }
+        CommandGroup(before: .sidebar) {
+            ForEach(Array(AppTab.allCases.enumerated()), id: \.element) { index, tab in
+                Button(tab.title) { router.tab = tab }
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+                    .disabled(!canRead)
+            }
+            Divider()
         }
     }
 }
