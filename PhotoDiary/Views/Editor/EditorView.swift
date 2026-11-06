@@ -7,13 +7,19 @@ import Photos
 struct EditorView: View {
     let assetID: String
     let mode: DiaryStore.WriteMode
+    /// 打开时先露出照片正面，再翻到纸背；关闭时翻回去（iPhone 全屏呈现时）。
+    var flips = false
     /// saved = true 表示已写入照片说明。
     var onFinish: (_ saved: Bool) -> Void
 
     @Environment(DiaryStore.self) private var store
     @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var controller: EditorController
+    /// 0 = 照片正面朝上，1 = 翻到纸背。
+    @State private var turned: Double
+    @State private var closing = false
     /// 模型按正文建议的标签；点一下才写进正文。
     @State private var suggested: [String] = []
     @State private var original: String
@@ -23,10 +29,13 @@ struct EditorView: View {
     @State private var errorMessage: String?
     @State private var savedCount = 0
 
-    init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, seed: String? = nil, onFinish: @escaping (Bool) -> Void) {
+    init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, seed: String? = nil, flips: Bool = false,
+         onFinish: @escaping (Bool) -> Void) {
         self.assetID = assetID
         self.mode = mode
+        self.flips = flips
         self.onFinish = onFinish
+        _turned = State(initialValue: flips ? 0 : 1)
         let initial = mode == .edit ? (existingCaption ?? "") : ""
         _controller = State(initialValue: EditorController(text: mode == .edit ? initial : (seed ?? "")))
         _original = State(initialValue: initial)
@@ -49,20 +58,31 @@ struct EditorView: View {
     }
 
     var body: some View {
-        paper
+        FlipCard(progress: turned, crossfade: reduceMotion) {
+            photoFront
+        } back: {
+            paper
+        }
             .padding(.horizontal, PhotoPaper.margin)
             .padding(.top, 6)
             .padding(.bottom, 10)
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            .background { PhotoPaper.desk.ignoresSafeArea() }
-            .safeAreaInset(edge: .bottom, spacing: 0) { accessory }
+            // 翻转时桌面跟着铺开，下面的页面隐去。
+            .background { PhotoPaper.desk.opacity(turned).ignoresSafeArea() }
+            .containerBackground(flips ? Color.clear : PhotoPaper.desk, for: .navigation)
+            .safeAreaInset(edge: .bottom, spacing: 0) { accessory.opacity(turned) }
             .navigationBarBackButtonHidden()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .interactiveDismissDisabled(isDirty)
+            .onAppear {
+                // 键盘不等翻完：正文框一出现就拿焦点，纸在下面翻过来。
+                guard flips, turned == 0 else { return }
+                withAnimation(flipAnimation) { turned = 1 }
+            }
             .confirmationDialog("放弃这次修改？", isPresented: $confirmDiscard, titleVisibility: .visible) {
-                Button("放弃", role: .destructive) { onFinish(false) }
+                Button("放弃", role: .destructive) { close(saved: false) }
                 Button("继续写", role: .cancel) {}
             }
             .confirmationDialog("清除这张照片的说明？", isPresented: $confirmClear, titleVisibility: .visible) {
@@ -91,6 +111,34 @@ struct EditorView: View {
                 guard !Task.isCancelled, text == controller.text else { return }
                 suggested = tags
             }
+    }
+
+    // MARK: 翻面
+
+    private var flipAnimation: Animation {
+        reduceMotion ? .easeInOut(duration: 0.25) : .smooth(duration: 0.35)
+    }
+
+    /// 照片正面：和纸一样大的一张照片。
+    private var photoFront: some View {
+        Color.black
+            .overlay { AssetImage(id: assetID, pointSize: CGSize(width: 360, height: 720)) }
+            .clipShape(.rect(cornerRadius: PhotoPaper.radius, style: .continuous))
+            .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
+            .accessibilityHidden(true)
+    }
+
+    /// 关闭：全屏呈现时先翻回照片正面（和打开方向相反），再交给外面收起。
+    private func close(saved: Bool) {
+        guard flips else { onFinish(saved); return }
+        guard !closing else { return }
+        closing = true
+        controller.dismissKeyboard()
+        withAnimation(flipAnimation) {
+            turned = 0
+        } completion: {
+            onFinish(saved)
+        }
     }
 
     // MARK: 相纸
@@ -163,7 +211,7 @@ struct EditorView: View {
     @ToolbarContentBuilder private var toolbar: some ToolbarContent {
         ToolbarItem(placement: .cancellationAction) {
             Button("取消", systemImage: "xmark") {
-                if isDirty { confirmDiscard = true } else { onFinish(false) }
+                if isDirty { confirmDiscard = true } else { close(saved: false) }
             }
         }
         ToolbarItem(placement: .principal) {
@@ -303,7 +351,7 @@ struct EditorView: View {
                 savedCount += 1
                 AccessibilityNotification.Announcement(String(localized: "已写进照片说明", bundle: .app, locale: .app)).post()
                 original = controller.text
-                onFinish(true)
+                close(saved: true)
             } catch {
                 let nsError = error as NSError
                 if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.userCancelled.rawValue { return }
@@ -313,9 +361,11 @@ struct EditorView: View {
     }
 }
 
-/// 从详情页、回顾页打开的编辑器（模态，配暗色遮罩）。
+/// 从详情页、回顾页打开的编辑器。
+/// iPhone 上全屏、不带系统的上滑动画：照片在原地翻到纸背，关闭时翻回来再收起。iPad、Mac 上仍是表单。
 struct EditorSheet: View {
     let request: EditorRequest
+    var flips = false
     @Environment(DiaryStore.self) private var store
     @Environment(\.dismiss) private var dismiss
 
@@ -323,9 +373,46 @@ struct EditorSheet: View {
         NavigationStack {
             EditorView(assetID: request.assetID, mode: request.mode,
                        existingCaption: store.entry(request.assetID)?.caption ?? store.currentCaption(for: request.assetID),
-                       seed: request.seed) { _ in
-                dismiss()
+                       seed: request.seed, flips: flips) { _ in
+                if flips {
+                    // 翻面已经做完了退场，收起时不再滑下去。
+                    var transaction = Transaction()
+                    transaction.disablesAnimations = true
+                    withTransaction(transaction) { dismiss() }
+                } else {
+                    dismiss()
+                }
             }
         }
+    }
+}
+
+/// 绕竖轴翻一张纸：前半程是正面，转到 90° 时换成背面。“减少动态效果”时只淡入淡出背面。
+/// 背面一直在视图里（只是看不见），所以里面的输入框不用等翻完就能拿焦点。
+struct FlipCard<Front: View, Back: View>: View, Animatable {
+    var progress: Double
+    var crossfade: Bool
+    @ViewBuilder var front: Front
+    @ViewBuilder var back: Back
+
+    var animatableData: Double {
+        get { progress }
+        set { progress = newValue }
+    }
+
+    var body: some View {
+        let backFacing = progress >= 0.5
+        // 正面 0°→90°，背面 -90°→0°：翻到一半时两面都侧着，看不出换了。
+        let angle = crossfade ? 0 : (backFacing ? (progress - 1) * 180 : progress * 180)
+        ZStack {
+            if !crossfade, progress < 1 {
+                front
+                    .opacity(backFacing ? 0 : 1)
+                    .allowsHitTesting(false)
+            }
+            back
+                .opacity(crossfade ? progress : (backFacing ? 1 : 0))
+        }
+        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
     }
 }

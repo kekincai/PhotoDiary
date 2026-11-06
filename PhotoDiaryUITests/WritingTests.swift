@@ -90,6 +90,25 @@ final class WritingTests: DiaryUITestCase {
         XCTAssertFalse(text(containing: mark).exists, "没点完成就写进去了")
     }
 
+    /// 打开编辑器时照片翻到纸背，但不用等翻完：光标已经在正文里，直接能打字；取消后翻回去关掉。
+    @MainActor func testEditorIsReadyToTypeWhileFlipping() {
+        openEntry("寺里的苔藓")
+        tap(app.buttons["追加感想"])
+        let field = editorText
+        XCTAssertTrue(field.waitForExistence(timeout: 10), "编辑器没有出现")
+        let deadline = Date.now.addingTimeInterval(3)
+        while (field.value(forKey: "hasKeyboardFocus") as? Bool) != true, Date.now < deadline {
+            Thread.sleep(forTimeInterval: 0.1)
+        }
+        XCTAssertEqual(field.value(forKey: "hasKeyboardFocus") as? Bool, true, "打开编辑器后正文没有自动拿到焦点")
+        app.typeText("字")
+        XCTAssertTrue((field.value as? String)?.contains("字") == true, "没点正文直接打字没有写进去")
+        tap(app.buttons["取消"])
+        tap(app.buttons["放弃"])
+        XCTAssertTrue(field.waitForNonExistence(timeout: 10), "取消后编辑器没有关闭")
+        XCTAssertTrue(app.buttons["追加感想"].waitForExistence(timeout: 5), "关闭编辑器后没有回到详情页")
+    }
+
     /// 完成按钮在没写字时不能点。
     @MainActor func testDoneIsDisabledUntilSomethingIsWritten() {
         openEntry("寺里的苔藓")
