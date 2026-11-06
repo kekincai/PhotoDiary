@@ -29,12 +29,17 @@ targets:
       # Mac（Catalyst）版不带 Watch App。
       - target: PhotoDiaryWatch
         platformFilter: iOS
+      # 小组件和控制中心按钮。Mac 版不带。
+      - target: PhotoDiaryWidgets
+        platformFilter: iOS
+    # App Group：App 把小组件要的快照和缩小的照片写进共享容器。个人团队签得了（2026.11 验证过真机构建）。
     # 手记建议（JournalingSuggestions）需要付费开发者账号的 com.apple.developer.journal.allow 权限，个人团队签不了。
-    # 加入 Apple Developer Program 后，取消下面的注释，并在 SWIFT_ACTIVE_COMPILATION_CONDITIONS 里加上 JOURNALING_SUGGESTIONS。
-    # entitlements:
-    #   path: PhotoDiary/PhotoDiary.entitlements
-    #   properties:
-    #     com.apple.developer.journal.allow: true
+    # 加入 Apple Developer Program 后，在下面加上 com.apple.developer.journal.allow: true，
+    # 并在 SWIFT_ACTIVE_COMPILATION_CONDITIONS 里加上 JOURNALING_SUGGESTIONS。
+    entitlements:
+      path: PhotoDiary/PhotoDiary.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.kejincai.photodiary]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kejincai.photodiary
@@ -82,6 +87,38 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        DEVELOPMENT_LANGUAGE: zh-Hans
+        CODE_SIGN_STYLE: Automatic
+        SKIP_INSTALL: YES
+  # 主屏、锁屏小组件和控制中心按钮。数据来自 App 写在 App Group 里的快照，不读照片库。
+  PhotoDiaryWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: PhotoDiaryWidgets
+      - path: Shared
+      - path: WidgetShared
+      - path: PhotoDiary/Resources/Localizable.xcstrings
+      - path: PhotoDiary/Resources/InfoPlist.xcstrings
+    entitlements:
+      path: PhotoDiaryWidgets/PhotoDiaryWidgets.entitlements
+      properties:
+        com.apple.security.application-groups: [group.com.kejincai.photodiary]
+    info:
+      path: PhotoDiaryWidgets/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kejincai.photodiary.widgets
+        PRODUCT_NAME: PhotoDiaryWidgets
+        MARKETING_VERSION: "1.1"
+        CURRENT_PROJECT_VERSION: "2"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Photo Diary
+        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
         DEVELOPMENT_LANGUAGE: zh-Hans
         CODE_SIGN_STYLE: Automatic
         SKIP_INSTALL: YES

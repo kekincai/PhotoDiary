@@ -52,6 +52,7 @@ struct PhotoDiaryApp: App {
                     // 通知上的按钮和提醒文字按新语言重写。
                     reminders.registerCategory()
                     reminders.rescheduleSoon(store: store)
+                    WidgetBridge.shared.scheduleUpdate()
                 }
                 .onAppear {
                     appearance.apply()
@@ -67,6 +68,7 @@ struct PhotoDiaryApp: App {
                     guard !Self.isHostingUnitTests else { return }
                     DiaryFonts.shared.prepare()
                     WatchBridge.shared.start(store: store)
+                    WidgetBridge.shared.start(store: store)
                     await store.start()
                     // 每次打开都重排：往后几天的通用提醒换成按今天实际情况算的。
                     await reminders.reschedule(store: store)
@@ -81,6 +83,8 @@ struct PhotoDiaryApp: App {
                         store.refreshAuthorization()
                         intelligence.refreshAvailability()
                         WatchBridge.shared.resume()
+                        // 过了零点、在别处改过照片：小组件的那年今日和“今天写过没有”重算一遍。
+                        WidgetBridge.shared.scheduleUpdate()
                     }
                     if phase == .background { saveInBackground() }
                 }
@@ -98,7 +102,10 @@ struct PhotoDiaryApp: App {
                     WatchBridge.shared.scheduleSync()
                     // 今天写了日记，今晚就不用提醒了。
                     if !Self.isHostingUnitTests { reminders.rescheduleSoon(store: store) }
+                    WidgetBridge.shared.scheduleUpdate()
                 }
+                .onChange(of: store.hasLoaded) { WidgetBridge.shared.scheduleUpdate() }
+                .onChange(of: store.canRead) { WidgetBridge.shared.scheduleUpdate() }
                 // 日记列表一变就在后台把这些照片的 PHAsset 取齐，界面上滚动时不再查照片库。
                 .onChange(of: store.diaries, initial: true) { AssetImages.shared.warm(ids: store.diaries.map(\.id)) }
         }

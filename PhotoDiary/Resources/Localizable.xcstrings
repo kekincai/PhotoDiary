@@ -591,6 +591,22 @@
         }
       }
     },
+    "今天写过了": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wrote today"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日は書きました"
+          }
+        }
+      }
+    },
     "今天拍了 %lld 张，写一句？": {
       "localizations": {
         "en": {
