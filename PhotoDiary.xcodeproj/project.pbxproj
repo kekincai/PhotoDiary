@@ -138,6 +138,7 @@
 		FBA90F4D468429CA46E92B25 /* DayStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE36142E20AD20527851492 /* DayStamp.swift */; };
 		FE03B82AF1C0C39B973E691F /* PhotoDiaryWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7866D1C66E2DB8910CAF0FB1 /* PhotoDiaryWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FE817274943E68C58B4D1952 /* BrowsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB7F8E88173C9AA1E31E715 /* BrowsingTests.swift */; };
+		FEFBB800EC7E723F770770A1 /* WriteDiaryControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2062174D548356C21B34ED41 /* WriteDiaryControl.swift */; };
 		FF33F9E416617751FBBA620B /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1482E82141EFC81AD0F75C32 /* UITestSupport.swift */; };
 /* End PBXBuildFile section */
 
@@ -214,6 +215,7 @@
 		1B823EE6387B56A51B3E23DA /* Badges.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Badges.swift; sourceTree = "<group>"; };
 		1E10DDD1415F4F7DFBADD932 /* WriteRaceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteRaceTests.swift; sourceTree = "<group>"; };
 		1F31CB92006521A42AFCA8FC /* DiaryDates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryDates.swift; sourceTree = "<group>"; };
+		2062174D548356C21B34ED41 /* WriteDiaryControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteDiaryControl.swift; sourceTree = "<group>"; };
 		20A1867858FDE02F45EE0AD2 /* YearInReviewTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInReviewTests.swift; sourceTree = "<group>"; };
 		20D4CA9968E5F215B51550F9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2196532247F3A3AF054B0D00 /* LinkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkTests.swift; sourceTree = "<group>"; };
@@ -474,6 +476,7 @@
 				1064BF06BD719A850E1B6054 /* OnThisDayWidget.swift */,
 				2C044F5B608936B9994ED286 /* PhotoDiaryWidgets.entitlements */,
 				6D0F186A4CD31CF026EDDDBA /* PhotoDiaryWidgetsBundle.swift */,
+				2062174D548356C21B34ED41 /* WriteDiaryControl.swift */,
 				D51E8EFC8EF0C2DCEEEF92CB /* WriteTodayWidget.swift */,
 			);
 			path = PhotoDiaryWidgets;
@@ -1007,6 +1010,7 @@
 				DC8184E52D18396797DCE58F /* PhotoDiaryWidgetsBundle.swift in Sources */,
 				6C370312B48FF562EF59D5A3 /* WatchSnapshot.swift in Sources */,
 				131E2F31C1ED49FA44B8FD80 /* WidgetSnapshot.swift in Sources */,
+				FEFBB800EC7E723F770770A1 /* WriteDiaryControl.swift in Sources */,
 				A929E70057070F42196B6CF1 /* WriteLatestPhotoIntent.swift in Sources */,
 				78BDCE94285CCBDA019DF40C /* WriteTodayWidget.swift in Sources */,
 			);

@@ -3,6 +3,7 @@ import Foundation
 @testable import PhotoDiary
 
 /// photodiary:// 链接：解析、来回一致，打开后到对的地方。
+@Suite(.serialized)
 struct DeepLinkTests {
     @Test func parsesEveryLink() {
         #expect(DeepLink(url: URL(string: "photodiary://write/latest")!) == .writeLatest)
@@ -28,6 +29,21 @@ struct DeepLinkTests {
     func roundTrips(_ link: DeepLink) {
         #expect(DeepLink(url: link.url) == link)
         #expect(link.url.scheme == "photodiary")
+    }
+
+    /// 快捷指令、控制中心按钮执行后，链接交到收件箱里（App 能读照片库时由 Router 打开）。
+    @Test @MainActor func intentsLeaveLinkInInbox() async throws {
+        let inbox = DeepLinkInbox.shared
+        _ = try await WriteLatestPhotoIntent().perform()
+        #expect(inbox.take() == .writeLatest)
+        _ = try await OpenTodayIntent().perform()
+        #expect(inbox.take() == .today)
+        _ = try await OpenOnThisDayIntent().perform()
+        #expect(inbox.take() == .onThisDay)
+        let search = SearchDiaryIntent()
+        search.text = "京都"
+        _ = try await search.perform()
+        #expect(inbox.take() == .search("京都"))
     }
 
     @Test @MainActor func inboxHandsOutOnce() {

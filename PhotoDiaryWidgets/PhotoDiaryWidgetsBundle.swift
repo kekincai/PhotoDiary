@@ -6,6 +6,7 @@ struct PhotoDiaryWidgetsBundle: WidgetBundle {
     var body: some Widget {
         OnThisDayWidget()
         WriteTodayWidget()
+        WriteDiaryControl()
     }
 }
 
