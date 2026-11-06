@@ -28,6 +28,9 @@ final class IntelligenceTests: DiaryUITestCase {
         let chip = hittable(app.buttons.matching(NSPredicate(format: "label == %@", "标签“散步”")), timeout: 10)
         tap(chip, "建议的标签")
         XCTAssertTrue((editorText.value as? String)?.hasSuffix("#散步# ") == true, "点建议没有把标签写到正文末尾")
+        // 胶囊飞进正文后就不在工具栏里了（飞的那个影子不算按钮）。
+        XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", "标签“散步”")).firstMatch.waitForNonExistence(timeout: 5),
+                      "采纳后建议的胶囊还在")
         saveEditor()
         XCTAssertTrue(app.buttons["标签“散步”"].waitForExistence(timeout: 10), "保存后详情页没有标签")
         clearDiary(containing: mark)

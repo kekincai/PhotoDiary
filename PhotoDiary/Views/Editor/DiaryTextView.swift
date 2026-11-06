@@ -46,6 +46,18 @@ final class EditorController {
 
     func dismissKeyboard() { textView?.resignFirstResponder() }
 
+    /// 正文末尾光标的位置（窗口坐标），超出可见范围时贴在正文框边上。建议标签飞进正文的落点。
+    func endCaretFrame() -> CGRect? {
+        guard let tv = textView, tv.window != nil else { return nil }
+        tv.layoutIfNeeded()
+        let caret = tv.caretRect(for: tv.endOfDocument)
+        guard !caret.isNull, !caret.isInfinite else { return nil }
+        var frame = tv.convert(caret, to: nil)
+        let visible = tv.convert(tv.bounds, to: nil)
+        frame.origin.y = min(max(frame.origin.y, visible.minY), visible.maxY - frame.height)
+        return frame
+    }
+
     /// 保存时墨水落定：标签的主题色褪成正文颜色，整段字是同一种墨色。
     func settleInk(animated: Bool) {
         guard let tv = textView else { return }
