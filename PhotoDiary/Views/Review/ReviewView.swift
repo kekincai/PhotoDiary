@@ -40,6 +40,7 @@ struct ReviewView: View {
 private struct OnThisDaySection: View {
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var page: String?
 
     var body: some View {
@@ -63,6 +64,12 @@ private struct OnThisDaySection: View {
                                     min(memories.count > 1 ? width - 60 : width - 32, 480)
                                 }
                                 .frame(height: 420)
+                                // 不在中间的卡片略小、略暗；“减少动态效果”时只变暗，不缩放。
+                                .scrollTransition(.interactive, axis: .horizontal) { [reduceMotion] content, phase in
+                                    content
+                                        .scaleEffect(phase.isIdentity || reduceMotion ? 1 : 0.94)
+                                        .brightness(phase.isIdentity ? 0 : -0.08)
+                                }
                                 .id(entry.id)
                         }
                     }

@@ -152,6 +152,13 @@ final class BrowsingTests: DiaryUITestCase {
         XCTAssertTrue(app.staticTexts["回顾"].waitForExistence(timeout: 10))
         // 这一周的七天。
         XCTAssertTrue(text(containing: "今天").waitForExistence(timeout: 10), "这一周里没有今天")
+        // 那年今日的卡片（翻页时不在中间的卡片缩小变暗），卡片上的“+”打开编辑器，取消后回到回顾。
+        XCTAssertTrue(button(containing: "去年今天的咖啡").waitForExistence(timeout: 10), "那年今日没有卡片")
+        tap(hittable(app.buttons.matching(NSPredicate(format: "label == %@", "追加感想"))), "那年今日卡片上的追加感想")
+        XCTAssertTrue(editorText.waitForExistence(timeout: 10), "从那年今日打开编辑器失败")
+        tap(app.buttons["取消"])
+        XCTAssertTrue(editorText.waitForNonExistence(timeout: 10), "取消后编辑器没有关闭")
+        XCTAssertTrue(app.staticTexts["回顾"].waitForExistence(timeout: 5))
         assertAlive()
     }
 
