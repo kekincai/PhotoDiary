@@ -7,7 +7,7 @@ import Photos
 struct EditorView: View {
     let assetID: String
     let mode: DiaryStore.WriteMode
-    /// 打开时先露出照片正面，再翻到纸背；关闭时翻回去（iPhone 全屏呈现时）。
+    /// 打开时纸背从侧着转过来；关闭时转回去（iPhone 全屏呈现时）。
     var flips = false
     /// saved = true 表示已写入照片说明。
     var onFinish: (_ saved: Bool) -> Void
@@ -17,7 +17,7 @@ struct EditorView: View {
     @Environment(\.brand) private var brand
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var controller: EditorController
-    /// 0 = 照片正面朝上，1 = 翻到纸背。
+    /// 0 = 纸侧着看不见，1 = 正对着。
     @State private var turned: Double
     @State private var closing = false
     /// 点 ✓ 后：字轻轻下沉、落定成正文颜色。写入失败时恢复。
@@ -63,9 +63,7 @@ struct EditorView: View {
     }
 
     var body: some View {
-        FlipCard(progress: turned, crossfade: reduceMotion) {
-            photoFront
-        } back: {
+        TurnIn(progress: turned, crossfade: reduceMotion) {
             paper
         }
             .padding(.horizontal, PhotoPaper.margin)
@@ -73,7 +71,7 @@ struct EditorView: View {
             .padding(.bottom, 10)
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            // 翻转时桌面跟着铺开，下面的页面隐去。
+            // 纸转过来时桌面跟着铺开，下面的页面隐去。
             .background { PhotoPaper.desk.opacity(turned).ignoresSafeArea() }
             .containerBackground(flips ? Color.clear : PhotoPaper.desk, for: .navigation)
             .safeAreaInset(edge: .bottom, spacing: 0) { accessory.opacity(turned) }
@@ -83,7 +81,7 @@ struct EditorView: View {
             .toolbar { toolbar }
             .interactiveDismissDisabled(isDirty)
             .onAppear {
-                // 键盘不等翻完：正文框一出现就拿焦点，纸在下面翻过来。
+                // 键盘不等转完：正文框一出现就拿焦点，纸在下面转过来。
                 guard flips, turned == 0 else { return }
                 withAnimation(flipAnimation) { turned = 1 }
             }
@@ -119,22 +117,13 @@ struct EditorView: View {
             }
     }
 
-    // MARK: 翻面
+    // MARK: 转入、转出
 
     private var flipAnimation: Animation {
         reduceMotion ? .easeInOut(duration: 0.25) : .smooth(duration: 0.35)
     }
 
-    /// 照片正面：和纸一样大的一张照片。
-    private var photoFront: some View {
-        Color.black
-            .overlay { AssetImage(id: assetID, pointSize: CGSize(width: 360, height: 720)) }
-            .clipShape(.rect(cornerRadius: PhotoPaper.radius, style: .continuous))
-            .shadow(color: .black.opacity(0.2), radius: 18, y: 8)
-            .accessibilityHidden(true)
-    }
-
-    /// 关闭：全屏呈现时先翻回照片正面（和打开方向相反），再交给外面收起。
+    /// 关闭：全屏呈现时纸先侧转离开（和打开方向相反），再交给外面收起。
     private func close(saved: Bool) {
         guard flips else { onFinish(saved); return }
         guard !closing else { return }
@@ -416,7 +405,7 @@ struct EditorView: View {
 }
 
 /// 从详情页、回顾页打开的编辑器。
-/// iPhone 上全屏、不带系统的上滑动画：照片在原地翻到纸背，关闭时翻回来再收起。iPad、Mac 上仍是表单。
+/// iPhone 上全屏、不带系统的上滑动画：纸背在原地转过来，关闭时转回去再收起。iPad、Mac 上仍是表单。
 struct EditorSheet: View {
     let request: EditorRequest
     var flips = false
@@ -429,7 +418,7 @@ struct EditorSheet: View {
                        existingCaption: store.entry(request.assetID)?.caption ?? store.currentCaption(for: request.assetID),
                        seed: request.seed, flips: flips) { _ in
                 if flips {
-                    // 翻面已经做完了退场，收起时不再滑下去。
+                    // 纸已经转走了，收起时不再滑下去。
                     var transaction = Transaction()
                     transaction.disablesAnimations = true
                     withTransaction(transaction) { dismiss() }
@@ -441,13 +430,12 @@ struct EditorSheet: View {
     }
 }
 
-/// 绕竖轴翻一张纸：前半程是正面，转到 90° 时换成背面。“减少动态效果”时只淡入淡出背面。
-/// 背面一直在视图里（只是看不见），所以里面的输入框不用等翻完就能拿焦点。
-struct FlipCard<Front: View, Back: View>: View, Animatable {
+/// 纸背从侧着转到正对你：不另画一张“照片正面”（纸和照片不一样形状，横图尤其别扭）。“减少动态效果”时只淡入淡出。
+/// 纸一直在视图里（只是看不见），所以里面的输入框不用等转完就能拿焦点。
+struct TurnIn<Content: View>: View, Animatable {
     var progress: Double
     var crossfade: Bool
-    @ViewBuilder var front: Front
-    @ViewBuilder var back: Back
+    @ViewBuilder var content: Content
 
     var animatableData: Double {
         get { progress }
@@ -455,19 +443,11 @@ struct FlipCard<Front: View, Back: View>: View, Animatable {
     }
 
     var body: some View {
-        let backFacing = progress >= 0.5
-        // 正面 0°→90°，背面 -90°→0°：翻到一半时两面都侧着，看不出换了。
-        let angle = crossfade ? 0 : (backFacing ? (progress - 1) * 180 : progress * 180)
-        ZStack {
-            if !crossfade, progress < 1 {
-                front
-                    .opacity(backFacing ? 0 : 1)
-                    .allowsHitTesting(false)
-            }
-            back
-                .opacity(crossfade ? progress : (backFacing ? 1 : 0))
-        }
-        .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
+        let angle = crossfade ? 0 : (1 - progress) * -60
+        content
+            .opacity(crossfade ? progress : min(1, progress * 2))
+            .scaleEffect(crossfade ? 1 : 0.94 + 0.06 * progress)
+            .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
     }
 }
 
