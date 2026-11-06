@@ -1,0 +1,102 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "${applicationName}里的那年今日": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "On this day in ${applicationName}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}の過去のこの日"
+          }
+        }
+      }
+    },
+    "在${applicationName}写日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write in ${applicationName}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}で日記を書く"
+          }
+        }
+      }
+    },
+    "在${applicationName}里搜索日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search ${applicationName}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}で日記を検索"
+          }
+        }
+      }
+    },
+    "打开${applicationName}的那年今日": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open On This Day in ${applicationName}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}で過去のこの日を開く"
+          }
+        }
+      }
+    },
+    "打开${applicationName}里今天的日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open today’s entries in ${applicationName}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}で今日の日記を開く"
+          }
+        }
+      }
+    },
+    "用${applicationName}给最新一张照片写日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write about the latest photo in ${applicationName}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "${applicationName}で最新の写真について書く"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

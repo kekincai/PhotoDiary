@@ -619,6 +619,22 @@
         }
       }
     },
+    "今天的日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Today’s Entries"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の日記"
+          }
+        }
+      }
+    },
     "今天的照片": {
       "localizations": {
         "en": {
@@ -1874,6 +1890,22 @@
         }
       }
     },
+    "打开今天的日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Today’s Entries"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の日記を開く"
+          }
+        }
+      }
+    },
     "打开设置": {
       "localizations": {
         "en": {
@@ -1982,6 +2014,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "日記を検索"
+          }
+        }
+      }
+    },
+    "搜索日记里的${text}": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search diary for ${text}"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "日記で${text}を検索"
+          }
+        }
+      }
+    },
+    "搜索的文字": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Text"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "検索する言葉"
           }
         }
       }
@@ -3194,6 +3258,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@の写真に口述"
+          }
+        }
+      }
+    },
+    "给最新一张照片写日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write About the Latest Photo"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "最新の写真について書く"
           }
         }
       }

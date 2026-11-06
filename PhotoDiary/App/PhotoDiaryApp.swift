@@ -35,6 +35,7 @@ struct PhotoDiaryApp: App {
     static let isHostingUnitTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     /// 界面测试启动时传 -uiTesting：关掉动画。系统菜单打开后一直等不到“动画结束”，每一步都要白等 60 秒。
     static let isUITesting = ProcessInfo.processInfo.arguments.contains("-uiTesting")
+    private static var openedTestingLink = false
 
     var body: some Scene {
         WindowGroup {
@@ -83,6 +84,15 @@ struct PhotoDiaryApp: App {
                     }
                     if phase == .background { saveInBackground() }
                 }
+                // 小组件、控制中心、快捷指令都是 photodiary:// 链接（快捷指令直接放进 DeepLinkInbox）。
+                .onOpenURL { url in
+                    guard let link = DeepLink(url: url) else { return }
+                    DeepLinkInbox.shared.open(link)
+                }
+                .onAppear(perform: openTestingLink)
+                // 照片库能读了才打开：还没授权、索引还没读出来时先留着。
+                .onChange(of: DeepLinkInbox.shared.pending) { openPendingLink() }
+                .onChange(of: store.canRead, initial: true) { openPendingLink() }
                 // 日记一变就把快照发给 Apple Watch（防抖）。
                 .onChange(of: store.diaries) {
                     WatchBridge.shared.scheduleSync()
@@ -93,6 +103,25 @@ struct PhotoDiaryApp: App {
                 .onChange(of: store.diaries, initial: true) { AssetImages.shared.warm(ids: store.diaries.map(\.id)) }
         }
         .commands { AppCommands(router: router, canRead: store.canRead) }
+    }
+
+    private func openPendingLink() {
+        guard store.canRead, !Self.isHostingUnitTests, let link = DeepLinkInbox.shared.take() else { return }
+        var latest: Router.LatestPhoto?
+        if link == .writeLatest, let id = AssetImages.recentAssets(limit: 1).first?.id {
+            latest = Router.LatestPhoto(id: id, hasDiary: store.entry(id) != nil || store.currentCaption(for: id) != nil)
+        }
+        Log.app.info("打开链接 \(link.url.absoluteString, privacy: .public)")
+        router.open(link, latestPhoto: latest)
+    }
+
+    /// 界面测试用 -openURL photodiary://… 启动，当作系统送来的链接（XCUITest 点不了小组件）。
+    private func openTestingLink() {
+        guard Self.isUITesting, !Self.openedTestingLink else { return }
+        Self.openedTestingLink = true
+        guard let string = UserDefaults.standard.string(forKey: "openURL"),
+              let url = URL(string: string), let link = DeepLink(url: url) else { return }
+        DeepLinkInbox.shared.open(link)
     }
 
     /// Mac 上窗口别缩得比 iPad 竖屏还窄：再窄就退成手机布局，标签栏和“+”会挤在一起。

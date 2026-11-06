@@ -20,14 +20,17 @@ class DiaryUITestCase: XCTestCase {
         MainActor.assumeIsolated { test.assertStillRunning() }
     }
 
-    /// 子类加自己的启动参数（例如 -fakeIntelligence）。
+    /// 子类加自己的启动参数（例如 -fakeIntelligence、-openURL photodiary://…）。
     var extraLaunchArguments: [String] { [] }
+    /// 启动后要不要等日记页出现。带链接启动时可能直接盖上编辑器，由测试自己断言。
+    var expectsJournalOnLaunch: Bool { true }
 
     @MainActor private func launchApp(extra: [String] = []) {
         app = XCUIApplication()
         app.launchArguments += ["-uiTesting", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"] + extraLaunchArguments + extra
         app.launch()
         allowPhotoAccessIfAsked()
+        guard expectsJournalOnLaunch else { return }
         XCTAssertTrue(tab("日记").waitForExistence(timeout: 20), "启动后没有进入日记页")
     }
 

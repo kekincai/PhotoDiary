@@ -23,6 +23,8 @@ targets:
     sources:
       - path: PhotoDiary
       - path: Shared
+      # App 和小组件扩展共用：photodiary:// 链接、写日记的 App Intent、小组件快照。
+      - path: WidgetShared
     dependencies:
       # Mac（Catalyst）版不带 Watch App。
       - target: PhotoDiaryWatch

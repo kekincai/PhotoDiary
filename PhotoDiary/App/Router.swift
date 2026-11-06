@@ -57,6 +57,8 @@ final class Router {
     var showAddFromPhotos = false
     var showSettings = false
     var editor: EditorRequest?
+    /// 快捷指令带来的搜索文字，搜索页接过去后清空。
+    var searchRequest: String?
 
     var isAtRoot: Bool {
         switch tab {
@@ -104,6 +106,54 @@ final class Router {
         case .journal: _ = journalPath.popLast()
         case .review: _ = reviewPath.popLast()
         case .search: _ = searchPath.popLast()
+        }
+    }
+
+    // MARK: 从外面打开（小组件、控制中心、快捷指令）
+
+    /// 最新一张照片和它写没写过日记；只有“写最新一张”要用，由调用方去照片库查。
+    struct LatestPhoto: Equatable {
+        var id: String
+        var hasDiary: Bool
+    }
+
+    /// 打开一个 photodiary:// 链接。原来开着的面板先关掉，再到链接指的地方。
+    func open(_ link: DeepLink, latestPhoto: LatestPhoto? = nil) {
+        let hadSheet = showAddFromPhotos || showSettings || editor != nil
+        showAddFromPhotos = false
+        showSettings = false
+        switch link {
+        case .writeLatest:
+            guard let latestPhoto else { editor = nil; return }
+            let request = EditorRequest(assetID: latestPhoto.id, mode: latestPhoto.hasDiary ? .append : .new)
+            if !hadSheet {
+                editor = request
+            } else {
+                // 已经开着一个面板：等它收起再弹编辑器，同时换会被 SwiftUI 吞掉。
+                editor = nil
+                Task {
+                    try? await Task.sleep(for: .milliseconds(600))
+                    editor = request
+                }
+            }
+        case .today:
+            editor = nil
+            tab = .journal
+            journalPath = [.day(.today)]
+        case .onThisDay:
+            editor = nil
+            tab = .review
+            reviewPath = []
+            scrollToTop(.review)
+        case .entry(let id):
+            editor = nil
+            tab = .journal
+            journalPath = [.entry(id)]
+        case .search(let query):
+            editor = nil
+            tab = .search
+            searchPath = []
+            searchRequest = query
         }
     }
 

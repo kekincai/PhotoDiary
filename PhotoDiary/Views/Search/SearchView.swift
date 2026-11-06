@@ -97,6 +97,15 @@ struct SearchView: View {
         .onChange(of: router.tab == .search && router.searchPath.isEmpty) { _, visible in
             if !visible { focused = false }
         }
+        // 快捷指令带着文字打开：换成这段文字，其他条件清掉。
+        .onChange(of: router.searchRequest, initial: true) { _, request in
+            guard let request else { return }
+            router.searchRequest = nil
+            tags = []
+            place = nil
+            range = .any
+            query = request
+        }
         .navigationTitle("搜索")
         .toolbarTitleDisplayMode(.large)
         .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
