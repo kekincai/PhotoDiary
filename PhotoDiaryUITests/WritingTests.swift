@@ -150,3 +150,25 @@ final class WritingTests: DiaryUITestCase {
         XCTAssertFalse(button(containing: mark).exists, "删除后日记还在列表里")
     }
 }
+
+/// 写入照片失败：字恢复原样、提示错误，编辑器留着，写的字不丢。
+final class SaveFailureTests: DiaryUITestCase {
+    override var extraLaunchArguments: [String] { ["-failCaptionWrites"] }
+
+    @MainActor func testFailedSaveKeepsEditorAndShowsError() {
+        let mark = marker("失败")
+        openEntry("寺里的苔藓")
+        tap(app.buttons["追加感想"])
+        type(mark)
+        tap(app.buttons["完成"], "编辑器的完成按钮")
+        let alert = app.alerts["没有保存"]
+        XCTAssertTrue(alert.waitForExistence(timeout: 10), "写入失败没有提示")
+        alert.buttons["好"].tap()
+        XCTAssertTrue(editorText.exists, "写入失败后编辑器被关掉了")
+        XCTAssertTrue((editorText.value as? String)?.contains(mark) == true, "写入失败后写的字丢了")
+        XCTAssertTrue(app.buttons["完成"].isEnabled, "写入失败后不能再点完成")
+        tap(app.buttons["取消"])
+        tap(app.buttons["放弃"])
+        XCTAssertTrue(editorText.waitForNonExistence(timeout: 10))
+    }
+}

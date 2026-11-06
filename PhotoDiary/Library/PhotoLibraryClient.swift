@@ -46,7 +46,11 @@ nonisolated struct PhotoKitLibrary: PhotoLibraryClient {
         PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject?.extendedMetadata.caption
     }
 
-    func write(_ captions: [String: String?]) async throws { try await LibraryScanner.write(captions) }
+    func write(_ captions: [String: String?]) async throws {
+        // 界面测试用：模拟写入失败，看编辑器能不能恢复原样并提示。
+        if ProcessInfo.processInfo.arguments.contains("-failCaptionWrites") { throw CocoaError(.fileWriteNoPermission) }
+        try await LibraryScanner.write(captions)
+    }
 
     func reconcileKeywords(ids: [String]) async throws { try await LibraryScanner.reconcileKeywords(ids: ids) }
 
