@@ -111,6 +111,7 @@
 		BF43DDEE7C54E82DC5893C79 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F202B0EAECA1270EB7D3A645 /* SearchView.swift */; };
 		BF59980691A8862E6E32AA60 /* DiaryDates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F31CB92006521A42AFCA8FC /* DiaryDates.swift */; };
 		C09C8C809A09814025B3DC9A /* TestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA2362CC565C782F8D03F0E1 /* TestSupport.swift */; };
+		C2191DD2F6F3DD90AC012416 /* Developing.metal in Sources */ = {isa = PBXBuildFile; fileRef = 58C63F8F1D56ACE10C686199 /* Developing.metal */; };
 		C4BE03A64004CA6915A1F0AA /* DeepLink.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BF04470DD572332A3CAEFB9 /* DeepLink.swift */; };
 		CEDF4CECFC29DB78CECBBD55 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 64B6A85E563CE8518F5E7D90 /* Localizable.xcstrings */; };
 		D165B5E549BE72CC1899265E /* WatchStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 085610E67F36F45B82E9AABE /* WatchStore.swift */; };
@@ -251,6 +252,7 @@
 		4FDED610C2A1152F9437B18F /* BrandColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandColor.swift; sourceTree = "<group>"; };
 		50F73687F462C6518E7F177D /* DateRangeCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateRangeCalendar.swift; sourceTree = "<group>"; };
 		521DEBEADDA2BB9672301AD5 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
+		58C63F8F1D56ACE10C686199 /* Developing.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Developing.metal; sourceTree = "<group>"; };
 		5B60C9C92316247B9A677482 /* ReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderTests.swift; sourceTree = "<group>"; };
 		5E79BEDC84E9F8C6ADF50553 /* PhotoDiaryUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PhotoDiaryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F08A2D77FDDF9967FA2C141 /* PhotoDiaryWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PhotoDiaryWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -544,6 +546,7 @@
 				A5C8C4E6ED8555AF56B1D7E2 /* AssetImage.swift */,
 				1B823EE6387B56A51B3E23DA /* Badges.swift */,
 				EDA5D1988182F352938AE265 /* Controls.swift */,
+				58C63F8F1D56ACE10C686199 /* Developing.metal */,
 				F07FFD6F132533654C8526B8 /* DevelopingPhoto.swift */,
 				27159AEC97DEC9667C365D6D /* Effects.swift */,
 				F0ED8C447775391AA1E6815A /* EntryActions.swift */,
@@ -931,6 +934,7 @@
 				9E1F71BE6F383E8764A630FD /* DateRangeCalendar.swift in Sources */,
 				78BF9975FF44061E55D97EBC /* DayStamp.swift in Sources */,
 				C4BE03A64004CA6915A1F0AA /* DeepLink.swift in Sources */,
+				C2191DD2F6F3DD90AC012416 /* Developing.metal in Sources */,
 				81D98C783B13C220A19BAB47 /* DevelopingPhoto.swift in Sources */,
 				BF59980691A8862E6E32AA60 /* DiaryDates.swift in Sources */,
 				6B1C12888C5604A1BF34F481 /* DiaryEntry.swift in Sources */,

@@ -7,8 +7,8 @@ import Photos
 /// `active` 第一次为真、并且照片已经取到时开始显影；显影过的不再重来。
 /// 动画只是这张照片自己的，翻页、点按都不等它。“减少动态效果”时照片直接出现（淡入）。
 ///
-/// 没用 Metal 着色器：工程里没有 .metal 文件，命令行构建机也没装 Metal 工具链。
-/// 这里用 SwiftUI 自带的饱和度、对比度和“亮度转透明度”遮罩，按显影进度逐帧算。
+/// 每一帧用 Metal 着色器逐像素算（Developing.metal）：每个像素按自己的亮度决定什么时候显出来，
+/// 药水的斑让整张有先后，刚出来时带颗粒。
 struct DevelopingPhoto: View {
     let id: String
     var active = true
@@ -24,7 +24,7 @@ struct DevelopingPhoto: View {
         MarkPalette.light.undeveloped
             .overlay {
                 if let image {
-                    DevelopingLayer(image: image, progress: developed)
+                    DevelopingLayer(image: image, progress: developed, seed: Self.seed(for: id))
                         .transition(.opacity.animation(.easeOut(duration: 0.2)))
                 }
             }
@@ -40,6 +40,11 @@ struct DevelopingPhoto: View {
             .accessibilityHidden(true)
     }
 
+    /// 照片 id 的字节和，稳定（String 的 hashValue 每次启动都不同）。
+    private static func seed(for id: String) -> Float {
+        Float(id.utf8.reduce(0) { ($0 &* 31 &+ Int($1)) % 9973 }) / 97
+    }
+
     private func develop() {
         guard active, image != nil, developed == 0 else { return }
         if reduceMotion {
@@ -50,7 +55,7 @@ struct DevelopingPhoto: View {
     }
 }
 
-/// 按进度画一帧：Animatable，动画的每一帧都用插值后的进度重算各层，才能分出先后。
+/// 按进度画一帧：Animatable，动画的每一帧都把插值后的进度交给着色器。
 private struct DevelopingLayer: View, Animatable {
     let image: UIImage
     var progress: Double
@@ -62,30 +67,19 @@ private struct DevelopingLayer: View, Animatable {
 
     private static let milk = MarkPalette.light.undeveloped
 
+    /// 药水斑的种子：每张照片不一样，同一张每次一样。
+    var seed: Float
+
     var body: some View {
         let photo = Image(uiImage: image).resizable().scaledToFill()
         if progress >= 1 {
             photo
         } else {
-            let p = progress
-            photo
-                .saturation(0.1 + 0.9 * Self.ramp(p, 0.35, 1))
-                .contrast(0.55 + 0.45 * Self.ramp(p, 0.2, 0.95))
-                // 刚浮出来时偏暖、偏青灰，像拍立得刚吐出来的样子。
-                .colorMultiply(Color(red: 1, green: 0.95 + 0.05 * p, blue: 0.86 + 0.14 * p))
-                // 整体的乳白先褪一半……
-                .overlay { Self.milk.opacity(1 - Self.ramp(p, 0, 0.6)) }
-                // ……亮部的乳白留得久：暗的地方先显出来。
-                .overlay {
-                    Self.milk.opacity(0.9 * (1 - Self.ramp(p, 0.3, 1)))
-                        .mask { photo.luminanceToAlpha() }
-                }
+            let p = Float(progress)
+            photo.visualEffect { content, proxy in
+                content.colorEffect(ShaderLibrary.develop(
+                    .float(p), .float2(proxy.size), .color(Self.milk), .float(seed)))
+            }
         }
-    }
-
-    /// 在 [from, to] 之间从 0 平滑地升到 1。
-    private static func ramp(_ p: Double, _ from: Double, _ to: Double) -> Double {
-        let t = min(max((p - from) / (to - from), 0), 1)
-        return t * t * (3 - 2 * t)
     }
 }
