@@ -76,6 +76,20 @@ final class WritingTests: DiaryUITestCase {
         XCTAssertTrue(editorText.waitForNonExistence(timeout: 5), "没改过也弹了确认")
     }
 
+    /// 在晚间提醒上直接回复：回到 App 打开那张照片的编辑器，回复的字已经填好，等用户点完成才写进照片。
+    /// 界面测试点不到真的通知，用启动参数 -reminderReply 模拟一次回复（走的是同一条打开编辑器的路）。
+    @MainActor func testReminderReplyOpensEditorWithText() {
+        let mark = marker("提醒回复")
+        relaunch(with: ["-reminderReply", mark])
+        XCTAssertTrue(editorText.waitForExistence(timeout: 20), "回复通知后编辑器没有打开")
+        XCTAssertTrue((editorText.value as? String ?? "").contains(mark), "回复的字没有填进编辑器")
+        XCTAssertTrue(app.buttons["完成"].isEnabled)
+        tap(app.buttons["取消"], "编辑器的取消按钮")
+        tap(app.buttons["放弃"], "放弃修改的确认")
+        XCTAssertTrue(editorText.waitForNonExistence(timeout: 10))
+        XCTAssertFalse(text(containing: mark).exists, "没点完成就写进去了")
+    }
+
     /// 完成按钮在没写字时不能点。
     @MainActor func testDoneIsDisabledUntilSomethingIsWritten() {
         openEntry("寺里的苔藓")

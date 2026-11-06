@@ -23,12 +23,18 @@ class DiaryUITestCase: XCTestCase {
     /// 子类加自己的启动参数（例如 -fakeIntelligence）。
     var extraLaunchArguments: [String] { [] }
 
-    @MainActor private func launchApp() {
+    @MainActor private func launchApp(extra: [String] = []) {
         app = XCUIApplication()
-        app.launchArguments += ["-uiTesting", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"] + extraLaunchArguments
+        app.launchArguments += ["-uiTesting", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"] + extraLaunchArguments + extra
         app.launch()
         allowPhotoAccessIfAsked()
         XCTAssertTrue(tab("日记").waitForExistence(timeout: 20), "启动后没有进入日记页")
+    }
+
+    /// 带额外的启动参数重开一次 App（例如模拟点开了通知）。
+    @MainActor func relaunch(with extra: [String]) {
+        app.terminate()
+        launchApp(extra: extra)
     }
 
     @MainActor private func assertStillRunning() {
@@ -164,6 +170,11 @@ class DiaryUITestCase: XCTestCase {
     /// 修改不是本 App 建的照片时，系统会问一次。
     @MainActor func allowPhotoChangeIfAsked() {
         tapSystemAlert(["修改", "Modify", "允许", "Allow"], timeout: 3)
+    }
+
+    /// 第一次打开晚间提醒时系统问通知权限。
+    @MainActor func allowNotificationsIfAsked() {
+        tapSystemAlert(["允许", "Allow"], timeout: 5)
     }
 
     @MainActor func confirmPhotoDeletion() {

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		012E74FAD9143E612AB4D480 /* ReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B60C9C92316247B9A677482 /* ReminderTests.swift */; };
 		01620D71A06EB6C5D95DD769 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99FCF4A837647EB2008638EC /* AppLocalization.swift */; };
 		0294866812488186418FA272 /* SearchIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8877F910DA5AF87DF7C6B0 /* SearchIntent.swift */; };
 		069DF4B61CABDA96E2BBDFDB /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42108EFF2BA086AE31997163 /* PermissionView.swift */; };
@@ -37,6 +38,7 @@
 		609F4BA5EF2EC406E4E30704 /* ReviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00585F3DF650C04EEBC8D62D /* ReviewView.swift */; };
 		6223C4653D6F519F19DC0DC2 /* Intelligence.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3915F29CE02B75A613640BE /* Intelligence.swift */; };
 		639A8EA5FE0F0B0305F18824 /* JournalView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C764323256BC19C5A42B044C /* JournalView.swift */; };
+		65BBBF9EC0364B03D738D416 /* EveningReminder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 001121431C39839A5942B8AA /* EveningReminder.swift */; };
 		67C3C0F95B764C77E55340AD /* DiaryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 371C3D48B1FCCC39EB09C891 /* DiaryStore.swift */; };
 		690B56532244B7FBD29AA29B /* DerivedDataTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8647611599A796B8FB539AB5 /* DerivedDataTests.swift */; };
 		6B1C12888C5604A1BF34F481 /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6D263197946BC1AC0CC66F /* DiaryEntry.swift */; };
@@ -146,6 +148,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		001121431C39839A5942B8AA /* EveningReminder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EveningReminder.swift; sourceTree = "<group>"; };
 		00585F3DF650C04EEBC8D62D /* ReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReviewView.swift; sourceTree = "<group>"; };
 		00B396FA78F90F31B91BD7A5 /* Typography.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Typography.swift; sourceTree = "<group>"; };
 		072D002BAA651D6EF1F714CB /* PhotoViewer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoViewer.swift; sourceTree = "<group>"; };
@@ -186,6 +189,7 @@
 		4FDED610C2A1152F9437B18F /* BrandColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandColor.swift; sourceTree = "<group>"; };
 		50F73687F462C6518E7F177D /* DateRangeCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateRangeCalendar.swift; sourceTree = "<group>"; };
 		521DEBEADDA2BB9672301AD5 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
+		5B60C9C92316247B9A677482 /* ReminderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderTests.swift; sourceTree = "<group>"; };
 		5E79BEDC84E9F8C6ADF50553 /* PhotoDiaryUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = PhotoDiaryUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5F8877F910DA5AF87DF7C6B0 /* SearchIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchIntent.swift; sourceTree = "<group>"; };
 		60D51597207A47341B1A8683 /* Log.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Log.swift; sourceTree = "<group>"; };
@@ -362,6 +366,7 @@
 		49445CDAB3ADEAEB0D1F2878 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				001121431C39839A5942B8AA /* EveningReminder.swift */,
 				359DB26C6118D7F07AA748CF /* LimitedLibrary.swift */,
 				60D51597207A47341B1A8683 /* Log.swift */,
 				8CBA724A865B13A243726AC0 /* PhotoDiaryApp.swift */,
@@ -408,6 +413,7 @@
 				3BF4159F7A7201518B0DEFA0 /* LogTests.swift */,
 				FF02476A073CF0251400A9B6 /* PerformanceTests.swift */,
 				898730CB11E18EEBAB9E13F5 /* PhotoKitIntegrationTests.swift */,
+				5B60C9C92316247B9A677482 /* ReminderTests.swift */,
 				CD3511816DF16328D71510DC /* SyncTests.swift */,
 				465DF80D0D6128A83B89B879 /* WatchBridgeTests.swift */,
 				24EFCB1FD1E4B7C5D9890945 /* WatchSyncTests.swift */,
@@ -741,6 +747,7 @@
 				B0D838C94FE92F3BEEE5E8C4 /* PerformanceTests.swift in Sources */,
 				9D42CCF8715441231501D05D /* PhotoFixtures.swift in Sources */,
 				59F3DB262E9D239B8E87DE4F /* PhotoKitIntegrationTests.swift in Sources */,
+				012E74FAD9143E612AB4D480 /* ReminderTests.swift in Sources */,
 				0FC00E539542206D01010797 /* SyncTests.swift in Sources */,
 				C09C8C809A09814025B3DC9A /* TestSupport.swift in Sources */,
 				3B107A832B8FEF928B453666 /* WatchBridgeTests.swift in Sources */,
@@ -775,6 +782,7 @@
 				23A15291EB5BC210D490C50F /* EntryActions.swift in Sources */,
 				A62694CB8B58EE6289927356 /* EntryCard.swift in Sources */,
 				EE8DCBCDD53037A104E4E7C7 /* EntryDetailView.swift in Sources */,
+				65BBBF9EC0364B03D738D416 /* EveningReminder.swift in Sources */,
 				975B517752FEA2702E506ED5 /* FoundationModelsEngine.swift in Sources */,
 				79E9E8A5FE9B92F0BC92D3FD /* HiddenCaptionsView.swift in Sources */,
 				72510A040C6969B4E8ECF2DC /* IndexDatabase.swift in Sources */,

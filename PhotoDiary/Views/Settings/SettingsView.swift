@@ -1,6 +1,7 @@
 import SwiftUI
 import Photos
 import UniformTypeIdentifiers
+import UIKit
 
 /// 设置：系统分组列表，每行一个带底色的图标（和系统“设置”一样）。
 struct SettingsView: View {
@@ -13,7 +14,12 @@ struct SettingsView: View {
     @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
     @AppStorage(AppLanguage.storageKey) private var language: AppLanguage = .system
     @AppStorage(WeekStart.storageKey) private var weekStart: WeekStart = .default
+    @AppStorage(Reminder.enabledKey) private var reminderOn = false
+    @AppStorage(Reminder.timeKey) private var reminderMinutes = Reminder.defaultMinutes
     @State private var confirmRebuild = false
+    /// 正在问通知权限：开关先显示成打开的，等系统弹窗的结果。
+    @State private var requestingNotifications = false
+    @State private var notificationsDenied = false
 
     var body: some View {
         NavigationStack {
@@ -36,6 +42,16 @@ struct SettingsView: View {
             .confirmationDialog("重建索引？", isPresented: $confirmRebuild, titleVisibility: .visible) {
                 Button("重新读取整个照片库") { store.rebuildIndex(); dismiss() }
                 Button("取消", role: .cancel) {}
+            }
+            .alert("通知未允许", isPresented: $notificationsDenied) {
+                Button("打开设置") {
+                    if let url = URL(string: UIApplication.openNotificationSettingsURLString) { openURL(url) }
+                }
+                Button("取消", role: .cancel) {}
+            }
+            // 在系统设置里关了通知：开关跟着关掉，不显示成还在提醒。
+            .task {
+                if reminderOn, await ReminderScheduler.shared.isDenied() { reminderOn = false }
             }
         }
         .tint(.brand(hex: brandHex))
@@ -141,6 +157,14 @@ struct SettingsView: View {
 
     private var diarySection: some View {
         Section {
+            Toggle(isOn: reminderBinding) {
+                SettingsLabel("晚间提醒", symbol: "bell.badge", color: .red)
+            }
+            if reminderOn {
+                DatePicker(selection: reminderTime, displayedComponents: .hourAndMinute) {
+                    SettingsLabel("提醒时间", symbol: "clock", color: .purple)
+                }
+            }
             NavigationLink {
                 HiddenCaptionsView()
             } label: {
@@ -279,6 +303,39 @@ struct SettingsView: View {
         let version = info?["CFBundleShortVersionString"] as? String ?? "?"
         let build = info?["CFBundleVersion"] as? String ?? "?"
         return "\(version) (\(build))"
+    }
+
+    // MARK: 晚间提醒
+
+    /// 打开时先问通知权限；没允许就弹回关闭。
+    private var reminderBinding: Binding<Bool> {
+        Binding {
+            reminderOn || requestingNotifications
+        } set: { on in
+            guard on else {
+                reminderOn = false
+                Task { await ReminderScheduler.shared.reschedule(store: store) }
+                return
+            }
+            requestingNotifications = true
+            Task {
+                let granted = await ReminderScheduler.shared.requestAuthorization()
+                withAnimation { reminderOn = granted }
+                requestingNotifications = false
+                notificationsDenied = !granted
+                await ReminderScheduler.shared.reschedule(store: store)
+            }
+        }
+    }
+
+    private var reminderTime: Binding<Date> {
+        Binding {
+            Calendar.current.date(bySettingHour: reminderMinutes / 60, minute: reminderMinutes % 60, second: 0, of: .now) ?? .now
+        } set: { date in
+            let c = Calendar.current.dateComponents([.hour, .minute], from: date)
+            reminderMinutes = (c.hour ?? 21) * 60 + (c.minute ?? 0)
+            ReminderScheduler.shared.rescheduleSoon(store: store)
+        }
     }
 
     /// 先切换语言再写入设置，App 按新语言重建界面。

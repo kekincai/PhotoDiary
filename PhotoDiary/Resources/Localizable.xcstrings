@@ -559,6 +559,34 @@
         }
       }
     },
+    "今天拍了 %lld 张，写一句？": {
+      "localizations": {
+        "en": {
+          "variations": {
+            "plural": {
+              "one": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "You took %lld photo today. Write a line?"
+                }
+              },
+              "other": {
+                "stringUnit": {
+                  "state": "translated",
+                  "value": "You took %lld photos today. Write a line?"
+                }
+              }
+            }
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日は%lld枚撮りました。ひとこと書きませんか？"
+          }
+        }
+      }
+    },
     "今天的照片": {
       "localizations": {
         "en": {
@@ -571,6 +599,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "今日の写真"
+          }
+        }
+      }
+    },
+    "今天的照片，写一句？": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write a line about today's photos?"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今日の写真に、ひとこと書きませんか？"
           }
         }
       }
@@ -763,6 +807,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "書く"
+          }
+        }
+      }
+    },
+    "写一句": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Write a Line"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ひとこと書く"
           }
         }
       }
@@ -1782,6 +1842,22 @@
         }
       }
     },
+    "打开设置": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open Settings"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定を開く"
+          }
+        }
+      }
+    },
     "把日记写在\n照片的说明里": {
       "localizations": {
         "en": {
@@ -1810,6 +1886,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "%@に撮影"
+          }
+        }
+      }
+    },
+    "提醒时间": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Time"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "時刻"
           }
         }
       }
@@ -2114,6 +2206,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "昨日"
+          }
+        }
+      }
+    },
+    "晚间提醒": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Evening Reminder"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "夜のリマインダー"
           }
         }
       }
@@ -3090,6 +3198,22 @@
         }
       }
     },
+    "继续": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "続ける"
+          }
+        }
+      }
+    },
     "继续写": {
       "localizations": {
         "en": {
@@ -3739,6 +3863,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "一般"
+          }
+        }
+      }
+    },
+    "通知未允许": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Notifications Are Off"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "通知がオフです"
           }
         }
       }

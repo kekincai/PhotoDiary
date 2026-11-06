@@ -1,6 +1,6 @@
 import XCTest
 
-/// 设置里的每一项：外观、主题色、语言、一周起始日、隐藏的说明、导出、重建索引。改完都还原。
+/// 设置里的每一项：外观、主题色、语言、一周起始日、晚间提醒、隐藏的说明、导出、重建索引。改完都还原。
 final class SettingsTests: DiaryUITestCase {
     @MainActor private func openSettings() {
         tap(button(containing: "更多选项"))
@@ -57,6 +57,30 @@ final class SettingsTests: DiaryUITestCase {
         closeSettings()
         tap(button(containing: "视图："))
         tap(app.buttons["列表"])
+    }
+
+    /// 晚间提醒：打开时问通知权限，允许后出现时间；再关掉，不影响别的测试。
+    @MainActor func testEveningReminderToggle() {
+        openSettings()
+        let toggle = app.switches["晚间提醒"]
+        XCTAssertTrue(toggle.waitForExistence(timeout: 10), "找不到晚间提醒")
+        for _ in 0..<3 where !toggle.isHittable { app.swipeUp() }
+        flip(toggle)
+        allowNotificationsIfAsked()
+        XCTAssertTrue(app.datePickers.firstMatch.waitForExistence(timeout: 10), "打开提醒后没有出现时间")
+        XCTAssertEqual(toggle.value as? String, "1", "允许通知后开关没有打开")
+        assertAlive()
+
+        flip(toggle)
+        XCTAssertTrue(app.datePickers.firstMatch.waitForNonExistence(timeout: 5), "关掉提醒后时间还在")
+        XCTAssertEqual(toggle.value as? String, "0")
+        closeSettings()
+    }
+
+    /// 点开关本身（点整行的标签部分不会切换）。
+    @MainActor private func flip(_ toggle: XCUIElement) {
+        let knob = toggle.switches.firstMatch
+        (knob.exists ? knob : toggle).tap()
     }
 
     /// 隐藏一段说明后它不再算日记，取消隐藏后回来。

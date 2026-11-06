@@ -8,6 +8,7 @@ struct PhotoDiaryApp: App {
     @State private var store: DiaryStore
     @State private var router = Router()
     @State private var intelligence = Intelligence.forLaunch()
+    @State private var reminders = ReminderScheduler.shared
     /// 主题色的十六进制值：预设或在调色板里自选的。
     @AppStorage(BrandColor.storageKey) private var brandHex = BrandColor.lake.rawValue
     @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
@@ -22,6 +23,8 @@ struct PhotoDiaryApp: App {
         AppLanguage.apply(AppLanguage.stored)
         // 读索引之前就定下一周从哪天开始，按周归并的数据才对。
         Calendar.diaryFirstWeekday = WeekStart.stored.rawValue
+        // 点通知启动 App 时，系统在 didFinishLaunching 返回前就要找到通知的代理。
+        ReminderScheduler.shared.activate()
         let store = DiaryStore()
         // 第一帧还没画就开始读索引。
         if !Self.isHostingUnitTests { store.prepare() }
@@ -43,7 +46,12 @@ struct PhotoDiaryApp: App {
                 .tint(.brand(hex: brandHex))
                 .environment(\.locale, AppLanguage.current.locale)
                 .id(language)
-                .onChange(of: language) { store.placeLanguageChanged() }
+                .onChange(of: language) {
+                    store.placeLanguageChanged()
+                    // 通知上的按钮和提醒文字按新语言重写。
+                    reminders.registerCategory()
+                    reminders.rescheduleSoon(store: store)
+                }
                 .onAppear {
                     appearance.apply()
                     Self.limitMacWindowSize()
@@ -59,7 +67,13 @@ struct PhotoDiaryApp: App {
                     DiaryFonts.shared.prepare()
                     WatchBridge.shared.start(store: store)
                     await store.start()
+                    // 每次打开都重排：往后几天的通用提醒换成按今天实际情况算的。
+                    await reminders.reschedule(store: store)
+                    if Self.isUITesting { await reminders.simulateReplyForUITests(store: store) }
                 }
+                // 点开了晚间提醒：索引读好后打开那张照片的编辑器。
+                .onChange(of: reminders.pending, initial: true) { openPendingReminder() }
+                .onChange(of: store.hasLoaded) { openPendingReminder() }
                 .onChange(of: scenePhase) { _, phase in
                     Log.app.debug("scenePhase → \(String(describing: phase), privacy: .public)")
                     if phase == .active {
@@ -70,7 +84,11 @@ struct PhotoDiaryApp: App {
                     if phase == .background { saveInBackground() }
                 }
                 // 日记一变就把快照发给 Apple Watch（防抖）。
-                .onChange(of: store.diaries) { WatchBridge.shared.scheduleSync() }
+                .onChange(of: store.diaries) {
+                    WatchBridge.shared.scheduleSync()
+                    // 今天写了日记，今晚就不用提醒了。
+                    if !Self.isHostingUnitTests { reminders.rescheduleSoon(store: store) }
+                }
                 // 日记列表一变就在后台把这些照片的 PHAsset 取齐，界面上滚动时不再查照片库。
                 .onChange(of: store.diaries, initial: true) { AssetImages.shared.warm(ids: store.diaries.map(\.id)) }
         }
@@ -86,13 +104,31 @@ struct PhotoDiaryApp: App {
         #endif
     }
 
-    /// 进入后台时立即保存索引，并向系统要一点时间保证写完。
+    /// 进入后台时立即保存索引、重排晚间提醒，并向系统要一点时间保证做完。
     private func saveInBackground() {
         let task = BackgroundTask()
         task.id = UIApplication.shared.beginBackgroundTask(withName: "保存索引") { task.end() }
         Task {
             await store.saveNow()
+            if !Self.isHostingUnitTests { await reminders.reschedule(store: store) }
             task.end()
+        }
+    }
+
+    private func openPendingReminder() {
+        guard let response = reminders.pending, store.hasLoaded else { return }
+        reminders.pending = nil
+        Task {
+            // 正在写的编辑器不顶掉，免得丢字。
+            guard router.editor == nil,
+                  let request = await reminders.editorRequest(for: response, store: store) else { return }
+            // 别的面板开着时先收起，编辑器才弹得出来。
+            if router.showSettings || router.showAddFromPhotos {
+                router.showSettings = false
+                router.showAddFromPhotos = false
+                try? await Task.sleep(for: .milliseconds(600))
+            }
+            router.editor = request
         }
     }
 }

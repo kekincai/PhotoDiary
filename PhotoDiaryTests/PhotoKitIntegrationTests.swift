@@ -3,6 +3,8 @@ import Foundation
 import Photos
 import UIKit
 import CoreLocation
+import UserNotifications
+import ObjectiveC
 @testable import PhotoDiary
 
 /// 直接读写模拟器里的真实照片库：假照片库测不到 PhotoKit 在哪条线程回调、说明和关键词是不是真的写进去了。
@@ -222,6 +224,83 @@ struct PhotoKitIntegrationTests {
     @Test func recentAssetsListsNewPhotosFirst() async throws {
         let id = try await PhotoFixtures.makePhoto(date: .now.addingTimeInterval(3600))
         #expect(AssetImages.recentAssets(limit: 5).first?.id == id)
+    }
+
+    // MARK: 晚间提醒
+
+    /// 系统在自己的队列上调通知代理（走 Objective-C 的 completionHandler 版本）：不能因为隔离不对而终止，点开的内容要交到主线程。
+    @Test func reminderDelegateIsCalledOffMainThread() async throws {
+        let content = UNMutableNotificationContent()
+        content.categoryIdentifier = Reminder.category
+        content.userInfo = [Reminder.assetKey: "照片-123"]
+        let request = UNNotificationRequest(identifier: Reminder.identifierPrefix + "0", content: content, trigger: nil)
+        let notification = try SystemNotifications.notification(request, date: .now)
+        let reply = try SystemNotifications.textResponse(notification, action: Reminder.replyAction, text: "海边的风")
+        ReminderScheduler.shared.pending = nil
+        defer { ReminderScheduler.shared.pending = nil }
+
+        nonisolated(unsafe) let delegate: any UNUserNotificationCenterDelegate = ReminderNotificationDelegate()
+        nonisolated(unsafe) let center = UNUserNotificationCenter.current()
+        nonisolated(unsafe) let (n, r) = (notification, reply)
+
+        let options = await withCheckedContinuation { (done: CheckedContinuation<UNNotificationPresentationOptions, Never>) in
+            DispatchQueue.global().async {
+                delegate.userNotificationCenter?(center, willPresent: n) { done.resume(returning: $0) }
+            }
+        }
+        #expect(options.contains(.banner))
+
+        await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
+            DispatchQueue.global().async {
+                delegate.userNotificationCenter?(center, didReceive: r) { done.resume() }
+            }
+        }
+        #expect(ReminderScheduler.shared.pending == Reminder.Response(assetID: "照片-123", day: DayStamp(.now), reply: "海边的风"))
+    }
+
+    /// 通用提醒（没带照片）点开时现挑当天的照片；带的照片已经删了就不开编辑器。
+    @Test func reminderOpensEditorForTodaysPhoto() async throws {
+        let id = try await PhotoFixtures.makePhoto(date: .now)
+        let today = DayStamp(.now)
+        #expect(Reminder.photos(on: today).contains { $0.id == id })
+
+        let store = makeStore(library: FakeLibrary())
+        let picked = await ReminderScheduler.shared.editorRequest(
+            for: Reminder.Response(assetID: nil, day: today, reply: "  晚饭很好吃 "), store: store)
+        #expect(picked?.seed == "晚饭很好吃")
+        #expect(picked?.mode == .new)
+
+        let given = await ReminderScheduler.shared.editorRequest(
+            for: Reminder.Response(assetID: id, day: today, reply: nil), store: store)
+        #expect(given?.assetID == id)
+        #expect(given?.seed == nil)
+
+        let gone = await ReminderScheduler.shared.editorRequest(
+            for: Reminder.Response(assetID: "不存在的照片/L0/001", day: today, reply: "x"), store: store)
+        #expect(gone == nil)
+    }
+}
+
+/// UNNotification、UNNotificationResponse 没有公开的初始化方法：用系统自己的工厂方法造一个，模拟系统调代理。
+enum SystemNotifications {
+    struct Missing: Error {}
+
+    static func notification(_ request: UNNotificationRequest, date: Date) throws -> UNNotification {
+        typealias Make = @convention(c) (AnyClass, Selector, UNNotificationRequest, NSDate) -> UNNotification
+        let (imp, sel) = try factory(UNNotification.self, "notificationWithRequest:date:")
+        return unsafeBitCast(imp, to: Make.self)(UNNotification.self, sel, request, date as NSDate)
+    }
+
+    static func textResponse(_ notification: UNNotification, action: String, text: String) throws -> UNTextInputNotificationResponse {
+        typealias Make = @convention(c) (AnyClass, Selector, UNNotification, NSString, NSString) -> UNTextInputNotificationResponse
+        let (imp, sel) = try factory(UNTextInputNotificationResponse.self, "responseWithNotification:actionIdentifier:userText:")
+        return unsafeBitCast(imp, to: Make.self)(UNTextInputNotificationResponse.self, sel, notification, action as NSString, text as NSString)
+    }
+
+    private static func factory(_ cls: AnyClass, _ name: String) throws -> (IMP, Selector) {
+        let sel = NSSelectorFromString(name)
+        guard let method = class_getClassMethod(cls, sel) else { throw Missing() }
+        return (method_getImplementation(method), sel)
     }
 }
 
