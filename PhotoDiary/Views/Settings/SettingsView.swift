@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 /// 设置：系统分组列表，每行一个带底色的图标（和系统“设置”一样）。
 struct SettingsView: View {
     @Environment(DiaryStore.self) private var store
+    @Environment(Intelligence.self) private var intelligence
     @Environment(\.dismiss) private var dismiss
     @Environment(\.openURL) private var openURL
     @AppStorage(BrandColor.storageKey) private var brandHex = BrandColor.lake.rawValue
@@ -125,6 +126,13 @@ struct SettingsView: View {
                 }
             } label: {
                 SettingsLabel("一周从", symbol: "calendar", color: .red)
+            }
+            // 机型支持 Apple Intelligence 才有这一行：搜索、建议标签、本周回顾的总开关。
+            if intelligence.isEligible {
+                @Bindable var intelligence = intelligence
+                Toggle(isOn: $intelligence.enabled) {
+                    SettingsLabel("Apple Intelligence", symbol: "apple.intelligence", color: .purple)
+                }
             }
         }
     }

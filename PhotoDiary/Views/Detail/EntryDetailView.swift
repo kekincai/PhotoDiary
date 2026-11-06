@@ -9,8 +9,11 @@ struct EntryDetailView: View {
     let id: String
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
     @Environment(\.zoomNamespace) private var namespace
+    /// 没有标签的日记：模型建议的标签，点一下写进说明。
+    @State private var suggested: [String] = []
     @Environment(\.dismiss) private var dismiss
     @State private var showViewer = false
     @State private var confirmDelete = false
@@ -159,6 +162,7 @@ struct EntryDetailView: View {
                 }
             }
             chips(entry)
+            suggestedTags(entry)
         }
         .textSelection(.enabled)
         .frame(maxWidth: 720, alignment: .leading)
@@ -208,6 +212,52 @@ struct EntryDetailView: View {
                 }
             }
             .padding(.top, 32)
+        }
+    }
+
+    /// 还没有标签时，模型按正文建议几个：浅底胶囊（待确认态），前面一枚 Apple Intelligence 标记。点一下写进说明。
+    @ViewBuilder
+    private func suggestedTags(_ entry: DiaryEntry) -> some View {
+        let wanted = intelligence.isEnabled && entry.tags.isEmpty
+        FlowLayout(spacing: 8) {
+            if wanted, !suggested.isEmpty {
+                Image(systemName: "apple.intelligence")
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(Color.inkSecondary)
+                    .frame(height: 34)
+                    .accessibilityHidden(true)
+                ForEach(suggested, id: \.self) { tag in
+                    Button { accept(tag) } label: {
+                        Chip(height: 34, fill: brand.soft()) {
+                            Text("#\(tag)#")
+                        }
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(brand)
+                    }
+                    .buttonStyle(.press)
+                    .accessibilityLabel(Spoken.tag(tag))
+                    .accessibilityHint(Text("加上这个标签"))
+                }
+            }
+        }
+        .padding(.top, wanted && !suggested.isEmpty ? (entry.placeName == nil ? 32 : 8) : 0)
+        .animation(.drawer, value: suggested)
+        .task(id: wanted ? entry.caption : "") {
+            guard wanted else { suggested = []; return }
+            let tags = await intelligence.engine.suggestTags(for: entry.caption, existing: store.allTags)
+            guard !Task.isCancelled else { return }
+            suggested = tags
+        }
+    }
+
+    private func accept(_ tag: String) {
+        suggested.removeAll { $0 == tag }
+        Task {
+            do {
+                try await store.addTag(tag, to: id)
+            } catch {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

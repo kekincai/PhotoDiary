@@ -26,6 +26,8 @@ nonisolated enum Log {
     static let images = Logger(subsystem: subsystem, category: "images")
     /// 和 Apple Watch 之间的快照、口述的段落。
     static let watch = Logger(subsystem: subsystem, category: "watch")
+    /// 设备上的语言模型：解析搜索、建议标签、本周回顾。
+    static let intelligence = Logger(subsystem: subsystem, category: "intelligence")
 
     static let signposter = OSSignposter(subsystem: subsystem, category: .pointsOfInterest)
 

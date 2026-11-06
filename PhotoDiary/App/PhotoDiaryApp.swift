@@ -7,6 +7,7 @@ import OSLog
 struct PhotoDiaryApp: App {
     @State private var store: DiaryStore
     @State private var router = Router()
+    @State private var intelligence = Intelligence.forLaunch()
     /// 主题色的十六进制值：预设或在调色板里自选的。
     @AppStorage(BrandColor.storageKey) private var brandHex = BrandColor.lake.rawValue
     @AppStorage(Appearance.storageKey) private var appearance: Appearance = .system
@@ -37,6 +38,7 @@ struct PhotoDiaryApp: App {
             RootView()
                 .environment(store)
                 .environment(router)
+                .environment(intelligence)
                 .environment(\.brand, .brand(hex: brandHex))
                 .tint(.brand(hex: brandHex))
                 .environment(\.locale, AppLanguage.current.locale)
@@ -62,6 +64,7 @@ struct PhotoDiaryApp: App {
                     Log.app.debug("scenePhase → \(String(describing: phase), privacy: .public)")
                     if phase == .active {
                         store.refreshAuthorization()
+                        intelligence.refreshAvailability()
                         WatchBridge.shared.resume()
                     }
                     if phase == .background { saveInBackground() }

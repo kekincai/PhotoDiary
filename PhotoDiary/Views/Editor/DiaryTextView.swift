@@ -30,6 +30,20 @@ final class EditorController {
         tv.replace(textRange, withText: "#\(tag)# ")
     }
 
+    /// 采纳建议的标签：接在正文末尾（前面留一个空格），光标跟到最后。
+    func appendTag(_ tag: String) {
+        guard let tv = textView else {
+            text = text.trimmingTrailingWhitespace() + (text.isEmpty ? "" : " ") + "#\(tag)# "
+            return
+        }
+        let current = tv.text ?? ""
+        let trimmed = current.trimmingTrailingWhitespace()
+        let prefix = trimmed.isEmpty ? "" : (trimmed.last == "\n" ? "" : " ")
+        tv.text = trimmed + prefix + "#\(tag)# "
+        tv.selectedRange = NSRange(location: (tv.text as NSString).length, length: 0)
+        textDidChange(in: tv)
+    }
+
     func dismissKeyboard() { textView?.resignFirstResponder() }
     func focus() { textView?.becomeFirstResponder() }
 

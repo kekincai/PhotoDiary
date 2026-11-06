@@ -88,7 +88,9 @@ final class BrowsingTests: DiaryUITestCase {
     }
 
     @MainActor private func rename(_ tag: XCUIElement, to name: String) {
+        // 模拟器在转场后常吞掉手势：长按没出菜单、“确定”没关掉弹窗时各补一次。
         tag.press(forDuration: 1.2)
+        if !app.buttons["改名"].waitForExistence(timeout: 3) { tag.press(forDuration: 1.2) }
         tap(app.buttons["改名"], "长按菜单里的改名")
         let field = app.alerts.textFields.firstMatch
         XCTAssertTrue(field.waitForExistence(timeout: 5))
@@ -97,7 +99,9 @@ final class BrowsingTests: DiaryUITestCase {
             field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: current.count + 2))
         }
         field.typeText(name)
-        app.alerts.buttons["确定"].tap()
+        let ok = app.alerts.buttons["确定"]
+        ok.tap()
+        if !app.alerts.firstMatch.waitForNonExistence(timeout: 3), ok.exists { ok.tap() }
         allowPhotoChangeIfAsked()
         assertAlive()
     }

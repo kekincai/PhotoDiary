@@ -183,6 +183,24 @@ nonisolated enum CaptionFormat {
         return result
     }
 
+    /// 给说明补一个标签：接在最后一段正文的末尾、写作时间行之前（标签习惯写在段末）。
+    /// 已经有这个标签、或名字不合规则时原样返回。
+    static func addingTag(_ tag: String, to caption: String) -> String {
+        guard isValidTagName(tag), !tags(in: caption).contains(tag) else { return caption }
+        var lines = caption.replacingOccurrences(of: "\r\n", with: "\n")
+            .split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+        // 最后一个日期行之前、最靠后的一行正文；没有日期行就是全文最后一行正文。
+        let end = lines.lastIndex { dateStamp(inLine: $0) != nil } ?? lines.count
+        if let index = lines[..<end].lastIndex(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) {
+            lines[index] = lines[index].trimmingTrailingWhitespace() + " #\(tag)#"
+        } else if end == lines.count {
+            return "#\(tag)#" // 没有正文也没有日期行
+        } else {
+            lines.insert("#\(tag)#", at: end)
+        }
+        return lines.joined(separator: "\n")
+    }
+
     static func isValidTagName(_ name: String) -> Bool {
         let probe = "#\(name)#"
         return tagMatches(in: probe).first.map { $0.name == name && $0.range == probe.startIndex..<probe.endIndex } ?? false

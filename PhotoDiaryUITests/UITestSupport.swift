@@ -20,9 +20,12 @@ class DiaryUITestCase: XCTestCase {
         MainActor.assumeIsolated { test.assertStillRunning() }
     }
 
+    /// 子类加自己的启动参数（例如 -fakeIntelligence）。
+    var extraLaunchArguments: [String] { [] }
+
     @MainActor private func launchApp() {
         app = XCUIApplication()
-        app.launchArguments += ["-uiTesting", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments += ["-uiTesting", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"] + extraLaunchArguments
         app.launch()
         allowPhotoAccessIfAsked()
         XCTAssertTrue(tab("日记").waitForExistence(timeout: 20), "启动后没有进入日记页")
@@ -124,6 +127,24 @@ class DiaryUITestCase: XCTestCase {
             Thread.sleep(forTimeInterval: 0.5)
         }
         XCTAssertEqual(field.value(forKey: "hasKeyboardFocus") as? Bool, true, "输入框没有拿到焦点")
+    }
+
+    /// 收尾：把测试写在空白照片上的日记清掉（编辑成空、清除说明），照片回到空白，下次还能用。
+    @MainActor func clearDiary(containing mark: String, file: StaticString = #filePath, line: UInt = #line) {
+        openEntry(mark)
+        tap(app.buttons["编辑"])
+        let field = editorText
+        focus(field)
+        field.press(forDuration: 1.2)
+        if app.menuItems["全选"].waitForExistence(timeout: 3) { app.menuItems["全选"].tap() }
+        else if app.menuItems["Select All"].exists { app.menuItems["Select All"].tap() }
+        field.typeText(XCUIKeyboardKey.delete.rawValue)
+        tap(app.buttons["完成"])
+        tap(app.buttons["清除说明"], "清除说明的确认")
+        allowPhotoChangeIfAsked()
+        assertAlive(file: file, line: line)
+        goToJournalRoot()
+        XCTAssertTrue(button(containing: mark).waitForNonExistence(timeout: 10), "清除后日记还在列表里", file: file, line: line)
     }
 
     /// 从“+”打开照片列表，选第一张还没写日记的照片，进入编辑器。

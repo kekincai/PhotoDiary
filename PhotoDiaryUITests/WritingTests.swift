@@ -17,21 +17,7 @@ final class WritingTests: DiaryUITestCase {
         goToJournalRoot()
         XCTAssertTrue(button(containing: mark).waitForExistence(timeout: 10), "新写的日记没有出现在列表里")
 
-        // 收尾：编辑成空，清除说明，照片回到空白，下次还能用。
-        openEntry(mark)
-        tap(app.buttons["编辑"])
-        let field = editorText
-        focus(field)
-        field.press(forDuration: 1.2)
-        if app.menuItems["全选"].waitForExistence(timeout: 3) { app.menuItems["全选"].tap() }
-        else if app.menuItems["Select All"].exists { app.menuItems["Select All"].tap() }
-        field.typeText(XCUIKeyboardKey.delete.rawValue)
-        tap(app.buttons["完成"])
-        tap(app.buttons["清除说明"], "清除说明的确认")
-        allowPhotoChangeIfAsked()
-        assertAlive()
-        goToJournalRoot()
-        XCTAssertTrue(button(containing: mark).waitForNonExistence(timeout: 10), "清除后日记还在列表里")
+        clearDiary(containing: mark)
     }
 
     @MainActor func testAppendThoughtFromDetail() {

@@ -75,6 +75,17 @@ struct CaptionFormatTests {
         #expect(!CaptionFormat.isValidTagName(" 旅行"))
     }
 
+    @Test func addingTagGoesBeforeDateLine() {
+        #expect(CaptionFormat.addingTag("散步", to: "今天走了很远\n— 2026.10.31") == "今天走了很远 #散步#\n— 2026.10.31")
+        #expect(CaptionFormat.addingTag("散步", to: sample) == sample.replacingOccurrences(of: "喜欢这张", with: "喜欢这张 #散步#"))
+        #expect(CaptionFormat.addingTag("散步", to: "没有日期行 ") == "没有日期行 #散步#")
+        #expect(CaptionFormat.addingTag("散步", to: "风很舒服 #旅行#\n— 2026.10.31") == "风很舒服 #旅行# #散步#\n— 2026.10.31")
+        #expect(CaptionFormat.addingTag("旅行", to: "风很舒服 #旅行#") == "风很舒服 #旅行#")
+        #expect(CaptionFormat.addingTag(" 坏名字", to: "风很舒服") == "风很舒服")
+        #expect(CaptionFormat.addingTag("散步", to: "") == "#散步#")
+        #expect(CaptionFormat.tags(in: CaptionFormat.addingTag("散步", to: sample)) == ["旅行", "镜头测试", "散步"])
+    }
+
     @Test func cameraBoilerplateIsIgnored() {
         for s in ["FUJIFILM DIGITAL CAMERA GFX100RF", "OLYMPUS DIGITAL CAMERA", "SONY DSC", "LEICA CAMERA AG",
                   "RICOH GR III", "SAMSUNG CAMERA PICTURES", "  Default  ", "KONICA MINOLTA DIGITAL CAMERA"] {

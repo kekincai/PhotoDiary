@@ -447,6 +447,22 @@
         }
       }
     },
+    "Apple Intelligence": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Apple Intelligence"
+          }
+        }
+      }
+    },
     "一周从": {
       "localizations": {
         "en": {
@@ -971,6 +987,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "「設定」でアクセスを許可"
+          }
+        }
+      }
+    },
+    "加上这个标签": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add this tag"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このタグを付ける"
+          }
+        }
+      }
+    },
+    "加入筛选": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to filters"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "絞り込みに追加"
           }
         }
       }
@@ -1685,6 +1733,22 @@
         }
       }
     },
+    "建议的标签": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Suggested tags"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "提案されたタグ"
+          }
+        }
+      }
+    },
     "往年的今天还没有日记": {
       "localizations": {
         "en": {
@@ -2258,6 +2322,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "未ペアリング"
+          }
+        }
+      }
+    },
+    "本周回顾": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This week's look-back"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "今週の振り返り"
           }
         }
       }

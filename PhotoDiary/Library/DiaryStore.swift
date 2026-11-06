@@ -67,6 +67,8 @@ final class DiaryStore {
     private(set) var weekWriting: [WeekDay] = []
     /// 本周写了几篇（按说明里的写作日期）。
     private(set) var writtenThisWeek = 0
+    /// 本周写过的日记（按说明里的写作日期），给本周回顾用。
+    private(set) var weekEntries: [DiaryEntry] = []
     /// 本月写了几篇（按说明里的写作日期）。
     private(set) var writtenThisMonth = 0
     private var byDay: [DayStamp: [DiaryEntry]] = [:]
@@ -417,6 +419,22 @@ final class DiaryStore {
         refresh(ids: [id])
     }
 
+    /// 给一篇日记补一个标签（采纳建议）。写在最后一段末尾，关键词随后照常同步。
+    func addTag(_ tag: String, to id: String) async throws {
+        guard let existing = entries[id]?.caption ?? currentCaption(for: id) else { return }
+        let caption = CaptionFormat.addingTag(tag, to: existing)
+        guard caption != existing else { return }
+        do {
+            try await library.write([id: caption])
+        } catch {
+            Log.library.error("补标签失败：\(error, privacy: .public)")
+            throw error
+        }
+        Log.library.info("补标签 #\(tag, privacy: .public)# \(id)")
+        writtenInApp.insert(id)
+        refresh(ids: [id])
+    }
+
     /// 标签改名或合并：一次修改所有相关照片。
     func renameTags(_ olds: Set<String>, to new: String) async throws {
         var captions: [String: String?] = [:]
@@ -526,6 +544,7 @@ final class DiaryStore {
         }
         let weekDays = Set(week.map(\.day))
         let writtenThisWeek = visible.reduce(0) { $0 + $1.writingDays.filter(weekDays.contains).count }
+        let weekEntries = visible.filter { $0.writingDays.contains(where: weekDays.contains) }
 
         let thisMonth = cal.dateInterval(of: .month, for: now)?.start ?? now
         var calendarMonths = months.map(\.start)
@@ -547,6 +566,7 @@ final class DiaryStore {
             .sorted { $0.count > $1.count })
         update(\.onThisDay, onThisDay)
         update(\.weekWriting, week)
+        update(\.weekEntries, weekEntries)
         update(\.writtenThisWeek, writtenThisWeek)
         update(\.writtenThisMonth, writtenThisMonth)
         update(\.hiddenIDs, hiddenIDs)
@@ -604,6 +624,20 @@ final class DiaryStore {
             if let range, !range.contains(e.sortDate) { return false }
             if needle.isEmpty { return true }
             return Self.matches(e.caption, needle) || e.placeName.map { Self.matches($0, needle) } == true
+        }
+    }
+
+    /// 模型拆出来的条件：关键词任一命中即可，标签都要有，地点、日期照旧。
+    func search(_ filter: SearchFilter) -> [DiaryEntry] {
+        let range = filter.dateRange
+        return timeline.filter { e in
+            if !filter.tags.allSatisfy(e.tags.contains) { return false }
+            if let place = filter.place, e.placeName != place { return false }
+            if let range, !range.contains(e.sortDate) { return false }
+            if filter.keywords.isEmpty { return true }
+            return filter.keywords.contains { word in
+                Self.matches(e.caption, word) || e.placeName.map { Self.matches($0, word) } == true
+            }
         }
     }
 

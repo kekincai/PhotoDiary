@@ -11,8 +11,11 @@ struct EditorView: View {
     var onFinish: (_ saved: Bool) -> Void
 
     @Environment(DiaryStore.self) private var store
+    @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
     @State private var controller: EditorController
+    /// 模型按正文建议的标签；点一下才写进正文。
+    @State private var suggested: [String] = []
     @State private var original: String
     @State private var saving = false
     @State private var confirmDiscard = false
@@ -74,6 +77,20 @@ struct EditorView: View {
                 Text(errorMessage ?? "")
             }
             .sensoryFeedback(.success, trigger: savedCount)
+            // 停笔不到一秒就按正文建议标签；追加时连同以前写的一起看。
+            .task(id: controller.text) {
+                let text = controller.text
+                guard intelligence.isEnabled, text.trimmingCharacters(in: .whitespacesAndNewlines).count >= 6 else {
+                    if !suggested.isEmpty { suggested = [] }
+                    return
+                }
+                try? await Task.sleep(for: .milliseconds(800))
+                guard !Task.isCancelled else { return }
+                let input = mode == .append ? [entry?.caption ?? "", text].joined(separator: "\n") : text
+                let tags = await intelligence.engine.suggestTags(for: input, existing: store.allTags)
+                guard !Task.isCancelled, text == controller.text else { return }
+                suggested = tags
+            }
     }
 
     // MARK: 相纸
@@ -190,7 +207,9 @@ struct EditorView: View {
     // MARK: 键盘上方：玻璃胶囊工具栏（# 按钮、横向标签联想、收起键盘）
 
     private var accessory: some View {
-        let suggestions = tagSuggestions
+        // 正在输入 #… 时联想已有标签；没在输入时放模型建议的标签（前面一枚 Apple Intelligence 标记）。
+        let typing = controller.tagQuery != nil
+        let suggestions = typing ? tagSuggestions : suggested
         return HStack(spacing: 6) {
             Button { controller.insertHash() } label: {
                 Text(verbatim: "#")
@@ -205,9 +224,21 @@ struct EditorView: View {
 
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
+                    if !typing, !suggestions.isEmpty {
+                        Image(systemName: "apple.intelligence")
+                            .font(.system(size: 15, weight: .medium))
+                            .foregroundStyle(Color.inkSecondary)
+                            .padding(.leading, 6)
+                            .accessibilityHidden(true)
+                    }
                     ForEach(suggestions, id: \.self) { tag in
                         Button {
-                            controller.complete(tag)
+                            if typing {
+                                controller.complete(tag)
+                            } else {
+                                controller.appendTag(tag)
+                                suggested.removeAll { $0 == tag }
+                            }
                         } label: {
                             Text(verbatim: "#\(tag)#")
                                 .font(.subheadline.weight(.semibold))
@@ -219,7 +250,7 @@ struct EditorView: View {
                         }
                         .buttonStyle(.press)
                         .accessibilityLabel(Spoken.tag(tag))
-                        .accessibilityHint(Text("补全标签"))
+                        .accessibilityHint(typing ? Text("补全标签") : Text("加上这个标签"))
                         .transition(.opacity.combined(with: .scale(scale: 0.9)))
                     }
                 }
@@ -228,7 +259,7 @@ struct EditorView: View {
             .frame(maxWidth: .infinity)
             // 容器自己有名字、里面的每个标签照常能选到（直接给滚动视图加 label 会盖掉每个标签的名字）。
             .accessibilityElement(children: .contain)
-            .accessibilityLabel("用过的标签")
+            .accessibilityLabel(typing ? Text("用过的标签") : Text("建议的标签"))
 
             if controller.isEditing {
                 Button { controller.dismissKeyboard() } label: {

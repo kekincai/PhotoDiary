@@ -172,6 +172,7 @@ private struct PageDots: View {
 
 private struct WeekSection: View {
     @Environment(DiaryStore.self) private var store
+    @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
     /// 日期圆跟着字号一起变大。
     @ScaledMetric(relativeTo: .callout) private var circle: CGFloat = 34
@@ -211,6 +212,10 @@ private struct WeekSection: View {
             .padding(.vertical, 16)
             .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
             .padding(.horizontal, 16)
+            if intelligence.isEnabled, !store.weekEntries.isEmpty {
+                WeeklyReviewText(entries: store.weekEntries)
+                    .padding(.horizontal, 16)
+            }
         }
     }
 
@@ -223,6 +228,62 @@ private struct WeekSection: View {
     private var headline: String {
         let n = store.writtenThisWeek
         return n == 0 ? String(localized: "这周还没写", bundle: .app, locale: .app) : String(localized: "这周写了 \(n) 篇", bundle: .app, locale: .app)
+    }
+}
+
+/// 本周回顾：模型按这周的日记写两三句，宋体，像日记本身；逐字流出来。
+/// 每次打开重新生成，只在内存里按“这周 + 这些日记”缓存，不写进照片。
+private struct WeeklyReviewText: View {
+    let entries: [DiaryEntry]
+    @Environment(Intelligence.self) private var intelligence
+    @State private var text = ""
+
+    private var key: Int {
+        var hasher = Hasher()
+        hasher.combine(DayStamp.today.year)
+        hasher.combine(Calendar.diary.component(.weekOfYear, from: .now))
+        for e in entries { hasher.combine(e.id); hasher.combine(e.caption) }
+        return hasher.finalize()
+    }
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "apple.intelligence")
+                .font(.system(size: 15, weight: .medium))
+                .foregroundStyle(Color.inkSecondary)
+                .padding(.top, 3)
+                .accessibilityHidden(true)
+            Text(text)
+                .font(.diary(17, relativeTo: .body))
+                .lineSpacing(7)
+                .foregroundStyle(Color.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentTransition(.interpolate)
+        }
+        .padding(.horizontal, 8)
+        .padding(.top, 4)
+        .opacity(text.isEmpty ? 0 : 1)
+        .animation(.move, value: text.isEmpty)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text("本周回顾"))
+        .accessibilityValue(text)
+        .task(id: key) {
+            if let cached = intelligence.reviewCache, cached.key == key {
+                text = cached.text
+                return
+            }
+            text = ""
+            let input = WeeklyReviewInput(entries: entries, language: Intelligence.languageName)
+            do {
+                for try await partial in intelligence.engine.weeklyReview(input) {
+                    guard !Task.isCancelled else { return }
+                    text = partial
+                }
+                if !text.isEmpty { intelligence.reviewCache = (key, text) }
+            } catch {
+                text = ""
+            }
+        }
     }
 }
 

@@ -19,8 +19,11 @@ struct SearchView: View {
 
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
+    @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
     @State private var query = ""
+    /// 模型从输入的句子里拆出来的条件（“去年夏天在海边” → 日期 + 关键词）。
+    @State private var intent: SearchFilter?
     @State private var tags: [String] = []
     @State private var place: String?
     @State private var range: Range = .any
@@ -97,6 +100,21 @@ struct SearchView: View {
         .navigationTitle("搜索")
         .toolbarTitleDisplayMode(.large)
         .safeAreaInset(edge: .bottom, spacing: 0) { searchBar }
+        // 停下来半秒再问模型；字面匹配的结果先出来，模型拆出来的条件到了再并进去。
+        .task(id: trimmed) {
+            let text = trimmed
+            guard intelligence.isEnabled, !isTypingTag, text.count >= 2 else {
+                if intent != nil { withAnimation(.snappy) { intent = nil } }
+                return
+            }
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            let context = SearchContext(today: .today, tags: store.allTags, places: store.places.map(\.name),
+                                        language: Intelligence.languageName)
+            let result = await intelligence.engine.interpret(text, context: context)?.resolved(in: context)
+            guard !Task.isCancelled, text == trimmed else { return }
+            withAnimation(.snappy) { intent = result }
+        }
         .sensoryFeedback(.selection, trigger: [tags.count, place == nil ? 0 : 1, range == .any ? 0 : 1])
         .sheet(isPresented: $showCustom) {
             DateRangeCalendar(initial: range == .custom ? (DayStamp(customFrom), DayStamp(customTo)) : nil) { from, to in
@@ -305,8 +323,28 @@ struct SearchView: View {
 
     // MARK: 结果
 
+    /// 模型拆出来、而且还没被采纳成正式条件的部分。采纳过的（标签已选、地点已选、日期已选）不再重复显示。
+    private var visibleIntent: SearchFilter? {
+        guard var intent else { return nil }
+        intent.tags.removeAll(where: tags.contains)
+        if place != nil || intent.place == place { intent.place = nil }
+        if range != .any { intent.days = nil }
+        intent.keywords.removeAll { $0.compare(trimmed, options: [.caseInsensitive, .widthInsensitive]) == .orderedSame }
+        return intent.isEmpty ? nil : intent
+    }
+
     private var results: [DiaryEntry] {
         var out = store.search(text: query, tags: tags, range: dateRange)
+        if let intent = visibleIntent {
+            // 模型的条件和已选条件一起查，结果并进字面匹配的结果里。
+            var combined = intent
+            combined.tags = (tags + intent.tags).uniqued()
+            if let place { combined.place = place }
+            let explicit = dateRange
+            let extra = store.search(combined).filter { e in explicit.map { $0.contains(e.sortDate) } ?? true }
+            let seen = Set(out.map(\.id))
+            out = (out + extra.filter { !seen.contains($0.id) }).sorted { $0.sortDate > $1.sortDate }
+        }
         if range == .onThisDay {
             let ids = Set(store.onThisDay.map(\.id))
             out = out.filter { ids.contains($0.id) }
@@ -371,6 +409,34 @@ struct SearchView: View {
                     }
                     .buttonStyle(.press)
                     .accessibilityLabel(Text(Range.custom.title))
+                }
+                // 模型理解出来的条件：浅色胶囊，前面一枚 Apple Intelligence 标记。点一下采纳成正式条件。
+                if let intent = visibleIntent {
+                    Image(systemName: "apple.intelligence")
+                        .font(.system(size: 15, weight: .medium))
+                        .foregroundStyle(Color.inkSecondary)
+                        .padding(.leading, 4)
+                        .accessibilityHidden(true)
+                    ForEach(intent.tags, id: \.self) { tag in
+                        IntentToken(label: "#\(tag)#", spoken: Spoken.tag(tag)) {
+                            if !tags.contains(tag) { tags.append(tag) }
+                        }
+                    }
+                    if let suggested = intent.place {
+                        IntentToken(label: suggested, spoken: Spoken.place(suggested), symbol: "mappin.and.ellipse") {
+                            place = suggested
+                        }
+                    }
+                    if let days = intent.days {
+                        IntentToken(label: DiaryDates.range(days.lowerBound, days.upperBound), symbol: "calendar") {
+                            customFrom = days.lowerBound.date
+                            customTo = days.upperBound.date
+                            range = .custom
+                        }
+                    }
+                    ForEach(intent.keywords, id: \.self) { word in
+                        IntentToken(label: word) { query = word }
+                    }
                 }
                 // 下拉清除这个手势 VoiceOver、切换控制做不了：给他们一个按钮。
                 if assistive.isRunning {
@@ -558,6 +624,37 @@ private struct FilterToken: View {
         .padding(.trailing, 2)
         .frame(minHeight: 38)
         .contentShape(.rect)
+    }
+}
+
+/// 模型理解出来、还没采纳的条件：主题色浅底（待确认态），点一下变成正式的筛选条件。
+private struct IntentToken: View {
+    let label: String
+    var spoken: String?
+    var symbol: String?
+    let accept: () -> Void
+    @Environment(\.brand) private var brand
+
+    var body: some View {
+        Button(action: accept) {
+            HStack(spacing: 5) {
+                if let symbol {
+                    Image(systemName: symbol).font(.footnote.weight(.semibold))
+                }
+                Text(verbatim: label)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+            }
+            .foregroundStyle(brand)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 38)
+            .background(brand.soft(), in: .capsule)
+            .contentShape(.capsule)
+        }
+        .buttonStyle(.press)
+        .accessibilityLabel(spoken ?? label)
+        .accessibilityHint(Text("加入筛选"))
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
     }
 }
 

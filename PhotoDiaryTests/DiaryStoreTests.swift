@@ -91,6 +91,22 @@ struct DiaryStoreTests {
         #expect(store.entry("a")?.writtenInApp == true)
     }
 
+    /// 采纳建议的标签：写在最后一段末尾、日期行之前，关键词跟着同步。
+    @Test func addingTagWritesCaptionAndKeywords() async throws {
+        let library = FakeLibrary()
+        library.seed("a", caption: "夕阳\n— 2026.10.30", date: date(2026, 10, 1))
+        let store = makeStore(library: library)
+        await store.start()
+        #expect(await eventually { store.hasSynced })
+
+        try await store.addTag("旅行", to: "a")
+        #expect(library.caption(of: "a") == "夕阳 #旅行#\n— 2026.10.30")
+        #expect(store.entry("a")?.tags == ["旅行"])
+        #expect(await eventually { library.keywords(of: "a") == ["旅行"] })
+        try await store.addTag("旅行", to: "a") // 已有的不重复写
+        #expect(library.caption(of: "a") == "夕阳 #旅行#\n— 2026.10.30")
+    }
+
     @Test func captionFilterReadsInjectedDefaults() async throws {
         let defaults = isolatedDefaults()
         defaults.set(["0"], forKey: CaptionFilter.defaultsKey)
