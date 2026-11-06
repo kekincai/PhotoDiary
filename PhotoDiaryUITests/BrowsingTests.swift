@@ -61,6 +61,29 @@ final class BrowsingTests: DiaryUITestCase {
         XCTAssertTrue(app.buttons["追加感想"].waitForExistence(timeout: 10), "关掉大图后没有回到详情页")
     }
 
+    /// 大图跟手下拉：拉一小段松手，弹回来还在；拉一大段，关闭回到详情页。
+    @MainActor func testPhotoViewerDragToDismiss() {
+        openEntry("银杏开始黄了")
+        let photo = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "照片")).firstMatch
+        tap(photo, "详情页顶部的照片")
+        let close = app.buttons["关闭"]
+        XCTAssertTrue(close.waitForExistence(timeout: 10), "大图没有打开")
+
+        let center = app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45))
+        // 慢慢拉 60 点再停住松手：不够远，弹回。
+        center.press(forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 0, dy: 60)),
+                     withVelocity: .slow, thenHoldForDuration: 0.3)
+        Thread.sleep(forTimeInterval: 1)
+        // 拖动时关闭按钮藏起来，弹回后重新出现；大图关了它就不在了。
+        XCTAssertTrue(close.waitForExistence(timeout: 5), "拉一小段就关掉了")
+
+        // 拉一大段：关闭。
+        center.press(forDuration: 0.1, thenDragTo: center.withOffset(CGVector(dx: 0, dy: 420)),
+                     withVelocity: .default, thenHoldForDuration: 0)
+        XCTAssertTrue(close.waitForNonExistence(timeout: 10), "下拉一大段没有关闭大图")
+        XCTAssertTrue(app.buttons["追加感想"].waitForExistence(timeout: 10), "关掉大图后没有回到详情页")
+    }
+
     @MainActor func testShareSheetOpens() {
         openEntry("银杏开始黄了")
         tap(app.buttons["分享"])
