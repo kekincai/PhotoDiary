@@ -105,7 +105,10 @@ final class SettingsTests: DiaryUITestCase {
 
     @MainActor func testExportOpensShareSheet() {
         openSettings()
-        tap(button(containing: "导出全部日记"))
+        // “日记”组行数多，小屏上导出在屏幕外，先滚到它。
+        let export = button(containing: "导出全部日记")
+        for _ in 0..<4 where !(export.exists && export.isHittable) { app.swipeUp() }
+        tap(export)
         XCTAssertTrue(app.otherElements["ActivityListView"].waitForExistence(timeout: 15)
                       || app.navigationBars["UIActivityContentView"].waitForExistence(timeout: 5), "导出没有打开分享面板")
         assertAlive()

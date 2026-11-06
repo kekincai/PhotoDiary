@@ -24,8 +24,11 @@ final class OpenOnThisDayLinkTests: DiaryUITestCase {
 
     @MainActor func testOnThisDayLinkOpensReview() {
         XCTAssertTrue(app.staticTexts["回顾"].waitForExistence(timeout: 20), "打开 photodiary://onthisday 后不在回顾页")
-        // 测试照片里有一篇“去年今天的咖啡”。
-        XCTAssertTrue(text(containing: "1 年前的今天").waitForExistence(timeout: 10), "回顾里没有那年今日")
+        // 种子照片“去年今天的咖啡”拍于 2025-11-03，只有那天跑测试时回顾里才有那年今日；别的日子只检查到了回顾页。
+        let isAnniversary = Calendar.current.dateComponents([.month, .day], from: .now) == DateComponents(month: 11, day: 3)
+        if isAnniversary {
+            XCTAssertTrue(text(containing: "1 年前的今天").waitForExistence(timeout: 10), "回顾里没有那年今日")
+        }
         assertAlive()
     }
 }
