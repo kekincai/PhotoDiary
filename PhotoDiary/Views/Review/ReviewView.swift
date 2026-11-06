@@ -4,7 +4,7 @@ import Photos
 @preconcurrency import JournalingSuggestions
 #endif
 
-/// 回顾：参照照片 App 的精选集。那年今日、本周写作、还没写的照片、手记建议、标签。
+/// 回顾：参照照片 App 的精选集。那年今日、本周写作、一年回顾、还没写的照片、手记建议、标签。
 struct ReviewView: View {
     @Environment(Router.self) private var router
 
@@ -15,6 +15,7 @@ struct ReviewView: View {
                 OnThisDaySection()
                     .id("review-top")
                 WeekSection()
+                YearsSection()
                 UnwrittenSection()
                 SuggestionsSection()
                 TagsSection()
@@ -291,6 +292,61 @@ private struct WeeklyReviewText: View {
                 text = ""
             }
         }
+    }
+}
+
+// MARK: 一年回顾：每个能回顾的年份一张封面（往年都有；今年到 12 月、或刚写满一年时才有）
+
+private struct YearsSection: View {
+    @Environment(DiaryStore.self) private var store
+    @State private var open: YearInReview?
+
+    var body: some View {
+        let reviews = YearInReview.all(entries: store.diaries, today: .today)
+        if !reviews.isEmpty {
+            VStack(alignment: .leading, spacing: 12) {
+                SectionTitle(title: String(localized: "一年回顾", bundle: .app, locale: .app))
+                    .padding(.horizontal, 20)
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 10) {
+                        ForEach(reviews) { review in
+                            tile(review)
+                        }
+                    }
+                }
+                .contentMargins(.horizontal, 16, for: .scrollContent)
+                .scrollIndicators(.hidden)
+            }
+            .fullScreenCover(item: $open) { review in
+                YearReviewView(review: review)
+            }
+        }
+    }
+
+    private func tile(_ review: YearInReview) -> some View {
+        Button { open = review } label: {
+            AssetImage(id: review.cover, pointSize: CGSize(width: 160, height: 210))
+                .frame(width: 160, height: 210)
+                .overlay(alignment: .bottom) { PhotoScrim(edge: .bottom, strength: 0.6).frame(height: 120) }
+                .overlay(alignment: .bottomLeading) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(verbatim: String(review.year))
+                            .font(.diary(28, bold: true, relativeTo: .title))
+                        Text("\(review.count) 篇")
+                            .font(.footnote.weight(.semibold))
+                            .opacity(0.85)
+                    }
+                    .foregroundStyle(.white)
+                    .padding(14)
+                }
+                .clipShape(.rect(cornerRadius: 18, style: .continuous))
+                .contentShape(.rect(cornerRadius: 18))
+        }
+        .buttonStyle(.press)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(String(localized: "\(String(review.year))，\(review.count) 篇", bundle: .app, locale: .app))
+        .accessibilityAddTraits(.isButton)
+        .accessibilityIdentifier("year-\(review.year)")
     }
 }
 

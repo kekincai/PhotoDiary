@@ -162,6 +162,30 @@ final class BrowsingTests: DiaryUITestCase {
         assertAlive()
     }
 
+    /// 种子照片里 2025 年有一篇（#咖啡#）：往年的回顾一直列着。打开、一张张翻到分享图、关掉。
+    @MainActor func testYearInReviewSwipesThroughAndCloses() {
+        tap(tab("回顾"))
+        let year = app.buttons["year-2025"]
+        for _ in 0..<6 where !year.waitForExistence(timeout: 1) { app.swipeUp() }
+        tap(year, "2025 年的一年回顾")
+        let review = app.buttons["yearReviewClose"]
+        XCTAssertTrue(review.waitForExistence(timeout: 10), "一年回顾没有打开")
+        XCTAssertTrue(text(containing: "2025").waitForExistence(timeout: 5), "封面上没有年份")
+
+        // 翻到最后一张（分享图）。卡片数随数据变，最多翻十次。
+        let share = app.buttons["分享"]
+        for _ in 0..<10 where !(share.exists && share.isHittable) {
+            app.swipeLeft()
+            Thread.sleep(forTimeInterval: 0.6)
+        }
+        XCTAssertTrue(share.isHittable, "没有翻到分享图")
+        assertAlive()
+
+        tap(review, "关闭按钮")
+        XCTAssertTrue(review.waitForNonExistence(timeout: 10), "一年回顾没有关掉")
+        XCTAssertTrue(year.waitForExistence(timeout: 5), "关掉后没有回到回顾页")
+    }
+
     @MainActor func testAddFromPhotosListsPhotosAndCloses() {
         tap(button(containing: "从照片写日记"))
         // 默认只列还没写的；切到“全部照片”才有写过的。

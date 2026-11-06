@@ -17,6 +17,22 @@
         }
       }
     },
+    "%@写得最多": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Most entries in %@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@がいちばん多かった"
+          }
+        }
+      }
+    },
     "%@，%@": {
       "localizations": {
         "en": {
@@ -475,6 +491,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "週の始まり"
+          }
+        }
+      }
+    },
+    "一年回顾": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Year in Review"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "1年の振り返り"
           }
         }
       }
