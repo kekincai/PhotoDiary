@@ -40,13 +40,18 @@ struct PhotoDiaryApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .id(language)
+                // 设置放在按语言重建的那层外面：在设置里换语言时，弹出它的界面被整个换掉，
+                // 挂在里面的话设置会被收起（或留下一张还是旧语言的）。设置自己也按语言重建。
+                .sheet(isPresented: $router.showSettings) {
+                    SettingsView().id(language)
+                }
                 .environment(store)
                 .environment(router)
                 .environment(intelligence)
                 .environment(\.brand, .brand(hex: brandHex))
                 .tint(.brand(hex: brandHex))
                 .environment(\.locale, AppLanguage.current.locale)
-                .id(language)
                 .onChange(of: language) {
                     store.placeLanguageChanged()
                     // 通知上的按钮和提醒文字按新语言重写。

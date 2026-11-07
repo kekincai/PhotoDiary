@@ -96,9 +96,6 @@ private struct MainTabs: View {
             EditorSheet(request: request)
                 .environment(\.zoomNamespace, zoom)
         }
-        .sheet(isPresented: $router.showSettings) {
-            SettingsView()
-        }
     }
 }
 

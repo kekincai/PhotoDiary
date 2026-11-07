@@ -25,12 +25,13 @@ final class SettingsTests: DiaryUITestCase {
         closeSettings()
     }
 
-    /// App 内切换语言：整个界面立刻换成新语言，切回来也一样。
+    /// App 内切换语言：设置留在原处，整个界面（包括设置自己）立刻换成新语言，切回来也一样。
     @MainActor func testSwitchLanguageAndBack() {
         openSettings()
         tap(button(containing: "界面语言"))
         tap(app.buttons["English"])
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 10), "切到英文后设置标题没变")
+        XCTAssertTrue(app.buttons["Automatic"].exists, "切到英文后外观选项还是旧语言")
         tap(app.buttons["Done"], "英文设置的 Done")
         XCTAssertTrue(tab("Diary").waitForExistence(timeout: 10), "切到英文后标签栏没变")
 
@@ -38,7 +39,8 @@ final class SettingsTests: DiaryUITestCase {
         tap(app.buttons["Settings"])
         tap(button(containing: "Language"))
         tap(app.buttons["简体中文"])
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10), "切回中文失败")
+        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 10), "切回中文后设置被收起或标题没变")
+        XCTAssertTrue(app.buttons["自动"].exists, "切回中文后外观选项还是旧语言")
         closeSettings()
         XCTAssertTrue(tab("日记").exists)
     }
