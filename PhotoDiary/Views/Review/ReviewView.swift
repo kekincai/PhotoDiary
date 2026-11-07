@@ -33,6 +33,8 @@ struct ReviewView: View {
         .navigationTitle("回顾")
         .toolbarTitleDisplayMode(.large)
         .toolbar { WideAddButton() }
+        // 一年回顾的显影着色器先编好，点开第一张时不卡。
+        .task { await ShaderWarmup.developing() }
     }
 }
 

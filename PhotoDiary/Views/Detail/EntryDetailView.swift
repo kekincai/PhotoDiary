@@ -35,6 +35,11 @@ struct EntryDetailView: View {
             }
         }
         .modifier(ZoomDestination(id: id, namespace: namespace))
+        // 编辑器的纸纹、保存后墨水洇出的着色器先编好。
+        .task {
+            await ShaderWarmup.paper()
+            await ShaderWarmup.ink()
+        }
         .navigationBarTitleDisplayMode(.inline)
         // 浮在照片上时按钮用浅色；滚过照片后回到系统默认。
         .toolbarColorScheme(store.entry(id) != nil && !pastPhoto ? .dark : nil, for: .navigationBar)
