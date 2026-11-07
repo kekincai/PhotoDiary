@@ -16,9 +16,6 @@ struct EditorView: View {
     @State private var controller: EditorController
     /// 点 ✓ 后：字轻轻下沉、落定成正文颜色。写入失败时恢复。
     @State private var inkSettled = false
-    /// 建议标签胶囊的位置（全局坐标），点了以后从这里飞进正文。
-    @State private var chipFrames: [String: CGRect] = [:]
-    @State private var flight: ChipFlight?
     /// 模型按正文建议的标签；点一下才写进正文。
     @State private var suggested: [String] = []
     @State private var original: String
@@ -64,7 +61,6 @@ struct EditorView: View {
             .background { PhotoPaper.desk.ignoresSafeArea() }
             .containerBackground(PhotoPaper.desk, for: .navigation)
             .safeAreaInset(edge: .bottom, spacing: 0) { accessory }
-            .overlay { flyingChip }
             .navigationBarBackButtonHidden()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
@@ -257,7 +253,7 @@ struct EditorView: View {
                             .padding(.leading, 6)
                             .accessibilityHidden(true)
                     }
-                    ForEach(Array(suggestions.enumerated()), id: \.element) { index, tag in
+                    ForEach(suggestions, id: \.self) { tag in
                         Button {
                             if typing {
                                 controller.complete(tag)
@@ -270,8 +266,7 @@ struct EditorView: View {
                         .buttonStyle(.press)
                         .accessibilityLabel(Spoken.tag(tag))
                         .accessibilityHint(typing ? Text("补全标签") : Text("加上这个标签"))
-                        .onGeometryChange(for: CGRect.self, of: { $0.frame(in: .global) }) { chipFrames[tag] = $0 }
-                        .transition(chipTransition(index: index, staggered: !typing))
+                        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.9)))
                     }
                 }
             }
@@ -299,7 +294,7 @@ struct EditorView: View {
         .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, 8)
         .padding(.bottom, 8)
-        .animation(.drawer, value: suggestions)
+        .animation(.snappy, value: suggestions)
     }
 
     private func chipLabel(_ tag: String) -> some View {
@@ -312,37 +307,10 @@ struct EditorView: View {
             .overlay(Capsule().strokeBorder(Color(.separator).opacity(0.6), lineWidth: 0.5))
     }
 
-    /// 模型建议的标签从工具栏里一个接一个冒出来（间隔 30ms）；输入 # 时的联想随打随变，不错开。
-    private func chipTransition(index: Int, staggered: Bool) -> AnyTransition {
-        guard !reduceMotion else { return .opacity }
-        let appear = AnyTransition.opacity.combined(with: .scale(scale: 0.85, anchor: .bottom))
-        guard staggered else { return .opacity.combined(with: .scale(scale: 0.9)) }
-        return .asymmetric(insertion: appear.animation(.drawer.delay(Double(index) * 0.03)),
-                           removal: .opacity.animation(.snappy))
-    }
-
-    /// 采纳建议：标签接到正文末尾，胶囊飞过去后消失。
+    /// 采纳建议：标签接到正文末尾（正文里马上高亮出来），胶囊淡出。
     private func adoptSuggestion(_ tag: String) {
-        let from = chipFrames[tag]
         controller.appendTag(tag)
         suggested.removeAll { $0 == tag }
-        guard !reduceMotion, let from, let to = controller.endCaretFrame() else { return }
-        flight = ChipFlight(tag: tag, from: from, to: to)
-    }
-
-    @ViewBuilder private var flyingChip: some View {
-        if let flight {
-            GeometryReader { geo in
-                FlyingChip(flight: flight, origin: geo.frame(in: .global).origin) {
-                    chipLabel(flight.tag)
-                } onLanded: {
-                    if self.flight?.id == flight.id { self.flight = nil }
-                }
-            }
-            .ignoresSafeArea()
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
-        }
     }
 
     private var tagSuggestions: [String] {
@@ -416,33 +384,5 @@ private struct ZoomFromSource: ViewModifier {
         } else {
             content
         }
-    }
-}
-
-/// 一次“胶囊飞进正文”。坐标都是全局坐标。
-struct ChipFlight: Equatable {
-    let id = UUID()
-    let tag: String
-    let from: CGRect
-    let to: CGRect
-}
-
-/// 从胶囊的位置飞到正文末尾，边飞边缩小、变淡。
-private struct FlyingChip<Label: View>: View {
-    let flight: ChipFlight
-    let origin: CGPoint
-    @ViewBuilder var label: Label
-    var onLanded: () -> Void
-    @State private var landed = false
-
-    var body: some View {
-        let target = landed ? flight.to : flight.from
-        label
-            .scaleEffect(landed ? 0.5 : 1)
-            .opacity(landed ? 0 : 1)
-            .position(x: target.midX - origin.x, y: target.midY - origin.y)
-            .onAppear {
-                withAnimation(.snappy) { landed = true } completion: { onLanded() }
-            }
     }
 }
