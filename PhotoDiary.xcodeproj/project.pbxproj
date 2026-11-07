@@ -137,7 +137,6 @@
 		EB26FAB05FC2A360A84E4FEC /* Mark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62D02F8E6CEBF083E7BEE2E2 /* Mark.swift */; };
 		ED339693319BD5042935C45D /* CaptionFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F9413BD40115D4AB6996D69 /* CaptionFormat.swift */; };
 		EE8DCBCDD53037A104E4E7C7 /* EntryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF14C73D9699083B59092EFC /* EntryDetailView.swift */; };
-		EF72A4CB707953E461475E82 /* MotionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12A57E3B76EDA78D0007FAED /* MotionTests.swift */; };
 		FA398D5D4F590433BA1DF9E3 /* Router.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4681745521BEBD7BBD625B2B /* Router.swift */; };
 		FAA2795CEBB8C8FE6C67C0E8 /* CaptionFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BDEAEA7193F206C7622EF9 /* CaptionFilter.swift */; };
 		FBA90F4D468429CA46E92B25 /* DayStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE36142E20AD20527851492 /* DayStamp.swift */; };
@@ -214,7 +213,6 @@
 		0F1BEAD628F0752376CC2819 /* IndexDatabase.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IndexDatabase.swift; sourceTree = "<group>"; };
 		1064BF06BD719A850E1B6054 /* OnThisDayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnThisDayWidget.swift; sourceTree = "<group>"; };
 		10731531CBFC1EE52C9F21C0 /* IntelligenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceTests.swift; sourceTree = "<group>"; };
-		12A57E3B76EDA78D0007FAED /* MotionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionTests.swift; sourceTree = "<group>"; };
 		1482E82141EFC81AD0F75C32 /* UITestSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UITestSupport.swift; sourceTree = "<group>"; };
 		1663FB33560F655CB9E26FA1 /* AppLanguageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLanguageTests.swift; sourceTree = "<group>"; };
 		18B47E414F8D62CAECDEE565 /* EditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditorView.swift; sourceTree = "<group>"; };
@@ -529,7 +527,6 @@
 				10731531CBFC1EE52C9F21C0 /* IntelligenceTests.swift */,
 				C6C1F72FF362A1897327E8C1 /* LibraryWriteTests.swift */,
 				3BF4159F7A7201518B0DEFA0 /* LogTests.swift */,
-				12A57E3B76EDA78D0007FAED /* MotionTests.swift */,
 				FF02476A073CF0251400A9B6 /* PerformanceTests.swift */,
 				898730CB11E18EEBAB9E13F5 /* PhotoKitIntegrationTests.swift */,
 				5B60C9C92316247B9A677482 /* ReminderTests.swift */,
@@ -909,7 +906,6 @@
 				9FE11F7E7E3BA4E39862E50D /* IntelligenceTests.swift in Sources */,
 				7A98E6E02EF90DDBEA06619C /* LibraryWriteTests.swift in Sources */,
 				6DFDE8D73AF29FA9E79F5581 /* LogTests.swift in Sources */,
-				EF72A4CB707953E461475E82 /* MotionTests.swift in Sources */,
 				B0D838C94FE92F3BEEE5E8C4 /* PerformanceTests.swift in Sources */,
 				9D42CCF8715441231501D05D /* PhotoFixtures.swift in Sources */,
 				59F3DB262E9D239B8E87DE4F /* PhotoKitIntegrationTests.swift in Sources */,

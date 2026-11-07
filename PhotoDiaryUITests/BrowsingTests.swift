@@ -61,7 +61,7 @@ final class BrowsingTests: DiaryUITestCase {
         XCTAssertTrue(app.buttons["追加感想"].waitForExistence(timeout: 10), "关掉大图后没有回到详情页")
     }
 
-    /// 大图跟手下拉：拉一小段松手，弹回来还在；拉一大段，关闭回到详情页。
+    /// 大图下拉（系统 zoom 转场的跟手关闭）：拉一小段松手，弹回来还在；拉一大段，关闭回到详情页。
     @MainActor func testPhotoViewerDragToDismiss() {
         openEntry("银杏开始黄了")
         let photo = app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "照片")).firstMatch
