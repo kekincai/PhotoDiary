@@ -66,11 +66,9 @@ private struct OnThisDaySection: View {
                                     min(memories.count > 1 ? width - 60 : width - 32, 480)
                                 }
                                 .frame(height: 420)
-                                // 不在中间的卡片略小、略暗；“减少动态效果”时只变暗，不缩放。
+                                // 不在中间的卡片略小一点；“减少动态效果”时不变。
                                 .scrollTransition(.interactive, axis: .horizontal) { [reduceMotion] content, phase in
-                                    content
-                                        .scaleEffect(phase.isIdentity || reduceMotion ? 1 : 0.94)
-                                        .brightness(phase.isIdentity ? 0 : -0.08)
+                                    content.scaleEffect(phase.isIdentity || reduceMotion ? 1 : 0.96)
                                 }
                                 .id(entry.id)
                         }
@@ -92,7 +90,14 @@ private struct OnThisDaySection: View {
     private func card(_ entry: DiaryEntry) -> some View {
         NavigationLink(value: Route.entry(entry.id)) {
             Color.black
-                .overlay { AssetImage(id: entry.id, allowNetwork: true) }
+                .overlay {
+                    // 视差：翻页时照片比卡片走得慢一点，像隔着一扇窗（WWDC23“Beyond scroll views”的做法）。
+                    AssetImage(id: entry.id, allowNetwork: true)
+                        .scaleEffect(reduceMotion ? 1 : 1.2)
+                        .scrollTransition(.interactive, axis: .horizontal) { [reduceMotion] content, phase in
+                            content.offset(x: reduceMotion ? 0 : phase.value * -50)
+                        }
+                }
                 .overlay(alignment: .bottom) {
                     LinearGradient(stops: [
                         .init(color: .black.opacity(0), location: 0),
