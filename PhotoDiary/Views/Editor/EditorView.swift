@@ -14,8 +14,6 @@ struct EditorView: View {
     @Environment(\.brand) private var brand
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var controller: EditorController
-    /// 点 ✓ 后：字轻轻下沉、落定成正文颜色。写入失败时恢复。
-    @State private var inkSettled = false
     /// 模型按正文建议的标签；点一下才写进正文。
     @State private var suggested: [String] = []
     @State private var original: String
@@ -124,7 +122,6 @@ struct EditorView: View {
                     .padding(.bottom, 14)
             }
             DiaryTextView(controller: controller, hint: placeholder)
-                .offset(y: inkSettled && !reduceMotion ? 3 : 0)
                 .overlay(alignment: .topLeading) {
                     if controller.text.isEmpty {
                         Text(placeholder)
@@ -324,28 +321,19 @@ struct EditorView: View {
 
     // MARK: 保存
 
-    /// 墨水落定的时长：写入照片库同时进行，不等它。
-    private static let settleDuration: Duration = .milliseconds(220)
-
     private func save() {
         saving = true
         controller.dismissKeyboard()
-        withAnimation(.smooth(duration: 0.22)) { inkSettled = true }
-        controller.settleInk(animated: true)
-        let settling = Task { try? await Task.sleep(for: Self.settleDuration) }
         Task {
             defer { saving = false }
             do {
                 try await store.save(text: controller.text, mode: mode, for: assetID)
-                await settling.value
-                // 字落定、写进照片的那一下配触感，然后关闭。
+                // 写进照片的那一下配触感，然后收回按钮；新的那段在详情页上洇出来。
                 savedCount += 1
                 AccessibilityNotification.Announcement(String(localized: "已写进照片说明", bundle: .app, locale: .app)).post()
                 original = controller.text
                 close(saved: true)
             } catch {
-                withAnimation(.snappy) { inkSettled = false }
-                controller.restoreInk()
                 let nsError = error as NSError
                 if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.userCancelled.rawValue { return }
                 errorMessage = String(localized: "写入照片说明失败：\(error.localizedDescription)", bundle: .app, locale: .app)

@@ -22,6 +22,9 @@ struct EntryDetailView: View {
     @State private var articleHeight: CGFloat = 0
     @State private var pastPhoto = false
     @Namespace private var viewerNamespace
+    /// 刚追加的一段（序号）和它渗进纸里的进度：在这页上追加感想、保存回来时，新的那段像墨水一样洇出来。
+    @State private var freshSegment: Int?
+    @State private var inkProgress: Double = 1
 
     var body: some View {
         Group {
@@ -159,12 +162,22 @@ struct EntryDetailView: View {
                     .padding(.bottom, 24)
                     DiaryText(text: segment.text, size: 18, color: Color.inkSecondary)
                         .lineSpacing(11)
+                        .inkIn(index == freshSegment ? inkProgress : 1, lineHeight: 18 * 1.4 + 11)
                 }
             }
             chips(entry)
             suggestedTags(entry)
         }
         .textSelection(.enabled)
+        .onChange(of: segments.count) { old, new in
+            guard new > old else { return }
+            freshSegment = new - 1
+            inkProgress = 0
+            // 等编辑器收回按钮（zoom 转场）再开始洇。
+            withAnimation(.easeOut(duration: 1.1).delay(0.35)) { inkProgress = 1 } completion: {
+                freshSegment = nil
+            }
+        }
         .frame(maxWidth: 720, alignment: .leading)
         .frame(maxWidth: .infinity)
         .padding(.horizontal, Metrics.reading)

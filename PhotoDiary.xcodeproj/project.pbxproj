@@ -10,6 +10,7 @@
 		00537DCC42FDC8307CB01E08 /* WidgetSnapshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 641920CA0BB2189BD7030BA5 /* WidgetSnapshotTests.swift */; };
 		012E74FAD9143E612AB4D480 /* ReminderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B60C9C92316247B9A677482 /* ReminderTests.swift */; };
 		01620D71A06EB6C5D95DD769 /* AppLocalization.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99FCF4A837647EB2008638EC /* AppLocalization.swift */; };
+		0226F9615852F7FA95B8F344 /* Ink.metal in Sources */ = {isa = PBXBuildFile; fileRef = 4F81E673ACC67F62CDB1AA02 /* Ink.metal */; };
 		0294866812488186418FA272 /* SearchIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8877F910DA5AF87DF7C6B0 /* SearchIntent.swift */; };
 		069DF4B61CABDA96E2BBDFDB /* PermissionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42108EFF2BA086AE31997163 /* PermissionView.swift */; };
 		085D0E26589371840B977713 /* WatchSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0EF3EFB5792288FC32C137F /* WatchSnapshot.swift */; };
@@ -67,6 +68,7 @@
 		77A8E024EFFE2FBE8F3A91B2 /* TagsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 521DEBEADDA2BB9672301AD5 /* TagsView.swift */; };
 		78BDCE94285CCBDA019DF40C /* WriteTodayWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51E8EFC8EF0C2DCEEEF92CB /* WriteTodayWidget.swift */; };
 		78BF9975FF44061E55D97EBC /* DayStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE36142E20AD20527851492 /* DayStamp.swift */; };
+		78F4CE5E4D83D58A4F1AC613 /* InkIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4E543E4E6303AACAB126CD /* InkIn.swift */; };
 		79E9E8A5FE9B92F0BC92D3FD /* HiddenCaptionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A28E73AD8E3D785708481735 /* HiddenCaptionsView.swift */; };
 		7A98E6E02EF90DDBEA06619C /* LibraryWriteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6C1F72FF362A1897327E8C1 /* LibraryWriteTests.swift */; };
 		7B60710A19888DBF2F69F397 /* AppLanguageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1663FB33560F655CB9E26FA1 /* AppLanguageTests.swift */; };
@@ -250,6 +252,8 @@
 		4B3041996DD9325FBD20E2E1 /* TagSuggestions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagSuggestions.swift; sourceTree = "<group>"; };
 		4F129E78AF4A1799FC0A02D7 /* PhotoLibraryClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLibraryClient.swift; sourceTree = "<group>"; };
 		4F33FF9820AAB3142C5090BA /* PhotoFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoFixtures.swift; sourceTree = "<group>"; };
+		4F4E543E4E6303AACAB126CD /* InkIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InkIn.swift; sourceTree = "<group>"; };
+		4F81E673ACC67F62CDB1AA02 /* Ink.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Ink.metal; sourceTree = "<group>"; };
 		4FDED610C2A1152F9437B18F /* BrandColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandColor.swift; sourceTree = "<group>"; };
 		50F73687F462C6518E7F177D /* DateRangeCalendar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateRangeCalendar.swift; sourceTree = "<group>"; };
 		521DEBEADDA2BB9672301AD5 /* TagsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TagsView.swift; sourceTree = "<group>"; };
@@ -553,6 +557,8 @@
 				27159AEC97DEC9667C365D6D /* Effects.swift */,
 				F0ED8C447775391AA1E6815A /* EntryActions.swift */,
 				49E9A3B48C2333F491CCA000 /* EntryCard.swift */,
+				4F81E673ACC67F62CDB1AA02 /* Ink.metal */,
+				4F4E543E4E6303AACAB126CD /* InkIn.swift */,
 				D44CBBA493167692E3F87185 /* Paper.metal */,
 				76C2A768FEF71F9A31369347 /* RotatingCover.swift */,
 			);
@@ -952,6 +958,8 @@
 				975B517752FEA2702E506ED5 /* FoundationModelsEngine.swift in Sources */,
 				79E9E8A5FE9B92F0BC92D3FD /* HiddenCaptionsView.swift in Sources */,
 				72510A040C6969B4E8ECF2DC /* IndexDatabase.swift in Sources */,
+				0226F9615852F7FA95B8F344 /* Ink.metal in Sources */,
+				78F4CE5E4D83D58A4F1AC613 /* InkIn.swift in Sources */,
 				6223C4653D6F519F19DC0DC2 /* Intelligence.swift in Sources */,
 				1363FEE358F7C649EE314674 /* IntelligenceEngine.swift in Sources */,
 				E20147D6183094AB13594D2F /* JournalContents.swift in Sources */,

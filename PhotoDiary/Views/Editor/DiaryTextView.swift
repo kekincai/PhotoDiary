@@ -46,28 +46,6 @@ final class EditorController {
 
     func dismissKeyboard() { textView?.resignFirstResponder() }
 
-    /// 保存时墨水落定：标签的主题色褪成正文颜色，整段字是同一种墨色。
-    func settleInk(animated: Bool) {
-        guard let tv = textView else { return }
-        let storage = tv.textStorage
-        let apply = {
-            storage.addAttribute(.foregroundColor, value: UIColor.label, range: NSRange(location: 0, length: storage.length))
-            storage.removeAttribute(.underlineStyle, range: NSRange(location: 0, length: storage.length))
-        }
-        if animated {
-            UIView.transition(with: tv, duration: 0.22, options: [.transitionCrossDissolve, .allowUserInteraction], animations: apply)
-        } else {
-            apply()
-        }
-    }
-
-    /// 写入失败：字恢复原样（标签重新高亮）。
-    func restoreInk() {
-        guard let tv = textView else { return }
-        UIView.transition(with: tv, duration: 0.15, options: [.transitionCrossDissolve, .allowUserInteraction]) {
-            self.highlight(tv)
-        }
-    }
     func focus() { textView?.becomeFirstResponder() }
 
     // MARK: 内部
