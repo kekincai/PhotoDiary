@@ -46,8 +46,6 @@ private struct MainTabs: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @SceneStorage("journalMode") private var mode: JournalMode = .list
     @Namespace private var zoom
-    /// iPhone 上全屏的编辑器：不带系统的上滑动画出现，翻面由编辑器自己做。
-    @State private var coverEditor: EditorRequest?
 
     private var wide: Bool { sizeClass == .regular }
     private var showsTabBar: Bool { !wide && router.isAtRoot && router.tab != .search }
@@ -94,18 +92,9 @@ private struct MainTabs: View {
         .sheet(isPresented: $router.showAddFromPhotos) {
             AddFromPhotosView()
         }
-        .sheet(item: Binding(get: { wide ? router.editor : nil }, set: { router.editor = $0 })) { request in
+        .sheet(item: $router.editor) { request in
             EditorSheet(request: request)
-        }
-        .fullScreenCover(item: Binding(get: { wide ? nil : coverEditor }, set: { coverEditor = $0; router.editor = $0 })) { request in
-            EditorSheet(request: request, flips: true)
-                .presentationBackground(.clear)
-        }
-        .onChange(of: router.editor) { _, request in
-            guard !wide, request != coverEditor else { return }
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction) { coverEditor = request }
+                .environment(\.zoomNamespace, zoom)
         }
         .sheet(isPresented: $router.showSettings) {
             SettingsView()

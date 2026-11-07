@@ -280,7 +280,7 @@ struct EntryDetailView: View {
             Spacer()
 
             Button {
-                router.editor = EditorRequest(assetID: entry.id, mode: .append)
+                router.editor = EditorRequest(assetID: entry.id, mode: .append, zoomSource: EditorRequest.appendButton(entry.id))
             } label: {
                 Label("追加感想", systemImage: "plus")
                     .font(.callout.weight(.semibold))
@@ -292,6 +292,7 @@ struct EntryDetailView: View {
             }
             .buttonStyle(.press)
             .glassEffect(.regular.tint(brand).interactive(), in: .capsule)
+            .zoomSource(EditorRequest.appendButton(entry.id), in: namespace, cornerRadius: 26)
             .largeContent(String(localized: "追加感想", bundle: .app, locale: .app), systemImage: "plus")
         }
         .padding(.horizontal, 16)

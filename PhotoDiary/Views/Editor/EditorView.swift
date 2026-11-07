@@ -2,13 +2,10 @@ import SwiftUI
 import Photos
 
 /// 写日记 / 追加感想 / 编辑说明。
-/// 整页是一张翻过来的相纸：照片左右镜像、隔着纸隐约透出来，字就写在纸背上——人们本来就是这样在照片背面记日记的。
-/// 以前写的几行留在纸上（退后一层），下面一条“今天”的分隔线，再往下是新写的字。
+/// 一张纸：顶上是这张照片（按原来的横竖比例），下面是以前写的几行（退后一层）、一条“今天”的分隔线和新写的字。
 struct EditorView: View {
     let assetID: String
     let mode: DiaryStore.WriteMode
-    /// 打开时纸背从侧着转过来；关闭时转回去（iPhone 全屏呈现时）。
-    var flips = false
     /// saved = true 表示已写入照片说明。
     var onFinish: (_ saved: Bool) -> Void
 
@@ -17,9 +14,6 @@ struct EditorView: View {
     @Environment(\.brand) private var brand
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var controller: EditorController
-    /// 0 = 纸侧着看不见，1 = 正对着。
-    @State private var turned: Double
-    @State private var closing = false
     /// 点 ✓ 后：字轻轻下沉、落定成正文颜色。写入失败时恢复。
     @State private var inkSettled = false
     /// 建议标签胶囊的位置（全局坐标），点了以后从这里飞进正文。
@@ -34,13 +28,11 @@ struct EditorView: View {
     @State private var errorMessage: String?
     @State private var savedCount = 0
 
-    init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, seed: String? = nil, flips: Bool = false,
+    init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, seed: String? = nil,
          onFinish: @escaping (Bool) -> Void) {
         self.assetID = assetID
         self.mode = mode
-        self.flips = flips
         self.onFinish = onFinish
-        _turned = State(initialValue: flips ? 0 : 1)
         let initial = mode == .edit ? (existingCaption ?? "") : ""
         _controller = State(initialValue: EditorController(text: mode == .edit ? initial : (seed ?? "")))
         _original = State(initialValue: initial)
@@ -63,28 +55,20 @@ struct EditorView: View {
     }
 
     var body: some View {
-        TurnIn(progress: turned, crossfade: reduceMotion) {
-            paper
-        }
+        paper
             .padding(.horizontal, PhotoPaper.margin)
             .padding(.top, 6)
             .padding(.bottom, 10)
             .frame(maxWidth: 720)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-            // 纸转过来时桌面跟着铺开，下面的页面隐去。
-            .background { PhotoPaper.desk.opacity(turned).ignoresSafeArea() }
-            .containerBackground(flips ? Color.clear : PhotoPaper.desk, for: .navigation)
-            .safeAreaInset(edge: .bottom, spacing: 0) { accessory.opacity(turned) }
+            .background { PhotoPaper.desk.ignoresSafeArea() }
+            .containerBackground(PhotoPaper.desk, for: .navigation)
+            .safeAreaInset(edge: .bottom, spacing: 0) { accessory }
             .overlay { flyingChip }
             .navigationBarBackButtonHidden()
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { toolbar }
             .interactiveDismissDisabled(isDirty)
-            .onAppear {
-                // 键盘不等转完：正文框一出现就拿焦点，纸在下面转过来。
-                guard flips, turned == 0 else { return }
-                withAnimation(flipAnimation) { turned = 1 }
-            }
             .confirmationDialog("放弃这次修改？", isPresented: $confirmDiscard, titleVisibility: .visible) {
                 Button("放弃", role: .destructive) { close(saved: false) }
                 Button("继续写", role: .cancel) {}
@@ -117,23 +101,9 @@ struct EditorView: View {
             }
     }
 
-    // MARK: 转入、转出
-
-    private var flipAnimation: Animation {
-        reduceMotion ? .easeInOut(duration: 0.25) : .smooth(duration: 0.35)
-    }
-
-    /// 关闭：全屏呈现时纸先侧转离开（和打开方向相反），再交给外面收起。
     private func close(saved: Bool) {
-        guard flips else { onFinish(saved); return }
-        guard !closing else { return }
-        closing = true
         controller.dismissKeyboard()
-        withAnimation(flipAnimation) {
-            turned = 0
-        } completion: {
-            onFinish(saved)
-        }
+        onFinish(saved)
     }
 
     // MARK: 相纸
@@ -141,6 +111,7 @@ struct EditorView: View {
     /// 一张纸：以前写的字、今天的分隔线、正在写的字，都在同一张纸背上。
     private var paper: some View {
         VStack(alignment: .leading, spacing: 0) {
+            photo.padding(.bottom, 18)
             if isShared { sharedWarning.padding(.bottom, 18) }
             if mode != .edit {
                 if let earlier = earlierWriting {
@@ -173,7 +144,18 @@ struct EditorView: View {
         .padding(.horizontal, PhotoPaper.inset)
         .padding(.top, 22)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .background { PhotoPaper(assetID: assetID) }
+        .background { PhotoPaper() }
+    }
+
+    /// 这张照片，按它自己的横竖比例：横图就是一条横的，竖图不超过纸宽的一半高。
+    private var photo: some View {
+        let ratio = asset.map { CGFloat($0.pixelWidth) / CGFloat(max($0.pixelHeight, 1)) } ?? 4 / 3
+        return AssetImage(id: assetID, pointSize: CGSize(width: 400, height: 400 / ratio))
+            .aspectRatio(ratio, contentMode: .fit)
+            .frame(maxHeight: ratio >= 1 ? 200 : 150, alignment: .leading)
+            .clipShape(.rect(cornerRadius: 4, style: .continuous))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHidden(true)
     }
 
     private var placeholder: String {
@@ -404,50 +386,36 @@ struct EditorView: View {
     }
 }
 
-/// 从详情页、回顾页打开的编辑器。
-/// iPhone 上全屏、不带系统的上滑动画：纸背在原地转过来，关闭时转回去再收起。iPad、Mac 上仍是表单。
+/// 从详情页、回顾页打开的编辑器：表单。从“追加感想”按钮打开时，按钮放大成表单，关闭时收回按钮（系统的 zoom 转场，全程可以拖着中途放回去）。
 struct EditorSheet: View {
     let request: EditorRequest
-    var flips = false
     @Environment(DiaryStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.zoomNamespace) private var namespace
 
     var body: some View {
         NavigationStack {
             EditorView(assetID: request.assetID, mode: request.mode,
                        existingCaption: store.entry(request.assetID)?.caption ?? store.currentCaption(for: request.assetID),
-                       seed: request.seed, flips: flips) { _ in
-                if flips {
-                    // 纸已经转走了，收起时不再滑下去。
-                    var transaction = Transaction()
-                    transaction.disablesAnimations = true
-                    withTransaction(transaction) { dismiss() }
-                } else {
-                    dismiss()
-                }
+                       seed: request.seed) { _ in
+                dismiss()
             }
         }
+        .modifier(ZoomFromSource(sourceID: request.zoomSource, namespace: namespace))
     }
 }
 
-/// 纸背从侧着转到正对你：不另画一张“照片正面”（纸和照片不一样形状，横图尤其别扭）。“减少动态效果”时只淡入淡出。
-/// 纸一直在视图里（只是看不见），所以里面的输入框不用等转完就能拿焦点。
-struct TurnIn<Content: View>: View, Animatable {
-    var progress: Double
-    var crossfade: Bool
-    @ViewBuilder var content: Content
+/// 有来源按钮时从按钮放大出来；没有（长按菜单、通知、快捷指令）就是普通的表单上滑。
+private struct ZoomFromSource: ViewModifier {
+    let sourceID: String?
+    let namespace: Namespace.ID?
 
-    var animatableData: Double {
-        get { progress }
-        set { progress = newValue }
-    }
-
-    var body: some View {
-        let angle = crossfade ? 0 : (1 - progress) * -60
-        content
-            .opacity(crossfade ? progress : min(1, progress * 2))
-            .scaleEffect(crossfade ? 1 : 0.94 + 0.06 * progress)
-            .rotation3DEffect(.degrees(angle), axis: (x: 0, y: 1, z: 0), perspective: 0.4)
+    func body(content: Content) -> some View {
+        if let sourceID, let namespace {
+            content.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
+        } else {
+            content
+        }
     }
 }
 

@@ -36,6 +36,7 @@
 		3B107A832B8FEF928B453666 /* WatchBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 465DF80D0D6128A83B89B879 /* WatchBridgeTests.swift */; };
 		42DE4F04648D9E4C63C488DE /* YearInReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EFEC6889DD7223A1A535C2C /* YearInReview.swift */; };
 		43596D3724AF034030005F2E /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6D263197946BC1AC0CC66F /* DiaryEntry.swift */; };
+		43F47FFB0AC70EB6CF0169E8 /* Paper.metal in Sources */ = {isa = PBXBuildFile; fileRef = D44CBBA493167692E3F87185 /* Paper.metal */; };
 		4904885879896B6844953753 /* InfoPlist.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = 27E4422BB8D41E715150A70D /* InfoPlist.xcstrings */; };
 		491B26275B3B3C166EAA6874 /* YearShareCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA2ED668C5001B398C433D69 /* YearShareCard.swift */; };
 		4EF0726700A145FDF1FBA8AD /* Badges.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B823EE6387B56A51B3E23DA /* Badges.swift */; };
@@ -303,6 +304,7 @@
 		CD3511816DF16328D71510DC /* SyncTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTests.swift; sourceTree = "<group>"; };
 		CED7A36E4A29050D59B61BEE /* JournalContents.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JournalContents.swift; sourceTree = "<group>"; };
 		CF067B50BDCAD8D060FD5B42 /* SettingsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsTests.swift; sourceTree = "<group>"; };
+		D44CBBA493167692E3F87185 /* Paper.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = Paper.metal; sourceTree = "<group>"; };
 		D51E8EFC8EF0C2DCEEEF92CB /* WriteTodayWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteTodayWidget.swift; sourceTree = "<group>"; };
 		D92BA1FD81062B754BE43A09 /* PhotoPaper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPaper.swift; sourceTree = "<group>"; };
 		DC166D7DBA4B08A5DD8D8F41 /* PhotoDiary.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhotoDiary.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -551,6 +553,7 @@
 				27159AEC97DEC9667C365D6D /* Effects.swift */,
 				F0ED8C447775391AA1E6815A /* EntryActions.swift */,
 				49E9A3B48C2333F491CCA000 /* EntryCard.swift */,
+				D44CBBA493167692E3F87185 /* Paper.metal */,
 				76C2A768FEF71F9A31369347 /* RotatingCover.swift */,
 			);
 			path = Components;
@@ -961,6 +964,7 @@
 				84464F268A27E775163A85FE /* Mark.swift in Sources */,
 				BADF333F91C5287E8F4AFE2B /* Metrics.swift in Sources */,
 				8D182FC8166AC5ECBA8DBB53 /* Motion.swift in Sources */,
+				43F47FFB0AC70EB6CF0169E8 /* Paper.metal in Sources */,
 				069DF4B61CABDA96E2BBDFDB /* PermissionView.swift in Sources */,
 				E73E79AB359071C6ADD5A40A /* PhotoDiaryApp.swift in Sources */,
 				E86E0B7C10429F3ED159480D /* PhotoLibraryClient.swift in Sources */,

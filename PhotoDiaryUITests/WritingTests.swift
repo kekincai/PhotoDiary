@@ -90,8 +90,8 @@ final class WritingTests: DiaryUITestCase {
         XCTAssertFalse(text(containing: mark).exists, "没点完成就写进去了")
     }
 
-    /// 打开编辑器时纸背转过来，但不用等转完：光标已经在正文里，直接能打字；取消后转回去关掉。
-    @MainActor func testEditorIsReadyToTypeWhileTurningIn() {
+    /// 从“追加感想”按钮放大出编辑器，不用等转场：光标已经在正文里，直接能打字；取消后收回按钮。
+    @MainActor func testEditorIsReadyToTypeWhileZooming() {
         openEntry("寺里的苔藓")
         tap(app.buttons["追加感想"])
         let field = editorText

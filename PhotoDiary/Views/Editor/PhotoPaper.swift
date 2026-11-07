@@ -1,12 +1,11 @@
 import SwiftUI
 
-/// 相纸背面。写日记的那张纸。
+/// 写日记的那张纸。
 ///
-/// 照片左右镜像铺满，稍微虚一点、褪一点色，再盖一层近乎不透明的纸色——像把一张照片翻过来对着光，
-/// 正面的影子隐约透过来。纸上有细细的纤维颗粒，和相纸背面那种一排排斜着印的淡淡厂标（这里用 App 自己的图形）。
+/// 纸色上有细细的纤维颗粒（Metal 着色器，Paper.metal）和一排排斜着印的淡淡厂标（App 自己的图形）。
 /// 纸放在一张深一点的桌面上，边缘有一道细细的高光和一点投影，看得出是一张纸，不是一块底色。
+/// 照片不再隔着纸透出来：纸是竖的、照片多是横的，透出来的只会是一张被拉成竖条的影子。照片放在纸的最上面，按原比例。
 struct PhotoPaper: View {
-    let assetID: String
     @Environment(\.colorScheme) private var scheme
 
     /// 纸到屏幕边缘。
@@ -23,17 +22,10 @@ struct PhotoPaper: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Self.radius, style: .continuous)
         ZStack {
-            // 先把照片压成中间调：暗的照片透过纸也该是淡淡一层灰影，而不是把整张纸染灰。
-            AssetImage(id: assetID, pointSize: CGSize(width: 360, height: 720))
-                .scaleEffect(x: -1, y: 1)
-                .saturation(0.6)
-                .contrast(0.7)
-                .brightness(scheme == .dark ? -0.05 : 0.25)
-                .blur(radius: 2.5, opaque: true)
             // 深色模式下纸是深灰，不是和桌面一样的黑。
-            (scheme == .dark ? Color(white: 0.11) : Color(.systemBackground)).opacity(scheme == .dark ? 0.86 : 0.85)
+            (scheme == .dark ? Color(white: 0.11) : Color(.systemBackground))
+                .colorEffect(ShaderLibrary.paperGrain(.float(scheme == .dark ? 0.03 : 0.035)))
             PaperWatermark()
-            PaperGrain()
         }
         .clipShape(shape)
         .overlay {
@@ -42,32 +34,6 @@ struct PhotoPaper: View {
         .shadow(color: .black.opacity(scheme == .dark ? 0.55 : 0.14), radius: 18, y: 8)
         .shadow(color: .black.opacity(scheme == .dark ? 0.4 : 0.08), radius: 1, y: 1)
         .accessibilityHidden(true)
-    }
-}
-
-/// 纸的颗粒：一小块随机灰噪点平铺，用叠加混合，只让纸面不那么平。
-private struct PaperGrain: View {
-    nonisolated static let tile: UIImage = {
-        let side = 128
-        var bytes = [UInt8](repeating: 128, count: side * side)
-        var rng = SystemRandomNumberGenerator()
-        for i in bytes.indices { bytes[i] = UInt8.random(in: 92...164, using: &rng) }
-        let data = Data(bytes) as CFData
-        guard let provider = CGDataProvider(data: data),
-              let cg = CGImage(width: side, height: side, bitsPerComponent: 8, bitsPerPixel: 8, bytesPerRow: side,
-                               space: CGColorSpaceCreateDeviceGray(),
-                               bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue),
-                               provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
-        else { return UIImage() }
-        return UIImage(cgImage: cg, scale: 2, orientation: .up)
-    }()
-
-    var body: some View {
-        Image(uiImage: Self.tile)
-            .resizable(resizingMode: .tile)
-            .opacity(0.5)
-            .blendMode(.overlay)
-            .allowsHitTesting(false)
     }
 }
 

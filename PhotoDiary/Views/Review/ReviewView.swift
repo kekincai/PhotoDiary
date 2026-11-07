@@ -42,6 +42,7 @@ private struct OnThisDaySection: View {
     @Environment(DiaryStore.self) private var store
     @Environment(Router.self) private var router
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.zoomNamespace) private var namespace
     @State private var page: String?
 
     var body: some View {
@@ -107,7 +108,7 @@ private struct OnThisDaySection: View {
         .buttonStyle(.press)
         .overlay(alignment: .bottomTrailing) {
             Button {
-                router.editor = EditorRequest(assetID: entry.id, mode: .append)
+                router.editor = EditorRequest(assetID: entry.id, mode: .append, zoomSource: EditorRequest.appendButton(entry.id))
             } label: {
                 Image(systemName: "plus")
                     .font(.system(size: 18, weight: .semibold))
@@ -116,6 +117,7 @@ private struct OnThisDaySection: View {
             }
             .buttonStyle(.press)
             .glassEffect(.regular.interactive(), in: .circle)
+            .zoomSource(EditorRequest.appendButton(entry.id), in: namespace, cornerRadius: 22)
             .environment(\.colorScheme, .dark)
             .padding(.trailing, 16)
             .padding(.bottom, 20)

@@ -38,3 +38,14 @@ extension ButtonStyle where Self == PressStyle {
         PressStyle(scale: 1, highlight: Color(.systemGray6), cornerRadius: radius)
     }
 }
+
+extension View {
+    /// 标成 zoom 转场的来源（没有命名空间时什么都不做）。圆角是来源本身的轮廓（胶囊、圆形按钮传高度的一半），转场时从这个形状长出来。
+    @ViewBuilder func zoomSource(_ id: String, in namespace: Namespace.ID?, cornerRadius: CGFloat) -> some View {
+        if let namespace {
+            matchedTransitionSource(id: id, in: namespace) { $0.clipShape(.rect(cornerRadius: cornerRadius)) }
+        } else {
+            self
+        }
+    }
+}

@@ -36,6 +36,11 @@ struct EditorRequest: Identifiable, Hashable {
     let mode: DiaryStore.WriteMode
     /// 预先填进编辑器的文字（例如手记建议里的歌曲）。
     var seed: String? = nil
+    /// 点哪个按钮打开的（matchedTransitionSource 的 id）：编辑器从这个按钮放大出来。
+    var zoomSource: String? = nil
+
+    /// “追加感想”按钮的 zoom 来源 id。
+    static func appendButton(_ assetID: String) -> String { "append:\(assetID)" }
 }
 
 /// 每个标签页各自一条导航路径；推入详情时隐藏底部标签栏。
