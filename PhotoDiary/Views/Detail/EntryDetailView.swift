@@ -18,7 +18,6 @@ struct EntryDetailView: View {
     @State private var showViewer = false
     @State private var confirmDelete = false
     @State private var errorMessage: String?
-    @State private var headerHeight: CGFloat = 312
     @State private var articleHeight: CGFloat = 0
     @State private var pastPhoto = false
     @Namespace private var viewerNamespace
@@ -34,7 +33,7 @@ struct EntryDetailView: View {
                 EmptyHint(title: "这张照片已经不在了")
             }
         }
-        .modifier(ZoomDestination(id: id, namespace: namespace))
+        .zoomDestination(id, in: namespace)
         // 编辑器的纸纹、保存后墨水洇出的着色器先编好。
         .task {
             await ShaderWarmup.paper()
@@ -64,7 +63,7 @@ struct EntryDetailView: View {
                     Menu {
                         Button("删除照片…", systemImage: "trash", role: .destructive) { confirmDelete = true }
                     } label: {
-                        Label("更多", systemImage: "ellipsis")
+                        Label("更多选项", systemImage: "ellipsis")
                     }
                 }
             }
@@ -117,7 +116,6 @@ struct EntryDetailView: View {
             } action: { _, past in
                 pastPhoto = past
             }
-            .onChange(of: height, initial: true) { headerHeight = height }
         }
         .background(Color(.systemBackground))
         .safeAreaInset(edge: .bottom) { bottomBar(entry) }
@@ -239,11 +237,8 @@ struct EntryDetailView: View {
         let wanted = intelligence.isEnabled && entry.tags.isEmpty
         FlowLayout(spacing: 8) {
             if wanted, !suggested.isEmpty {
-                Image(systemName: "apple.intelligence")
-                    .font(.system(size: 15, weight: .medium))
-                    .foregroundStyle(Color.inkSecondary)
+                IntelligenceMark()
                     .frame(height: 34)
-                    .accessibilityHidden(true)
                 ForEach(suggested, id: \.self) { tag in
                     Button { accept(tag) } label: {
                         Chip(height: 34, fill: brand.soft()) {
@@ -313,7 +308,7 @@ struct EntryDetailView: View {
             .zoomSource(EditorRequest.appendButton(entry.id), in: namespace, cornerRadius: 26)
             .largeContent(String(localized: "追加感想", bundle: .app, locale: .app), systemImage: "plus")
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.bottom, 4)
         // 浮在正文上，最多长到辅助功能第一档；再大的长按看大字。
         .dynamicTypeSize(...DynamicTypeSize.accessibility1)
@@ -329,10 +324,7 @@ struct EntryDetailView: View {
                 dismiss()
             } catch {
                 // 用户在系统确认里取消也会走到这里，不提示。
-                let code = (error as NSError).code
-                if code != PHPhotosError.userCancelled.rawValue {
-                    errorMessage = error.localizedDescription
-                }
+                if !error.isUserCancellation { errorMessage = error.localizedDescription }
             }
         }
     }
@@ -349,18 +341,6 @@ private struct ViewerAction: ViewModifier {
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(Text("全屏查看"))
                 .accessibilityAction(.default, open)
-        } else {
-            content
-        }
-    }
-}
-
-private struct ZoomDestination: ViewModifier {
-    let id: String
-    let namespace: Namespace.ID?
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.navigationTransition(.zoom(sourceID: id, in: namespace))
         } else {
             content
         }
@@ -399,6 +379,8 @@ private struct MediaHeader: View {
                   let item = await AssetImages.shared.playerItem(for: entry.id) else { return }
             player = AVPlayer(playerItem: item)
         }
+        // 推入地点、标签页，或者弹出“追加感想”时停下，不让声音在别的页面上继续放。
+        .onDisappear { player?.pause() }
         // 照片本身对辅助功能是隐藏的，要在这里自己成为一个元素，否则 VoiceOver 摸不到它、也就点不开大图。
         // 视频保留播放器自己的控件。
         .accessibilityElement(children: entry.mediaKind == .video ? .contain : .ignore)
@@ -432,7 +414,8 @@ private struct MediaHeader: View {
                             .padding(12)
                     }
             case .photo:
-                AssetImage(id: entry.id, contentMode: mode, allowNetwork: true)
+                // 头图有大半屏高：按 1024 封顶的话放大后发糊。
+                AssetImage(id: entry.id, contentMode: mode, allowNetwork: true, maxPixels: AssetImages.largePixels)
             }
         }
         .frame(width: size.width, height: size.height)
@@ -452,11 +435,29 @@ private struct LivePhotoView: UIViewRepresentable {
         return view
     }
 
+    /// 同一张照片、同一个尺寸只要一次；尺寸变了（转屏、拉高）重要一次，旧的请求作废，晚回来的不会盖掉新的。
     func updateUIView(_ view: PHLivePhotoView, context: Context) {
-        guard view.livePhoto == nil, size.width > 0 else { return }
-        let px = CGSize(width: size.width * scale, height: size.height * scale)
-        Task {
-            view.livePhoto = await AssetImages.shared.livePhoto(for: id, pixelSize: px)
+        guard size.width > 0 else { return }
+        let px = CGSize(width: (size.width * scale).rounded(), height: (size.height * scale).rounded())
+        let coordinator = context.coordinator
+        guard coordinator.requested != px else { return }
+        coordinator.requested = px
+        coordinator.task?.cancel()
+        coordinator.task = Task {
+            let photo = await AssetImages.shared.livePhoto(for: id, pixelSize: px)
+            guard !Task.isCancelled, coordinator.requested == px else { return }
+            view.livePhoto = photo
         }
+    }
+
+    static func dismantleUIView(_ view: PHLivePhotoView, coordinator: Coordinator) {
+        coordinator.task?.cancel()
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        var requested: CGSize?
+        var task: Task<Void, Never>?
     }
 }

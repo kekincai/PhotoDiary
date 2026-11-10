@@ -2,8 +2,8 @@ import Foundation
 import Photos
 import OSLog
 
-/// 读取照片库：全库遍历、按 change token 增量、写入说明与关键词。
-/// 所有方法都在后台执行，不持有任何 UI 状态。
+/// 读取照片库：全库遍历、按 change token 增量、写入说明与关键词。不持有任何 UI 状态。
+/// 全库遍历、增量、写入都在后台执行；`fetchEntries` 是同步的，在调用方的线程上读（只读几张时用）。
 nonisolated enum LibraryScanner {
     enum ScanEvent: Sendable {
         case started(total: Int)
@@ -20,6 +20,21 @@ nonisolated enum LibraryScanner {
 
     enum ScanError: Error {
         case tokenExpired
+    }
+
+    /// 写不进说明的照片。重试也没用，调用方不要留着再试。
+    enum WriteError: Error, LocalizedError, Equatable {
+        /// 照片已经删了，或者在“有限访问”下不在可见范围里。
+        case missing(Set<String>)
+        /// 照片改不了说明（例如共享相簿里别人的照片）。
+        case notEditable(Set<String>)
+
+        var errorDescription: String? {
+            switch self {
+            case .missing: String(localized: "这张照片已经不在照片库里了", bundle: .app, locale: .app)
+            case .notEditable: String(localized: "这张照片的说明改不了", bundle: .app, locale: .app)
+            }
+        }
     }
 
     static let sourceTypes: PHAssetSourceType = [.typeUserLibrary, .typeCloudShared, .typeiTunesSynced]
@@ -85,7 +100,14 @@ nonisolated enum LibraryScanner {
         var lastToken: PHPersistentChangeToken?
         for change in changes {
             lastToken = change.changeToken
-            guard let details = try? change.changeDetails(for: .asset) else { continue }
+            // 读不出这一批改了哪些照片：不能跳过（token 一前进这批就丢了），改为全量读取。
+            let details: PHPersistentObjectChangeDetails
+            do {
+                details = try change.changeDetails(for: .asset)
+            } catch {
+                Log.sync.notice("读不出一批变化，改为全量读取：\(error, privacy: .public)")
+                throw ScanError.tokenExpired
+            }
             touched.formUnion(details.insertedLocalIdentifiers)
             touched.formUnion(details.updatedLocalIdentifiers)
             deleted.formUnion(details.deletedLocalIdentifiers)
@@ -96,7 +118,8 @@ nonisolated enum LibraryScanner {
         let updated = fetchEntries(ids: Array(touched))
         let withCaption = Set(updated.map(\.id))
         let removed = deleted.union(touched.subtracting(withCaption))
-        let newToken = archive(lastToken ?? library.currentChangeToken)
+        // 没有变化时沿用传进来的 token：此刻再取“当前 token”，会越过列出变化之后、取 token 之前发生的修改。
+        let newToken = lastToken.flatMap(archive) ?? tokenData
         Log.sync.debug("增量：列出变化 \(listed - begin, privacy: .public)（\(touched.count) 改 \(deleted.count) 删），读取条目 \(clock.now - listed, privacy: .public)")
         return IncrementalResult(updated: updated, removed: removed, token: newToken)
     }
@@ -144,16 +167,22 @@ nonisolated enum LibraryScanner {
 
     // MARK: 写入
 
-    /// 写入说明，并让关键词与说明里的标签保持一致。caption 为 nil 表示清除说明。
-    @concurrent
-    static func write(caption: String?, to id: String) async throws {
-        try await write([id: caption])
-    }
-
     /// 一次 performChanges 修改多张照片的说明（标签改名、合并时只弹一次系统确认）。
+    /// 有照片取不到、或改不了说明时一张都不写，抛 WriteError：取不到照片时 performChanges 什么都不改也算成功，不先查就会把字丢掉。
     @concurrent
     static func write(_ captions: [String: String?]) async throws {
         guard !captions.isEmpty else { return }
+        let options = PHFetchOptions()
+        options.includeAssetSourceTypes = sourceTypes
+        let found = PHAsset.fetchAssets(withLocalIdentifiers: Array(captions.keys), options: options)
+        var seen = Set<String>(), locked = Set<String>()
+        found.enumerateObjects { asset, _, _ in
+            seen.insert(asset.localIdentifier)
+            if !asset.canPerform(.properties) { locked.insert(asset.localIdentifier) }
+        }
+        let missing = Set(captions.keys).subtracting(seen)
+        if !missing.isEmpty { throw WriteError.missing(missing) }
+        if !locked.isEmpty { throw WriteError.notEditable(locked) }
         try await PHPhotoLibrary.shared().performChanges {
             let options = PHFetchOptions()
             options.includeAssetSourceTypes = sourceTypes
@@ -205,7 +234,9 @@ nonisolated enum LibraryScanner {
     @concurrent
     static func delete(ids: [String]) async throws {
         try await PHPhotoLibrary.shared().performChanges {
-            let assets = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: nil)
+            let options = PHFetchOptions()
+            options.includeAssetSourceTypes = sourceTypes
+            let assets = PHAsset.fetchAssets(withLocalIdentifiers: ids, options: options)
             PHAssetChangeRequest.deleteAssets(assets)
         }
     }

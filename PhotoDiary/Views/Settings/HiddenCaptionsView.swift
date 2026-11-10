@@ -6,7 +6,6 @@ struct HiddenCaptionsView: View {
     @Environment(DiaryStore.self) private var store
     @State private var captions = CaptionFilter.patterns
     @State private var adding = false
-    @State private var draft = ""
 
     var body: some View {
         let counts = store.hiddenCaptionCounts()
@@ -38,11 +37,7 @@ struct HiddenCaptionsView: View {
         .navigationTitle("隐藏的说明")
         .navigationBarTitleDisplayMode(.inline)
         .sensoryFeedback(.selection, trigger: captions)
-        .alert("隐藏这段说明", isPresented: $adding) {
-            TextField("说明文字，例如 0", text: $draft)
-            Button("取消", role: .cancel) { draft = "" }
-            Button("隐藏") { hide(draft); draft = "" }
-        }
+        .modifier(AddCaptionAlert(isPresented: $adding, add: hide))
     }
 
     private func row(_ caption: String, count: Int, hidden: Bool) -> some View {
@@ -85,5 +80,20 @@ struct HiddenCaptionsView: View {
     private func save() {
         CaptionFilter.patterns = captions
         store.captionFilterChanged()
+    }
+}
+
+/// 添加一条隐藏规则的弹窗。输入的字放在这里：放在页面上的话每敲一个字，整页（常见短说明要遍历全部说明）都要重算。
+private struct AddCaptionAlert: ViewModifier {
+    @Binding var isPresented: Bool
+    let add: (String) -> Void
+    @State private var draft = ""
+
+    func body(content: Content) -> some View {
+        content.alert("隐藏这段说明", isPresented: $isPresented) {
+            TextField("说明文字，例如 0", text: $draft)
+            Button("取消", role: .cancel) { draft = "" }
+            Button("隐藏") { add(draft); draft = "" }
+        }
     }
 }

@@ -43,6 +43,8 @@ enum Metrics {
     static let primaryAction: CGFloat = 62
     /// 底部浮动标签栏占用的高度，滚动内容要留出来。
     static let bottomBarInset: CGFloat = 170
+    /// 底部只有一个浮动分段控件（“从照片添加”）时要留出来的高度。
+    static let bottomControlInset: CGFloat = 110
     /// 列表里行的缩略图边长。
     static let rowThumb: CGFloat = 78
 }

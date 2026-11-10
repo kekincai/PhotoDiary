@@ -27,7 +27,7 @@ struct TagsView: View {
                     cover(tag)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Metrics.page)
             .padding(.top, 12)
             .padding(.bottom, 40)
         }
@@ -37,13 +37,13 @@ struct TagsView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 if !store.tagCounts.isEmpty {
-                    Button(selecting ? "完成" : "选择") {
+                    // 和设置、选日期的“完成”一样用图标；读屏照样读“选择”“完成”。
+                    Button(selecting ? "完成" : "选择", systemImage: selecting ? "checkmark" : "checkmark.circle") {
                         withAnimation(.snappy) {
                             selecting.toggle()
                             selection.removeAll()
                         }
                     }
-                    .fontWeight(.semibold)
                 }
             }
             if selecting {
@@ -88,7 +88,7 @@ struct TagsView: View {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 24, weight: .medium))
                             .symbolRenderingMode(.palette)
-                            .foregroundStyle(selected ? Color.white : Color.white, selected ? brand : Color.black.opacity(0.15))
+                            .foregroundStyle(Color.white, selected ? brand : Color.black.opacity(0.15))
                             .shadow(color: .black.opacity(0.25), radius: 2)
                             .padding(10)
                     }
@@ -141,10 +141,7 @@ struct TagsView: View {
                 selecting = false
                 selection.removeAll()
             } catch {
-                let e = error as NSError
-                if !(e.domain == PHPhotosErrorDomain && e.code == PHPhotosError.userCancelled.rawValue) {
-                    errorMessage = error.localizedDescription
-                }
+                if !error.isUserCancellation { errorMessage = error.localizedDescription }
             }
         }
     }
@@ -166,7 +163,7 @@ struct TagCover: View {
                         AssetImage(id: id)
                     }
                 }
-                .clipShape(.rect(cornerRadius: 16, style: .continuous))
+                .clipShape(.rect(cornerRadius: Metrics.Radius.card, style: .continuous))
                 .padding(.bottom, 4)
             Text(verbatim: "#\(name)#")
                 .font(.subheadline.weight(.semibold))
@@ -192,6 +189,8 @@ struct TagEntriesView: View {
         let entries = store.entries(tagged: tag)
         ScrollView {
             EntryCardGrid(entries: entries)
+                .padding(.top, Metrics.Spacing.m)
+                .padding(.bottom, 40)
         }
         .overlay {
             if entries.isEmpty { EmptyHint(title: "这个标签下没有日记了") }
@@ -211,6 +210,11 @@ struct PlaceEntriesView: View {
         let entries = store.entries(at: place)
         ScrollView {
             EntryCardGrid(entries: entries)
+                .padding(.top, Metrics.Spacing.m)
+                .padding(.bottom, 40)
+        }
+        .overlay {
+            if entries.isEmpty { EmptyHint(title: "这个地点没有日记了") }
         }
         .navigationTitle(place)
         .navigationSubtitle(Text("\(entries.count) 篇"))
@@ -218,9 +222,11 @@ struct PlaceEntriesView: View {
     }
 }
 
-/// 大照片卡片的列表：iPhone 一栏，iPad 自适应多栏。标签、地点、搜索结果都用。
+/// 大照片卡片的网格：iPhone 一栏，iPad 自适应多栏。日记列表的每个月、标签、地点都用。
 struct EntryCardGrid: View {
     let entries: [DiaryEntry]
+    /// 一张卡片出现时（日记列表用来预取后面几张的照片）。
+    var onAppear: ((DiaryEntry) -> Void)? = nil
     @Environment(\.zoomNamespace) private var namespace
     @Environment(\.isWide) private var wide
 
@@ -237,10 +243,9 @@ struct EntryCardGrid: View {
                 }
                 .buttonStyle(.press)
                 .entryContextMenu(entry)
+                .onAppear { onAppear?(entry) }
             }
         }
         .padding(.horizontal, Metrics.page)
-        .padding(.top, Metrics.Spacing.m)
-        .padding(.bottom, 40)
     }
 }

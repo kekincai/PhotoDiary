@@ -46,14 +46,15 @@ struct WatchComposeView: View {
     }
 
     private func sentState(_ write: WatchWrite) -> some View {
-        let confirmed = store.lastConfirmed == write.id
+        let confirmed = store.confirmed.contains(write.id)
+        let failed = store.failed.contains { $0.id == write.id }
         return VStack(spacing: 8) {
-            Image(systemName: confirmed ? "checkmark.circle.fill" : "paperplane.fill")
+            Image(systemName: failed ? "exclamationmark.circle.fill" : confirmed ? "checkmark.circle.fill" : "paperplane.fill")
                 .font(.title)
                 .accessibilityHidden(true)
-                .foregroundStyle(confirmed ? Color.green : Color.accentColor)
+                .foregroundStyle(failed ? Color.orange : confirmed ? Color.green : Color.accentColor)
                 .contentTransition(.symbolEffect(.replace))
-            Text(confirmed ? "已写进照片说明" : "已发到 iPhone")
+            Text(failed ? "没写进照片说明" : confirmed ? "已写进照片说明" : "已发到 iPhone")
                 .font(.headline)
             Text(write.text)
                 .font(.system(.footnote, design: .serif))
@@ -64,6 +65,7 @@ struct WatchComposeView: View {
                 .padding(.top, 4)
         }
         .animation(.snappy, value: confirmed)
+        .animation(.snappy, value: failed)
     }
 
     private func send(_ text: String) {

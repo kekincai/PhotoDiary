@@ -34,10 +34,10 @@ final class BrowsingTests: DiaryUITestCase {
     @MainActor func testCalendarDayOpensEntries() {
         tap(button(containing: "视图："))
         tap(app.buttons["日历"])
-        // 11 月 1 日有一篇（银杏）。
+        // 今天有一篇（银杏）：格子只有一篇时点进去就是详情。
         let day = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "银杏开始黄了")).firstMatch
-        tap(day, timeout: 10, "日历里 11 月 1 日的格子")
-        XCTAssertTrue(app.buttons["追加感想"].waitForExistence(timeout: 10) || text(containing: "银杏开始黄了").exists)
+        tap(day, timeout: 10, "日历里今天的格子")
+        XCTAssertTrue(app.buttons["追加感想"].waitForExistence(timeout: 10), "点日历格子没有进入详情")
         goToJournalRoot()
         tap(button(containing: "视图："))
         tap(app.buttons["列表"])
@@ -45,10 +45,16 @@ final class BrowsingTests: DiaryUITestCase {
 
     @MainActor func testDetailShowsTagsAndPlaceAndOpensTag() {
         openEntry("寺里的苔藓")
-        XCTAssertTrue(app.buttons["标签“京都”"].exists || text(containing: "京都").exists)
+        XCTAssertTrue(app.buttons["标签“京都”"].exists, "详情页没有京都标签")
         tap(button(containing: "标签“旅行”"), "详情页的旅行标签")
-        XCTAssertTrue(app.navigationBars.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "旅行")).firstMatch.waitForExistence(timeout: 10)
-                      || text(containing: "旅行").exists, "没有进入标签页")
+        XCTAssertTrue(app.navigationBars.staticTexts["#旅行#"].waitForExistence(timeout: 10), "没有进入标签页")
+    }
+
+    /// 地点胶囊：照片带位置，地名由反向地理编码得到（要联网；最新的一篇最先查到）。只认地点胶囊，不认同名的标签。
+    @MainActor func testDetailShowsPlace() {
+        openEntry("银杏开始黄了")
+        let place = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "地点：")).firstMatch
+        XCTAssertTrue(place.waitForExistence(timeout: 30), "详情页没有地点")
     }
 
     @MainActor func testPhotoViewerOpensAndCloses() {
@@ -142,6 +148,7 @@ final class BrowsingTests: DiaryUITestCase {
         field.typeText("#")
         tap(button(containing: "标签“散步”"), "标签联想里的散步")
         XCTAssertTrue(button(containing: "银杏开始黄了").waitForExistence(timeout: 10), "按标签搜不到")
+        XCTAssertFalse(button(containing: "寺里的苔藓").exists, "按标签搜到了没有这个标签的日记")
 
         tap(app.buttons["回到日记"])
         XCTAssertTrue(button(containing: "视图：").waitForExistence(timeout: 10))
@@ -152,13 +159,8 @@ final class BrowsingTests: DiaryUITestCase {
         XCTAssertTrue(app.staticTexts["回顾"].waitForExistence(timeout: 10))
         // 这一周的七天。
         XCTAssertTrue(text(containing: "今天").waitForExistence(timeout: 10), "这一周里没有今天")
-        // 那年今日的卡片（翻页时不在中间的卡片缩小变暗），卡片上的“+”打开编辑器，取消后回到回顾。
-        // 种子照片“去年今天的咖啡”拍于 2025-11-03，只有 11 月 3 日跑测试时才是“那年今日”；别的日子没有卡片，这段跳过。
-        guard button(containing: "去年今天的咖啡").waitForExistence(timeout: 5) else {
-            XCTContext.runActivity(named: "今天没有那年今日的卡片，跳过卡片上的追加感想") { _ in }
-            assertAlive()
-            return
-        }
+        // 那年今日的卡片（种子照片“去年今天的咖啡”按跑测试这天往前推一年），卡片上的“+”打开编辑器，取消后回到回顾。
+        XCTAssertTrue(button(containing: "去年今天的咖啡").waitForExistence(timeout: 10), "回顾里没有那年今日的卡片")
         tap(hittable(app.buttons.matching(NSPredicate(format: "label == %@", "追加感想"))), "那年今日卡片上的追加感想")
         XCTAssertTrue(editorText.waitForExistence(timeout: 10), "从那年今日打开编辑器失败")
         tap(app.buttons["取消"])
@@ -167,15 +169,15 @@ final class BrowsingTests: DiaryUITestCase {
         assertAlive()
     }
 
-    /// 种子照片里 2025 年有一篇（#咖啡#）：往年的回顾一直列着。打开、一张张翻到分享图、关掉。
+    /// 种子照片里去年有一篇（#咖啡#）：往年的回顾一直列着。打开、一张张翻到分享图、关掉。
     @MainActor func testYearInReviewSwipesThroughAndCloses() {
         tap(tab("回顾"))
-        let year = app.buttons["year-2025"]
+        let year = app.buttons["year-\(lastYear)"]
         for _ in 0..<6 where !year.waitForExistence(timeout: 1) { app.swipeUp() }
-        tap(year, "2025 年的一年回顾")
+        tap(year, "\(lastYear) 年的一年回顾")
         let review = app.buttons["yearReviewClose"]
         XCTAssertTrue(review.waitForExistence(timeout: 10), "一年回顾没有打开")
-        XCTAssertTrue(text(containing: "2025").waitForExistence(timeout: 5), "封面上没有年份")
+        XCTAssertTrue(text(containing: String(lastYear)).waitForExistence(timeout: 5), "封面上没有年份")
 
         // 翻到最后一张（分享图）。卡片数随数据变，最多翻十次。
         let share = app.buttons["分享"]
@@ -197,7 +199,7 @@ final class BrowsingTests: DiaryUITestCase {
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "还没写日记的照片")).firstMatch.waitForExistence(timeout: 15))
         XCTAssertFalse(app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "已写日记的照片")).firstMatch.exists)
         tap(app.buttons["全部照片"])
-        // 自动测试造的新照片排在前面，写过日记的种子照片在下面几屏。
+        // 真实照片库测试造的照片（日期在 2001 年）排在最后；写过日记的种子照片在前几屏。
         let written = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "已写日记的照片")).firstMatch
         for _ in 0..<8 where !written.exists { app.swipeUp() }
         XCTAssertTrue(written.waitForExistence(timeout: 5), "“全部照片”里没有已写日记的照片")

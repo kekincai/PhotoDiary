@@ -27,7 +27,8 @@ nonisolated struct SearchIntent: Sendable, Hashable {
         if let a = Self.day(from), let b = Self.day(to) {
             range = a <= b ? a...b : b...a
         } else if let a = Self.day(from) {
-            range = a...context.today
+            // 只给了起点：到今天为止。起点在今天之后（“明年的计划”或模型写错了年份）就只看那一天往后，不倒过来。
+            range = a <= context.today ? a...context.today : a...a
         } else if let b = Self.day(to) {
             range = DayStamp(Date.distantPast)...b
         }

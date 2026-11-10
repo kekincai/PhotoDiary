@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import PhotoDiary
 
-/// DiaryStore 和假照片库一起跑，确认依赖注入可用。更细的同步、派生数据测试见计划阶段 2。
+/// DiaryStore 和假照片库一起跑：启动、全量和增量读取、写入、依赖注入。更细的见 SyncTests、DerivedDataTests、LibraryWriteTests。
 struct DiaryStoreTests {
     @Test func firstLaunchReadsWholeLibraryAndSavesIndex() async throws {
         let library = FakeLibrary()

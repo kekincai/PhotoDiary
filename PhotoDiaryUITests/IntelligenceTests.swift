@@ -13,7 +13,7 @@ final class IntelligenceTests: DiaryUITestCase {
         field.typeText("去年 散步")
         let tagToken = app.buttons.matching(NSPredicate(format: "label == %@", "标签“散步”")).firstMatch
         XCTAssertTrue(tagToken.waitForExistence(timeout: 10), "没有出现模型理解的标签胶囊")
-        XCTAssertTrue(text(containing: "2025").waitForExistence(timeout: 5), "没有出现“去年”的日期胶囊")
+        XCTAssertTrue(text(containing: String(lastYear)).waitForExistence(timeout: 5), "没有出现“去年”的日期胶囊")
         tap(tagToken)
         XCTAssertTrue(app.buttons["去掉“标签“散步””"].waitForExistence(timeout: 5), "点了建议没有变成正式筛选")
         XCTAssertEqual(field.value as? String, "去年 散步", "采纳标签后输入的文字不该变")
@@ -28,7 +28,7 @@ final class IntelligenceTests: DiaryUITestCase {
         let chip = hittable(app.buttons.matching(NSPredicate(format: "label == %@", "标签“散步”")), timeout: 10)
         tap(chip, "建议的标签")
         XCTAssertTrue((editorText.value as? String)?.hasSuffix("#散步# ") == true, "点建议没有把标签写到正文末尾")
-        // 胶囊飞进正文后就不在工具栏里了（飞的那个影子不算按钮）。
+        // 采纳后胶囊从工具栏里淡出。
         XCTAssertTrue(app.buttons.matching(NSPredicate(format: "label == %@", "标签“散步”")).firstMatch.waitForNonExistence(timeout: 5),
                       "采纳后建议的胶囊还在")
         saveEditor()

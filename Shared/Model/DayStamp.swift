@@ -72,10 +72,11 @@ nonisolated extension Calendar {
     /// 1 = 周日，2 = 周一。只在主线程改，各处读；写入后要重算按周归并的数据（DiaryStore.weekStartChanged）。
     nonisolated(unsafe) static var diaryFirstWeekday = WeekStart.default.rawValue
 
+    /// 时区跟着系统走（autoupdating）：App 留在后台时坐飞机换了时区，“今天”和写进说明的日期也跟着换。
     private static let base: Calendar = {
         var c = Calendar(identifier: .gregorian)
         c.locale = Locale(identifier: "zh_CN")
-        c.timeZone = .current
+        c.timeZone = .autoupdatingCurrent
         return c
     }()
 

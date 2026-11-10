@@ -59,9 +59,10 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        # 必须是 zh-Hans：源语言（简体中文）的文字编译后不单独成表，找不到时系统回退到这个语言的表；
+        # 写成 en 的话，中文界面里 SwiftUI 的文字会变成英文。代价是系统语言不在支持之列时，系统显示的文字回退到中文。
         DEVELOPMENT_LANGUAGE: zh-Hans
         CODE_SIGN_STYLE: Automatic
   PhotoDiaryWatch:
@@ -81,13 +82,12 @@ targets:
         TARGETED_DEVICE_FAMILY: "4"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Photo Diary
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
         INFOPLIST_KEY_WKApplication: YES
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.kejincai.photodiary
         INFOPLIST_KEY_UISupportedInterfaceOrientations: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        DEVELOPMENT_LANGUAGE: zh-Hans
+        DEVELOPMENT_LANGUAGE: zh-Hans  # 见 PhotoDiary 目标
         CODE_SIGN_STYLE: Automatic
         SKIP_INSTALL: YES
   # 主屏、锁屏小组件和控制中心按钮。数据来自 App 写在 App Group 里的快照，不读照片库。
@@ -118,8 +118,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Photo Diary
-        INFOPLIST_KEY_CFBundleDevelopmentRegion: en
-        DEVELOPMENT_LANGUAGE: zh-Hans
+        DEVELOPMENT_LANGUAGE: zh-Hans  # 见 PhotoDiary 目标
         CODE_SIGN_STYLE: Automatic
         SKIP_INSTALL: YES
   PhotoDiaryTests:

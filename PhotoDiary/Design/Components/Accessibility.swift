@@ -16,12 +16,17 @@ enum Spoken {
         String(localized: "地点：\(name)", bundle: .app, locale: .app)
     }
 
-    /// 用句号连起来；本来就以句末标点结尾的不再加（“发亮。”后面不读成“发亮。。”）。
+    /// 用句号连起来（按界面语言：。或 . ）；本来就以句末标点结尾的不再加（“发亮。”后面不读成“发亮。。”）。
     static func sentences(_ parts: [String]) -> String {
         var out = ""
         for part in parts where !part.isEmpty {
-            if let last = out.last, !"。！？!?…".contains(last) { out += "。" }
-            out += part
+            if out.isEmpty {
+                out = part
+            } else if let last = out.last, "。！？!?….".contains(last) {
+                out += (Locale.app.language.languageCode == .english ? " " : "") + part
+            } else {
+                out = String(localized: "\(out)。\(part)", bundle: .app, locale: .app)
+            }
         }
         return out
     }
@@ -40,7 +45,7 @@ extension DiaryEntry {
     var spokenSummary: String {
         var when = DiaryDates.dayTitle(displayDate)
         if day.year != DayStamp.today.year { when = DiaryDates.fullWithWeekday(displayDate) }
-        var parts = [placeName.map { "\(when)，\($0)" } ?? when]
+        var parts = [placeName.map { String(localized: "\(when)，\($0)", bundle: .app, locale: .app) } ?? when]
         if !title.isEmpty { parts.append(title) }
         if !preview.isEmpty { parts.append(preview) }
         if let tags = Spoken.tags(tags) { parts.append(tags) }

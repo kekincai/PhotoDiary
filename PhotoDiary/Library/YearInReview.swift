@@ -64,7 +64,8 @@ nonisolated struct YearInReview: Hashable, Identifiable, Sendable {
             tags: rank(inYear) { $0.tags },
             places: rank(inYear) { $0.placeName.map { [$0] } ?? [] },
             highlights: highlights.sorted { ($0.sortDate, $0.id) < ($1.sortDate, $1.id) },
-            cover: (highlights.first ?? ranked[0]).id,
+            // 挑出来的第一篇；一篇都挑不出来（全是只有标签、没有正文的说明）时用这一年的第一篇，不能去取空数组的第一个。
+            cover: (highlights.first ?? inYear[0]).id,
             mosaic: mosaic)
     }
 
@@ -96,7 +97,7 @@ nonisolated struct YearInReview: Hashable, Identifiable, Sendable {
     // MARK: 挑日记
 
     /// 写得越多越靠前：正文字数（封顶 400）、后来又追加过的、带标签和地点的加分。
-    static func score(_ entry: DiaryEntry) -> Int {
+    private static func score(_ entry: DiaryEntry) -> Int {
         let text = entry.displaySegments.reduce(0) { $0 + $1.text.count }
         return min(text, 400)
             + 150 * max(entry.displaySegments.count - 1, 0)
@@ -105,7 +106,9 @@ nonisolated struct YearInReview: Hashable, Identifiable, Sendable {
     }
 
     private static func rankedByScore(_ entries: [DiaryEntry]) -> [DiaryEntry] {
-        entries.filter { !$0.title.isEmpty }.sorted { (score($0), $1.id) > (score($1), $0.id) }
+        // 先算好每篇的分数，排序时不再一遍遍重算。
+        let scored = entries.filter { !$0.title.isEmpty }.map { (entry: $0, score: score($0)) }
+        return scored.sorted { ($0.score, $1.entry.id) > ($1.score, $0.entry.id) }.map(\.entry)
             .nonEmpty ?? entries
     }
 

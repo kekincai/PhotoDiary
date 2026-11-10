@@ -12,6 +12,8 @@ final class EditorController {
 
     @ObservationIgnored weak var textView: UITextView?
     @ObservationIgnored var brand: UIColor = .systemBlue
+    /// 上次高亮时正在输入的标签范围；只移动光标、范围没变时不用重新高亮全文。
+    @ObservationIgnored private var highlightedQuery: NSRange?
 
     init(text: String) { self.text = text }
 
@@ -46,7 +48,14 @@ final class EditorController {
 
     func dismissKeyboard() { textView?.resignFirstResponder() }
 
-    func focus() { textView?.becomeFirstResponder() }
+    /// 换成另一段文字（放回草稿）。
+    func restore(_ text: String) {
+        self.text = text
+        guard let tv = textView else { return }
+        tv.text = text
+        tv.selectedRange = NSRange(location: (text as NSString).length, length: 0)
+        textDidChange(in: tv)
+    }
 
     // MARK: 内部
 
@@ -59,7 +68,8 @@ final class EditorController {
 
     fileprivate func selectionDidChange(in tv: UITextView) {
         updateQuery(in: tv)
-        if tv.markedTextRange == nil { highlight(tv) }
+        // 打字时 textDidChange 已经高亮过一遍；这里只在“正在输入的标签”的下划线要挪动时再来。
+        if tv.markedTextRange == nil, queryRange(in: tv) != highlightedQuery { highlight(tv) }
     }
 
     private func updateQuery(in tv: UITextView) {
@@ -110,9 +120,11 @@ final class EditorController {
             let r = NSRange(match.range, in: text)
             storage.addAttributes([.foregroundColor: brand, .font: bold], range: r)
         }
-        if let q = queryRange(in: tv) {
+        let query = queryRange(in: tv)
+        if let q = query {
             storage.addAttributes([.foregroundColor: brand, .underlineStyle: NSUnderlineStyle.single.rawValue], range: q)
         }
+        highlightedQuery = query
         storage.endEditing()
         tv.typingAttributes = baseAttributes
     }
@@ -123,7 +135,6 @@ struct DiaryTextView: UIViewRepresentable {
     let controller: EditorController
     /// 空白时的提示，作为 VoiceOver 的提示读出来。
     var hint: String? = nil
-    var autofocus = true
     @Environment(\.brand) private var brand
 
     func makeUIView(context: Context) -> UITextView {
@@ -143,9 +154,7 @@ struct DiaryTextView: UIViewRepresentable {
         context.coordinator.observeTextSettings(of: tv)
         controller.brand = UIColor(brand)
         controller.highlight(tv)
-        if autofocus {
-            Task { tv.becomeFirstResponder() }
-        }
+        Task { tv.becomeFirstResponder() }
         return tv
     }
 

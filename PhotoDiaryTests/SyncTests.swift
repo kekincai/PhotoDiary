@@ -112,4 +112,19 @@ struct SyncTests {
         #expect(library.fullScans == 2)
         #expect(third.diaries.count == 1)
     }
+
+    /// 有限访问时在系统选择器里多选了照片：回调在后台队列上，选了就全库重读；什么都没选不动。
+    @Test func limitedPickerCallbackOffMainThreadRescans() async {
+        let library = FakeLibrary()
+        library.seed("a", caption: "一", date: date(2026, 10, 1))
+        library.setAuthorization(.limited)
+        let store = await startedStore(library)
+        #expect(library.fullScans == 1)
+        let finished = LimitedLibrary.pickerFinished(store: store)
+        DispatchQueue.global().async { finished([]) }
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(library.fullScans == 1)
+        DispatchQueue.global().async { finished(["b"]) }
+        #expect(await eventually { library.fullScans == 2 })
+    }
 }

@@ -1,102 +1,128 @@
 {
-  "sourceLanguage": "zh-Hans",
-  "strings": {
-    "${applicationName}里的那年今日": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "On this day in ${applicationName}"
+  "sourceLanguage" : "zh-Hans",
+  "strings" : {
+    "${applicationName}里的那年今日" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "On this day in ${applicationName}",
+              "Open On This Day in ${applicationName}"
+            ]
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "${applicationName}の過去のこの日"
+        "ja" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}の過去のこの日",
+              "${applicationName}で過去のこの日を開く"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "${applicationName}里的那年今日",
+              "打开${applicationName}的那年今日"
+            ]
           }
         }
       }
     },
-    "在${applicationName}写日记": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Write in ${applicationName}"
+    "在${applicationName}里搜索日记" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Search ${applicationName}"
+            ]
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "${applicationName}で日記を書く"
+        "ja" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}で日記を検索"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "在${applicationName}里搜索日记"
+            ]
           }
         }
       }
     },
-    "在${applicationName}里搜索日记": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Search ${applicationName}"
+    "打开${applicationName}里今天的日记" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Open today’s entries in ${applicationName}"
+            ]
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "${applicationName}で日記を検索"
+        "ja" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}で今日の日記を開く"
+            ]
+          }
+        },
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "打开${applicationName}里今天的日记"
+            ]
           }
         }
       }
     },
-    "打开${applicationName}的那年今日": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open On This Day in ${applicationName}"
+    "用${applicationName}给最新一张照片写日记" : {
+      "extractionState" : "extracted_with_value",
+      "localizations" : {
+        "en" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "Write about the latest photo in ${applicationName}",
+              "Write in ${applicationName}"
+            ]
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "${applicationName}で過去のこの日を開く"
-          }
-        }
-      }
-    },
-    "打开${applicationName}里今天的日记": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Open today’s entries in ${applicationName}"
+        "ja" : {
+          "stringSet" : {
+            "state" : "translated",
+            "values" : [
+              "${applicationName}で最新の写真について書く",
+              "${applicationName}で日記を書く"
+            ]
           }
         },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "${applicationName}で今日の日記を開く"
-          }
-        }
-      }
-    },
-    "用${applicationName}给最新一张照片写日记": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Write about the latest photo in ${applicationName}"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "${applicationName}で最新の写真について書く"
+        "zh-Hans" : {
+          "stringSet" : {
+            "state" : "new",
+            "values" : [
+              "用${applicationName}给最新一张照片写日记",
+              "在${applicationName}写日记"
+            ]
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }

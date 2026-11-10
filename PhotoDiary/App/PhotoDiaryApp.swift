@@ -1,4 +1,5 @@
 import SwiftUI
+import Combine
 import Photos
 import UIKit
 import OSLog
@@ -18,16 +19,30 @@ struct PhotoDiaryApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        // 界面测试每次都从“跟随系统”开始（系统语言由测试指定），上一个测试切过的语言不留下来。
-        if Self.isUITesting { UserDefaults.standard.removeObject(forKey: AppLanguage.storageKey) }
-        AppLanguage.apply(AppLanguage.stored)
-        // 读索引之前就定下一周从哪天开始，按周归并的数据才对。
-        Calendar.diaryFirstWeekday = WeekStart.stored.rawValue
+        // 界面测试每次都从默认设置开始（系统语言由测试指定）：上一个测试改过、中途失败没改回来的设置不留下来。
+        if Self.isUITesting {
+            for key in [AppLanguage.storageKey, WeekStart.storageKey, Intelligence.storageKey] {
+                UserDefaults.standard.removeObject(forKey: key)
+            }
+        }
+        if Self.isHostingUnitTests {
+            // 单元测试不看模拟器的系统语言和设置：一律简体中文、一周从周一开始。
+            AppLanguage.apply(.chinese, persist: false)
+            Calendar.diaryFirstWeekday = WeekStart.default.rawValue
+        } else {
+            AppLanguage.apply(AppLanguage.stored)
+            // 读索引之前就定下一周从哪天开始，按周归并的数据才对。
+            Calendar.diaryFirstWeekday = WeekStart.stored.rawValue
+        }
         // 点通知启动 App 时，系统在 didFinishLaunching 返回前就要找到通知的代理。
         ReminderScheduler.shared.activate()
         let store = DiaryStore()
-        // 第一帧还没画就开始读索引。
-        if !Self.isHostingUnitTests { store.prepare() }
+        if !Self.isHostingUnitTests {
+            // 第一帧还没画就开始读索引。
+            store.prepare()
+            // 表在后台唤醒 App 时不连场景，界面的 .task 不会跑：这里就要设好 WCSession 的代理，表上的口述才收得到。
+            WatchBridge.shared.start(store: store)
+        }
         if Self.isUITesting { UIView.setAnimationsEnabled(false) }
         _store = State(initialValue: store)
     }
@@ -64,6 +79,12 @@ struct PhotoDiaryApp: App {
                     Self.limitMacWindowSize()
                 }
                 .onChange(of: appearance) { appearance.apply() }
+                .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange).receive(on: RunLoop.main)) { _ in
+                    DateFormatter.resetLocalized()
+                    store.timeZoneChanged()
+                    WidgetBridge.shared.scheduleUpdate()
+                    WatchBridge.shared.scheduleSync()
+                }
                 .onChange(of: weekStart) {
                     Calendar.diaryFirstWeekday = weekStart.rawValue
                     store.weekStartChanged()
@@ -72,7 +93,6 @@ struct PhotoDiaryApp: App {
                     // 作为单元测试宿主启动时不读照片库：测试用自己的假照片库，不能改到模拟器里的照片。
                     guard !Self.isHostingUnitTests else { return }
                     DiaryFonts.shared.prepare()
-                    WatchBridge.shared.start(store: store)
                     WidgetBridge.shared.start(store: store)
                     await store.start()
                     // 每次打开都重排：往后几天的通用提醒换成按今天实际情况算的。
@@ -99,7 +119,7 @@ struct PhotoDiaryApp: App {
                     DeepLinkInbox.shared.open(link)
                 }
                 .onAppear(perform: openTestingLink)
-                // 照片库能读了才打开：还没授权、索引还没读出来时先留着。
+                // 照片库能读了才打开：还没授权时先留着。
                 .onChange(of: DeepLinkInbox.shared.pending) { openPendingLink() }
                 .onChange(of: store.canRead, initial: true) { openPendingLink() }
                 // 日记一变就把快照发给 Apple Watch（防抖）。
@@ -119,12 +139,17 @@ struct PhotoDiaryApp: App {
 
     private func openPendingLink() {
         guard store.canRead, !Self.isHostingUnitTests, let link = DeepLinkInbox.shared.take() else { return }
-        var latest: Router.LatestPhoto?
-        if link == .writeLatest, let id = AssetImages.recentAssets(limit: 1).first?.id {
-            latest = Router.LatestPhoto(id: id, hasDiary: store.entry(id) != nil || store.currentCaption(for: id) != nil)
-        }
         Log.app.info("打开链接 \(link.url.absoluteString, privacy: .public)")
-        router.open(link, latestPhoto: latest)
+        guard link == .writeLatest else { router.open(link); return }
+        // 最新一张照片在后台查，不在主线程上碰照片库。
+        Task {
+            var latest: Router.LatestPhoto?
+            if let id = await Task.detached(operation: { AssetImages.recentAssets(limit: 1).first?.id }).value {
+                let caption = await store.currentCaption(for: id)
+                latest = Router.LatestPhoto(id: id, hasDiary: store.entry(id) != nil || LibraryScanner.isDiaryCaption(caption))
+            }
+            router.open(link, latestPhoto: latest)
+        }
     }
 
     /// 界面测试用 -openURL photodiary://… 启动，当作系统送来的链接（XCUITest 点不了小组件）。
@@ -160,8 +185,8 @@ struct PhotoDiaryApp: App {
         guard let response = reminders.pending, store.hasLoaded else { return }
         reminders.pending = nil
         Task {
-            // 正在写的编辑器不顶掉，免得丢字。
-            guard router.editor == nil,
+            // 正在写的编辑器不顶掉，免得丢字（表单里的，和“从照片添加”里推入的）。
+            guard router.editor == nil, !router.editorIsDirty,
                   let request = await reminders.editorRequest(for: response, store: store) else { return }
             // 别的面板开着时先收起，编辑器才弹得出来。
             if router.showSettings || router.showAddFromPhotos {

@@ -34,16 +34,23 @@ struct PressStyle: ButtonStyle {
 
 extension ButtonStyle where Self == PressStyle {
     static var press: PressStyle { PressStyle() }
-    static func row(radius: CGFloat = 0) -> PressStyle {
-        PressStyle(scale: 1, highlight: Color(.systemGray6), cornerRadius: radius)
-    }
+    static var row: PressStyle { PressStyle(scale: 1, highlight: Color(.systemGray6)) }
 }
 
 extension View {
     /// 标成 zoom 转场的来源（没有命名空间时什么都不做）。圆角是来源本身的轮廓（胶囊、圆形按钮传高度的一半），转场时从这个形状长出来。
-    @ViewBuilder func zoomSource(_ id: String, in namespace: Namespace.ID?, cornerRadius: CGFloat) -> some View {
+    @ViewBuilder func zoomSource(_ id: String, in namespace: Namespace.ID?, cornerRadius: CGFloat = Metrics.Radius.tile) -> some View {
         if let namespace {
-            matchedTransitionSource(id: id, in: namespace) { $0.clipShape(.rect(cornerRadius: cornerRadius)) }
+            matchedTransitionSource(id: id, in: namespace) { $0.clipShape(.rect(cornerRadius: cornerRadius, style: .continuous)) }
+        } else {
+            self
+        }
+    }
+
+    /// zoom 转场的目的地：有来源（id 和命名空间都在）时从来源放大出来，没有就是普通的推入、表单上滑。
+    @ViewBuilder func zoomDestination(_ id: String?, in namespace: Namespace.ID?) -> some View {
+        if let id, let namespace {
+            navigationTransition(.zoom(sourceID: id, in: namespace))
         } else {
             self
         }

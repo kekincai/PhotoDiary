@@ -2,7 +2,7 @@ import SwiftUI
 
 /// 底部浮动控件后面的渐隐，让下面的内容退后。
 struct BottomFade: View {
-    var height: CGFloat = 190
+    let height: CGFloat
 
     var body: some View {
         let bg = Color(.systemBackground)

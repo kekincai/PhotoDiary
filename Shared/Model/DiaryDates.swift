@@ -11,6 +11,7 @@ extension DateFormatter {
         let f = DateFormatter()
         f.locale = DiaryDates.locale
         f.calendar = .diary
+        f.timeZone = .autoupdatingCurrent
         f.setLocalizedDateFormatFromTemplate(template)
         localizedCache[template] = f
         return f
@@ -43,6 +44,7 @@ enum DiaryDates {
         let f = DateIntervalFormatter()
         f.locale = locale
         f.calendar = .diary
+        f.timeZone = .autoupdatingCurrent
         f.dateTemplate = thisYear ? "MMMd" : "yMMMd"
         return f.string(from: from.date, to: to.date)
     }
@@ -53,6 +55,21 @@ enum DiaryDates {
     static func yearMonth(_ date: Date) -> String { format("yMMMM", date) }
     /// 只写数字：2026
     static func year(_ date: Date) -> String { String(Calendar.diary.component(.year, from: date)) }
+    /// 拍摄时间，读给 VoiceOver：10月30日 19:20
+    static func dayAndTime(_ date: Date) -> String { format("MMMdjmm", date) }
+    /// 多久以前：3 分钟前 / 3 minutes ago（按界面语言，不跟系统语言）。
+    static func relative(_ date: Date, to now: Date = .now) -> String {
+        let f = RelativeDateTimeFormatter()
+        f.locale = locale
+        f.calendar = .diary
+        f.unitsStyle = .full
+        f.dateTimeStyle = .named
+        return f.localizedString(for: date, relativeTo: now)
+    }
+    /// 一年十二个月的简写：J F M… / 1月 2月…
+    static var veryShortMonthSymbols: [String] {
+        DateFormatter.localized("MMMMM").veryShortStandaloneMonthSymbols ?? []
+    }
 
     /// 日历、本周写作的星期行，从设置的一周起始日开始：一 二 … 日 / 月 火 … / M T …
     static var weekdaySymbols: [String] {

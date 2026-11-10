@@ -2,7 +2,8 @@ import XCTest
 
 /// 界面测试的公共部分：用中文界面启动、处理系统弹窗、确认 App 没有闪退。
 ///
-/// 照片来自 `Tools/TestPhotos/seed.sh`：三张带日记（#散步#、#旅行# #京都#、#咖啡#），三张空白。
+/// 照片来自 `Tools/TestPhotos/seed.sh`，日期按跑测试的这天算：三张带日记（今天的 #散步#、12 天前的 #旅行# #京都#、
+/// 一年前今天的 #咖啡#），三张空白（昨天两张、5 天前一张）。`Tools/test.sh` 每次都抹掉模拟器重新导入。
 /// 测试会改照片说明，所以每次写进去的字都带一个随机记号，断言只认这个记号。
 class DiaryUITestCase: XCTestCase {
     nonisolated(unsafe) var app: XCUIApplication!
@@ -73,6 +74,17 @@ class DiaryUITestCase: XCTestCase {
     }
 
     @MainActor var editorText: XCUIElement { app.textViews.firstMatch }
+
+    /// 去年（“去年今天的咖啡”那一年）。
+    var lastYear: Int { Calendar.current.component(.year, from: .now) - 1 }
+
+    /// 和 App 里 DiaryDates.short 一样的写法：11月8日。
+    func shortDate(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "zh_CN")
+        f.setLocalizedDateFormatFromTemplate("MMMd")
+        return f.string(from: date)
+    }
 
     // MARK: 操作
 

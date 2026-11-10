@@ -20,21 +20,38 @@ struct WatchHomeView: View {
             .navigationDestination(for: WatchPhoto.self) { photo in
                 WatchComposeView(assetID: photo.id, mode: .new, day: photo.day)
             }
+            .navigationDestination(for: WatchWrite.self) { write in
+                FailedWriteView(write: write)
+            }
         }
     }
 
     private var content: some View {
-        List {
-            if let memory = store.onThisDay.first {
+        let memories = store.onThisDay()
+        let week = store.week()
+        return List {
+            if !store.failed.isEmpty {
+                Section("没写进照片说明") {
+                    ForEach(store.failed) { write in
+                        NavigationLink(value: write) {
+                            Text(write.text)
+                                .font(.system(.footnote, design: .serif))
+                                .lineLimit(2)
+                        }
+                    }
+                }
+            }
+
+            if let memory = memories.first {
                 Section {
-                    MemoryCard(entry: memory, count: store.onThisDay.count)
+                    MemoryCard(entry: memory)
                 }
                 .listRowInsets(EdgeInsets())
                 .listRowBackground(Color.clear)
             }
 
             Section {
-                WeekStrip(week: store.week, written: store.writtenThisWeek)
+                WeekStrip(week: week.days, written: week.written)
             }
 
             if !store.unwritten.isEmpty {
@@ -80,7 +97,6 @@ struct WatchHomeView: View {
 
 private struct MemoryCard: View {
     let entry: DiaryEntry
-    let count: Int
     @Environment(WatchStore.self) private var store
 
     var body: some View {
@@ -231,5 +247,29 @@ private struct EntryRowWatch: View {
 
     private var subtitle: String {
         [DiaryDates.short(entry.day), entry.placeName].compactMap { $0 }.joined(separator: " · ")
+    }
+}
+
+// MARK: 没写进去的一段
+
+/// iPhone 写不进去的一段（照片删了、改不了说明）：原文留在这里，看过再删。
+private struct FailedWriteView: View {
+    let write: WatchWrite
+    @Environment(WatchStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(write.text)
+                    .font(.system(.body, design: .serif))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button("删掉这段", role: .destructive) {
+                    store.dismissFailed(write.id)
+                    dismiss()
+                }
+            }
+        }
+        .navigationTitle("没写进去")
     }
 }

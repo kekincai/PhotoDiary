@@ -14,8 +14,8 @@ struct PhotoPaper: View {
     static let inset: CGFloat = 22
     static let radius: CGFloat = 6
 
-    /// 桌面：比纸深一层的暖灰；深色模式是黑。
-    static let desk = Color(UIColor { $0.userInterfaceStyle == .dark
+    /// 桌面：比纸深一层的暖灰；深色模式是黑。SwiftUI 可能在渲染线程上解析动态颜色：闭包不能带主线程隔离。
+    static let desk = Color(UIColor { @Sendable trait in trait.userInterfaceStyle == .dark
         ? UIColor(white: 0, alpha: 1)
         : UIColor(red: 0.875, green: 0.865, blue: 0.845, alpha: 1) })
 
@@ -40,7 +40,8 @@ struct PhotoPaper: View {
 /// 相纸背面一排排斜印的淡淡厂标：这里是 App 自己的拍立得图形，隔行错开，很淡。
 private struct PaperWatermark: View {
     var body: some View {
-        Canvas(opaque: false, rendersAsynchronously: true) { context, size in
+        // 异步渲染时这个闭包在后台线程上跑：不能带主线程隔离。
+        Canvas(opaque: false, rendersAsynchronously: true) { @Sendable context, size in
             let cell: CGFloat = 76
             let width: CGFloat = 12
             let height = width * MarkGeometry.aspect

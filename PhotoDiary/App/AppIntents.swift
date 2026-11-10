@@ -3,7 +3,7 @@ import AppIntents
 // MARK: 快捷指令、Siri、Spotlight
 //
 // 每一条都只是把 App 打开到某个地方（交给 DeepLinkInbox，再由 Router 打开），不在后台读写照片库。
-// 短语在 AppShortcuts.xcstrings 里，中英日各一套。
+// 短语在 AppShortcuts.xcstrings 里：每个快捷指令一条（键是第一句），中英日各一组短语。
 
 struct OpenTodayIntent: AppIntent {
     static let title: LocalizedStringResource = "打开今天的日记"

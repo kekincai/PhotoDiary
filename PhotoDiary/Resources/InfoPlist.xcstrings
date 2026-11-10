@@ -22,24 +22,6 @@
             "state" : "translated",
             "value" : "照片日记"
           }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "照片日記"
-          }
-        }
-      }
-    },
-    "CFBundleName" : {
-      "comment" : "Bundle name",
-      "extractionState" : "extracted_with_value",
-      "localizations" : {
-        "zh-Hans" : {
-          "stringUnit" : {
-            "state" : "new",
-            "value" : "PhotoDiary"
-          }
         }
       }
     },
@@ -63,12 +45,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "日记写在照片的“说明”里。照片日记需要读取和修改照片说明，不会复制或上传你的照片。"
-          }
-        },
-        "zh-Hant" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "日記寫在照片的「說明」裡。照片日記需要讀取和修改照片說明，不會複製或上傳你的照片。"
           }
         }
       }

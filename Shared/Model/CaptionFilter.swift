@@ -26,6 +26,4 @@ nonisolated enum CaptionFilter {
             return set.contains(normalized(caption))
         }
     }
-
-    static func hides(_ caption: String?) -> Bool { matcher()(caption) }
 }

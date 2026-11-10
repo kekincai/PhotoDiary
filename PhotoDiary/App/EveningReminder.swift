@@ -6,7 +6,8 @@ import OSLog
 // MARK: 晚间提醒：今天拍了照片、还没写日记的晚上，提醒写一句。
 //
 // 本地通知到点时没法再判断“今天写没写”，所以每次进后台、日记变了、改了设置都重排一次：
-// 今天这条（带张数）只在今天该提醒、时间还没过时排；往后几天排通用的一条，下次打开 App 时整组换掉。
+// 今天已经拍了、还没写：排带张数的一条；今天还没拍（早上打开过 App，之后拍照不会唤醒 App 重排）：排通用的一条；
+// 今天写过了就不排。往后几天排通用的一条，下次打开 App 时整组换掉。“拍了”包括视频。
 
 /// 不碰界面和照片库的部分：常量、排期、挑照片。都是纯函数，单元测试直接调。
 nonisolated enum Reminder {
@@ -33,7 +34,7 @@ nonisolated enum Reminder {
         var photoCount: Int?
     }
 
-    /// 排哪几条提醒。今天：拍了照片、还没写、提醒时间还没过；往后每天一条通用的。
+    /// 排哪几条提醒。今天：还没写、提醒时间还没过（拍了照片就带张数，还没拍就是通用的）；往后每天一条通用的。
     static func plan(now: Date, minutes: Int, todayPhotoCount: Int, wroteToday: Bool,
                      followingDays: Int = followingDays, calendar: Calendar = .diary) -> [Item] {
         let start = calendar.startOfDay(for: now)
@@ -43,8 +44,8 @@ nonisolated enum Reminder {
                   let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: day),
                   fire > now else { continue }
             if offset == 0 {
-                guard todayPhotoCount > 0, !wroteToday else { continue }
-                items.append(Item(dayOffset: 0, date: fire, photoCount: todayPhotoCount))
+                guard !wroteToday else { continue }
+                items.append(Item(dayOffset: 0, date: fire, photoCount: todayPhotoCount > 0 ? todayPhotoCount : nil))
             } else {
                 items.append(Item(dayOffset: offset, date: fire, photoCount: nil))
             }
@@ -71,15 +72,16 @@ nonisolated enum Reminder {
         diaries.contains { $0.writingDays.contains(day) }
     }
 
-    /// 这一天拍的照片（不读说明）。没有照片权限时是空的。
+    /// 这一天拍的照片和视频（不读说明）。没有照片权限时是空的。
     static func photos(on day: DayStamp) -> [Photo] {
         let calendar = Calendar.diary
         let start = calendar.startOfDay(for: day.date)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else { return [] }
         let options = PHFetchOptions()
-        options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@", start as NSDate, end as NSDate)
+        options.predicate = NSPredicate(format: "creationDate >= %@ AND creationDate < %@ AND (mediaType == %d OR mediaType == %d)",
+                                        start as NSDate, end as NSDate, PHAssetMediaType.image.rawValue, PHAssetMediaType.video.rawValue)
         options.includeAssetSourceTypes = LibraryScanner.sourceTypes
-        let result = PHAsset.fetchAssets(with: .image, options: options)
+        let result = PHAsset.fetchAssets(with: options)
         var out: [Photo] = []
         result.enumerateObjects { asset, _, _ in
             out.append(Photo(id: asset.localIdentifier, date: asset.creationDate ?? start, isFavorite: asset.isFavorite))
@@ -88,7 +90,9 @@ nonisolated enum Reminder {
     }
 
     static func exists(_ id: String) -> Bool {
-        PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).count > 0
+        let options = PHFetchOptions()
+        options.includeAssetSourceTypes = LibraryScanner.sourceTypes
+        return PHAsset.fetchAssets(withLocalIdentifiers: [id], options: options).count > 0
     }
 
     /// 点开或回复了通知：交给界面打开编辑器。
@@ -218,20 +222,30 @@ final class ReminderScheduler {
 }
 
 /// 系统在自己的队列上调这些方法：必须 nonisolated，拿到的值再交给主线程（见 CLAUDE.md）。
+/// 用带 completionHandler 的版本：async 版本由系统在后台线程上调完成回调，旧系统上会撞主线程断言。
+/// 这里在主线程上把值交出去之后再调完成回调。
 nonisolated final class ReminderNotificationDelegate: NSObject, UNUserNotificationCenterDelegate, Sendable {
     /// App 开着的时候到点也照样显示。
-    func userNotificationCenter(_ center: UNUserNotificationCenter,
-                                willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
-        [.banner, .list, .sound]
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list, .sound])
     }
 
-    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                withCompletionHandler completionHandler: @escaping () -> Void) {
         let content = response.notification.request.content
         guard content.categoryIdentifier == Reminder.category,
-              response.actionIdentifier != UNNotificationDismissActionIdentifier else { return }
+              response.actionIdentifier != UNNotificationDismissActionIdentifier else {
+            completionHandler()
+            return
+        }
         let opened = Reminder.Response(assetID: content.userInfo[Reminder.assetKey] as? String,
                                        day: DayStamp(response.notification.date),
                                        reply: (response as? UNTextInputNotificationResponse)?.userText)
-        await MainActor.run { ReminderScheduler.shared.pending = opened }
+        nonisolated(unsafe) let done = completionHandler
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated { ReminderScheduler.shared.pending = opened }
+            done()
+        }
     }
 }

@@ -2,17 +2,22 @@ import Foundation
 import CoreLocation
 @testable import PhotoDiary
 
-/// 按坐标返回预设地名，并记下查询次数。
+/// 按坐标返回预设地名，并记下查询次数和用的语言。
 final class FakePlaceNamer: PlaceNaming {
     var results: [String: (name: String?, timeZone: String?)] = [:]
     private(set) var lookups = 0
+    private(set) var languages: [String] = []
+    /// 每次查询前等这么久（真实的地理编码要几百毫秒），用来在查到一半时插入操作。
+    var delay: Duration = .zero
 
     func set(_ name: String?, timeZone: String? = nil, latitude: Double, longitude: Double) {
         results[Self.key(latitude, longitude)] = (name, timeZone)
     }
 
-    func place(for coordinate: CLLocationCoordinate2D) async -> (name: String?, timeZone: String?)? {
+    func place(for coordinate: CLLocationCoordinate2D, language: String) async -> (name: String?, timeZone: String?)? {
         lookups += 1
+        languages.append(language)
+        if delay > .zero { try? await Task.sleep(for: delay) }
         return results[Self.key(coordinate.latitude, coordinate.longitude)]
     }
 
@@ -26,9 +31,9 @@ nonisolated func date(_ year: Int, _ month: Int, _ day: Int) -> Date {
     Calendar.diary.date(from: DateComponents(year: year, month: month, day: day, hour: 12))!
 }
 
-/// 每次一个新的空目录。
+/// 每次一个新的空目录。名字里带空格，和真实的 Application Support 一样（路径的百分号编码问题只在这时出现）。
 nonisolated func temporaryDirectory() -> URL {
-    URL.temporaryDirectory.appending(path: "PhotoDiaryTests-\(UUID().uuidString)")
+    URL.temporaryDirectory.appending(path: "PhotoDiary Tests \(UUID().uuidString)")
 }
 
 /// 每次一个独立的 UserDefaults，测试并行时互不干扰。

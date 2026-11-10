@@ -13,7 +13,7 @@ struct DevelopingPhoto: View {
     let id: String
     var active = true
     var pointSize: CGSize
-    var duration: Double = 2.6
+    private static let duration: Double = 2.6
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.displayScale) private var scale
@@ -30,7 +30,8 @@ struct DevelopingPhoto: View {
             }
             .clipped()
             .task(id: id) {
-                let px = AssetImages.pixelSize(points: pointSize, scale: scale)
+                // 一年回顾里是整屏的卡片：放宽封顶，不然放大后发糊。
+                let px = AssetImages.pixelSize(points: pointSize, scale: scale, cap: AssetImages.largePixels)
                 for await img in AssetImages.shared.images(for: id, pixelSize: px, contentMode: .aspectFill, allowNetwork: true) {
                     image = img
                     develop()
@@ -50,7 +51,7 @@ struct DevelopingPhoto: View {
         if reduceMotion {
             developed = 1
         } else {
-            withAnimation(.timingCurve(0.3, 0, 0.25, 1, duration: duration)) { developed = 1 }
+            withAnimation(.timingCurve(0.3, 0, 0.25, 1, duration: Self.duration)) { developed = 1 }
         }
     }
 }

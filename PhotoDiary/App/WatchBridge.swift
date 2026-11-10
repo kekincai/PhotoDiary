@@ -7,7 +7,8 @@ import OSLog
 ///
 /// - 日记一变就（防抖后）把快照放进 applicationContext：最近的日记、那年今日、本周写作、还没写的照片。
 /// - 表按需来要缩略图，这里现做现回（sendMessageData 的回复）。
-/// - 表上口述的感想发回来，这里写进照片说明；写不进去（没权限、系统拒绝）就留在队列里，下次回到前台再试。
+/// - 表上口述的感想发回来，这里写进照片说明；暂时写不进去（没权限、系统拒绝）就留在队列里，下次回到前台再试；
+///   永远写不进去的（照片删了、改不了说明）移出队列，告诉表“没写进去”，字留在表上。
 /// - 所有 WCSession 回调都在后台队列，先把数据变成 Sendable 的值再回到主线程。
 @Observable
 final class WatchBridge: NSObject {
@@ -19,7 +20,6 @@ final class WatchBridge: NSObject {
 
     private(set) var status: Status = .unsupported
     private(set) var lastSent: Date?
-    private(set) var lastWriteReceived: Date?
     private(set) var isSending = false
     /// 从表上收到、还没写进照片说明的。
     private(set) var pendingWrites: [WatchWrite] = [] {
@@ -96,50 +96,82 @@ final class WatchBridge: NSObject {
     }
 
     private func sync() async {
-        // 没有照片权限时不碰照片库：取照片会触发系统的授权弹窗。
-        guard status == .ready, let store, store.canRead, !isSending else { return }
+        guard status == .ready, let store, !isSending else { return }
+        // 索引还没读出来时不发：发出去的是空快照，表会删光缩略图再一张张重要。
+        guard store.hasLoaded || !store.canRead else { return }
         isSending = true
         defer { isSending = false }
-        var snapshot = await buildSnapshot(store: store)
+        // 没有照片权限时发一份空快照（表上不留旧的日记），也不碰照片库：取照片会触发系统的授权弹窗。
+        var snapshot = store.canRead ? await buildSnapshot(store: store) : WatchSnapshot(generated: .now, today: .today)
         if let last = lastPayload {
             snapshot.generated = last.generated
             if snapshot == last { return }
         }
         snapshot.generated = .now
         do {
-            let data = try JSONEncoder().encode(snapshot)
+            // 去重按裁剪前的内容比：裁剪过的和下次新算的永远不一样，会每次都重发。
+            var sending = snapshot
+            let data = try Self.encodeWithinLimit(&sending)
             try WCSession.default.updateApplicationContext([WatchMessage.snapshotKey: data])
             lastPayload = snapshot
             lastSent = snapshot.generated
-            Log.watch.info("发送快照：\(snapshot.entries.count) 篇，\(data.count / 1024) KB")
+            Log.watch.info("发送快照：\(sending.entries.count) 篇，\(data.count / 1024) KB")
         } catch {
             Log.watch.error("发送快照失败：\(error, privacy: .public)")
         }
     }
 
+    /// applicationContext 有大小上限（约 64 KB 以内最稳）：超了就从旧的日记开始少带几篇，那年今日最多带 maxOnThisDay 篇。
+    static func encodeWithinLimit(_ snapshot: inout WatchSnapshot, limit: Int = WatchSnapshot.maxBytes) throws -> Data {
+        var data = try JSONEncoder().encode(snapshot)
+        while data.count > limit, !snapshot.entries.isEmpty {
+            let keep = Set(snapshot.onThisDay)
+            // 先丢不是今天那年今日的最旧一篇（往后几天的也算）；都是今天的那年今日时丢最后一篇。
+            let index = snapshot.entries.lastIndex(where: { !keep.contains($0.id) }) ?? snapshot.entries.count - 1
+            let removed = snapshot.entries.remove(at: index).id
+            snapshot.onThisDay.removeAll { $0 == removed }
+            for i in snapshot.ahead.indices { snapshot.ahead[i].ids.removeAll { $0 == removed } }
+            snapshot.ahead.removeAll { $0.ids.isEmpty }
+            data = try JSONEncoder().encode(snapshot)
+        }
+        return data
+    }
+
     private func buildSnapshot(store: DiaryStore) async -> WatchSnapshot {
+        let today = DayStamp.today
         let recent = Array(store.diaries.prefix(WatchSnapshot.maxEntries))
+        let memories = Array(store.onThisDay.prefix(WatchSnapshot.maxOnThisDay))
+        // 往后几天的那年今日：表上过了零点、iPhone 没来得及发新快照时用。
+        let ahead: [(day: DayStamp, entries: [DiaryEntry])] = (1...WatchSnapshot.daysAhead).compactMap { offset in
+            let day = DayStamp(Calendar.diary.date(byAdding: .day, value: offset, to: today.date) ?? today.date)
+            let picked = store.diaries.filter { $0.day.month == day.month && $0.day.day == day.day && $0.day.year < day.year }
+                .prefix(WatchSnapshot.maxOnThisDay)
+            return picked.isEmpty ? nil : (day, Array(picked))
+        }
         // 那年今日不在最近 40 篇里的也带上。
-        let known = Set(recent.map(\.id))
-        let picked = recent + store.onThisDay.filter { !known.contains($0.id) }
+        var known = Set(recent.map(\.id))
+        var picked = recent
+        for entry in memories + ahead.flatMap(\.entries) where known.insert(entry.id).inserted {
+            picked.append(entry)
+        }
         let entries = picked.map {
             WatchEntry(id: $0.id, caption: $0.caption, day: $0.day, placeName: $0.placeName, mediaKind: $0.mediaKind)
         }
-        let unwritten = await Task.detached { AssetImages.recentAssets(limit: 40) }.value
+        // 改不了说明的照片（共享相簿里别人的）不列：在表上口述了也写不进去。
+        let unwritten = await Task.detached { AssetImages.recentAssets(limit: 40, editableOnly: true) }.value
             .filter { store.entry($0.id) == nil }
             .prefix(WatchSnapshot.maxUnwritten)
             .map { WatchPhoto(id: $0.id, day: $0.date.map { DayStamp($0) }) }
 
         return WatchSnapshot(
             generated: .now,
-            today: .today,
+            today: today,
             entries: entries,
-            onThisDay: store.onThisDay.map(\.id),
+            onThisDay: memories.map(\.id),
+            ahead: ahead.map { WatchMemories(day: $0.day, ids: $0.entries.map(\.id)) },
             week: store.weekWriting.map { WatchWeekDay(day: $0.day, wrote: $0.wrote) },
             writtenThisWeek: store.writtenThisWeek,
-            writtenThisMonth: store.writtenThisMonth,
             unwritten: Array(unwritten),
-            tags: store.allTags,
             firstWeekday: Calendar.diaryFirstWeekday)
     }
 
@@ -177,37 +209,53 @@ final class WatchBridge: NSObject {
     private func enqueue(_ write: WatchWrite) {
         if written.contains(write.id) {
             // 已经写过：只再确认一次，让表把它移出待发列表。
-            if WCSession.default.isReachable {
-                WCSession.default.sendMessageData(WatchMessage.wrote(write.id).data, replyHandler: nil)
-            }
+            tellWatch(.wrote(write.id))
             return
         }
         guard !pendingWrites.contains(where: { $0.id == write.id }) else { return }
         pendingWrites.append(write)
-        lastWriteReceived = .now
         Log.watch.info("收到表上的一段（\(write.mode.rawValue, privacy: .public)）")
         drainQueue()
     }
 
+    /// 按顺序写队列里的段落。写的时候新到的也接着写（每次从队列里重新取）；
+    /// 一段暂时写不进去就跳过、留着下次再试，不挡住后面的；永远写不进去的移出队列并告诉表。
     private func drainQueue() {
         guard let store, !draining, !pendingWrites.isEmpty, store.canRead else { return }
         draining = true
         Task {
             defer { draining = false }
-            for write in pendingWrites {
+            var retryLater = Set<UUID>()
+            while let write = pendingWrites.first(where: { !retryLater.contains($0.id) }) {
                 do {
                     try await store.save(text: write.text, mode: write.mode == .new ? .new : .append, for: write.assetID)
                     pendingWrites.removeAll { $0.id == write.id }
                     written = Array((written + [write.id]).suffix(200))
-                    if WCSession.default.isReachable {
-                        WCSession.default.sendMessageData(WatchMessage.wrote(write.id).data, replyHandler: nil)
-                    }
+                    tellWatch(.wrote(write.id))
+                } catch let error as LibraryScanner.WriteError {
+                    Log.watch.error("表上的一段写不进去，退回表上：\(error, privacy: .public)")
+                    pendingWrites.removeAll { $0.id == write.id }
+                    tellWatch(.failed(write.id))
                 } catch {
-                    Log.watch.error("表上的一段写入失败，留在队列里：\(error, privacy: .public)")
-                    break
+                    Log.watch.error("表上的一段暂时写不进去，留在队列里：\(error, privacy: .public)")
+                    retryLater.insert(write.id)
                 }
             }
             scheduleSync(after: .seconds(1))
+        }
+    }
+
+    /// 回执：表在旁边就直接送到，不在就排进 userInfo 队列，表下次连上时收到（不然表上那段一直停在“已发到 iPhone”）。
+    private func tellWatch(_ message: WatchMessage) {
+        guard status == .ready else { return }
+        let session = WCSession.default
+        if session.isReachable {
+            // 失败回调在 WCSession 的后台队列上：必须是 @Sendable，不能带主线程隔离（否则运行时直接终止）。
+            session.sendMessageData(message.data, replyHandler: nil) { @Sendable _ in
+                WCSession.default.transferUserInfo(message.userInfo)
+            }
+        } else {
+            session.transferUserInfo(message.userInfo)
         }
     }
 
@@ -243,7 +291,7 @@ final class WatchBridge: NSObject {
         case .write(let write):
             enqueue(write)
             return .ok
-        case .images, .wrote, .ok:
+        case .images, .wrote, .failed, .ok:
             return .ok
         }
     }

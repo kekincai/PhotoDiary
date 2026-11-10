@@ -5,6 +5,7 @@ set -euo pipefail
 here=${0:A:h}
 device=${1:-booted}
 work=$(mktemp -d)
+trap 'rm -rf $work' EXIT
 mkdir -p $work/raw $work/tagged
 
 ids=(

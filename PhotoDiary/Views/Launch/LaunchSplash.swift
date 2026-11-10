@@ -167,7 +167,7 @@ struct LaunchSplash: View {
     @Previewable @State var run = 0
     ZStack {
         Color(.systemBackground).ignoresSafeArea()
-        Button("重播") { run += 1 }
+        Button { run += 1 } label: { Text(verbatim: "重播") }
         LaunchSplash(ready: true) {}
             .id(run)
     }

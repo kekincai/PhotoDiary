@@ -38,6 +38,12 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
         var incrementalWaiters: [CheckedContinuation<Void, Never>] = []
         /// 本 App 写入后像真实照片库一样通知观察者。
         var notifyOwnWrites = false
+        /// 改不了说明的照片（共享相簿里别人的照片）。
+        var locked: Set<String> = []
+        /// 写这些照片时失败（例如系统暂时不让改），用来测“留着下次再试”。
+        var failing: Set<String> = []
+        /// 每次写入前等这么久（真实照片库写入要几十到几百毫秒），用来在写入中途插入操作。
+        var writeDelay: Duration = .zero
     }
 
     let state = Mutex(State())
@@ -89,7 +95,6 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
         handler?()
     }
 
-    /// 让手里所有的 token 失效（例如系统清理了变更历史）。
     /// 让之后的全量读取停在第一批之后，用来在读取中途插入操作。
     func holdScans() { state.withLock { $0.holdScans = true } }
 
@@ -128,6 +133,13 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
 
     func notifyOwnWrites(_ on: Bool) { state.withLock { $0.notifyOwnWrites = on } }
 
+    func lock(_ id: String) { state.withLock { _ = $0.locked.insert(id) } }
+
+    func failWrites(to ids: Set<String>) { state.withLock { $0.failing = ids } }
+
+    func delayWrites(_ delay: Duration) { state.withLock { $0.writeDelay = delay } }
+
+    /// 让手里所有的 token 失效（例如系统清理了变更历史）。
     func expireTokens() {
         state.withLock { $0.oldestValidToken = $0.token + 1 }
     }
@@ -218,10 +230,18 @@ nonisolated final class FakeLibrary: PhotoLibraryClient {
         state.withLock { s in ids.compactMap { id in s.assets[id].flatMap { Self.entry(id: id, $0) } } }
     }
 
-    func currentCaption(for id: String) -> String? { caption(of: id) }
+    func currentCaption(for id: String) async -> String? { caption(of: id) }
 
+    /// 和 LibraryScanner.write 一样：有照片不在、或改不了说明，就一张都不写。
     func write(_ captions: [String: String?]) async throws {
-        let handler = state.withLock { s in
+        let delay = state.withLock { $0.writeDelay }
+        if delay > .zero { try? await Task.sleep(for: delay) }
+        let handler = try state.withLock { s in
+            if !s.failing.isDisjoint(with: captions.keys) { throw CocoaError(.fileWriteNoPermission) }
+            let missing = Set(captions.keys).filter { s.assets[$0] == nil }
+            if !missing.isEmpty { throw LibraryScanner.WriteError.missing(missing) }
+            let locked = Set(captions.keys).intersection(s.locked)
+            if !locked.isEmpty { throw LibraryScanner.WriteError.notEditable(locked) }
             s.writes.append(captions)
             for (id, caption) in captions {
                 s.assets[id, default: Asset()].caption = caption ?? ""

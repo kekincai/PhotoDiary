@@ -180,7 +180,7 @@ struct SettingsView: View {
             } label: {
                 SettingsLabel("说明格式", symbol: "text.quote", color: .teal)
             }
-            let export = MarkdownExport(text: store.markdownExport(), filename: String(localized: "照片日记", bundle: .app, locale: .app) + ".md")
+            let export = MarkdownExport(store: store, filename: String(localized: "照片日记", bundle: .app, locale: .app) + ".md")
             ShareLink(item: export, preview: SharePreview(export.filename, image: Image(systemName: "doc.text"))) {
                 SettingsLabel("导出全部日记（Markdown）", symbol: "square.and.arrow.up", color: .orange)
             }
@@ -229,7 +229,7 @@ struct SettingsView: View {
         case .ready:
             if let sent = bridge.lastSent {
                 // 相对时间按界面语言写，不跟系统语言。
-                String(localized: "已同步 · \(sent.formatted(.relative(presentation: .named).locale(AppLanguage.current.locale)))", bundle: .app, locale: .app)
+                String(localized: "已同步 · \(DiaryDates.relative(sent))", bundle: .app, locale: .app)
             } else {
                 String(localized: "已连接", bundle: .app, locale: .app)
             }
@@ -388,14 +388,16 @@ struct DiagnosticLog: Transferable {
     }
 }
 
+/// 全部日记的 Markdown，分享时才拼（拼一遍要遍历全部日记，不能在设置页每次重绘时做）。
 struct MarkdownExport: Transferable {
-    let text: String
+    let store: DiaryStore
     let filename: String
 
     static var transferRepresentation: some TransferRepresentation {
         FileRepresentation(exportedContentType: .plainText) { export in
+            let text = await export.store.markdownExport()
             let url = URL.temporaryDirectory.appending(path: export.filename)
-            try export.text.write(to: url, atomically: true, encoding: .utf8)
+            try text.write(to: url, atomically: true, encoding: .utf8)
             return SentTransferredFile(url)
         }
     }

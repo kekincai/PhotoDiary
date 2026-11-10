@@ -58,7 +58,9 @@ struct IndexDatabaseTests {
             try await db.apply(.init(upserts: [sampleEntry("a")], changeToken: Data("1".utf8), places: ["1.00,1.00": ("某地", nil)]))
         }
         let store = indexFolder(dir).appending(path: IndexDatabase.entriesStoreName)
-        for suffix in ["-wal", "-shm"] { try? FileManager.default.removeItem(at: URL(filePath: store.path() + suffix)) }
+        for suffix in ["-wal", "-shm"] {
+            try? FileManager.default.removeItem(at: store.deletingLastPathComponent().appending(path: store.lastPathComponent + suffix))
+        }
         try Data("not a database".utf8).write(to: store)
 
         let db = await IndexDatabase.open(directory: dir)
@@ -66,9 +68,10 @@ struct IndexDatabaseTests {
         #expect(loaded.entries.isEmpty)
         #expect(loaded.changeToken == nil)
         #expect(loaded.places.names == ["1.00,1.00": "某地"])
-        // 重建后照常能写。
+        // 重建后照常能写，而且写在磁盘上（不是退回了内存库）：另开一个连接也读得到。
         try await db.apply(.init(upserts: [sampleEntry("b")]))
         #expect(await db.load().entries.map(\.id) == ["b"])
+        #expect(await loadIndex(dir).entries.map(\.id) == ["b"])
     }
 
     @Test func indexFolderIsExcludedFromBackup() async throws {
@@ -119,7 +122,9 @@ struct IndexPersistenceTests {
             await first.saveNow()
         }
         let store = indexFolder(dir).appending(path: IndexDatabase.entriesStoreName)
-        for suffix in ["-wal", "-shm"] { try? FileManager.default.removeItem(at: URL(filePath: store.path() + suffix)) }
+        for suffix in ["-wal", "-shm"] {
+            try? FileManager.default.removeItem(at: store.deletingLastPathComponent().appending(path: store.lastPathComponent + suffix))
+        }
         try Data("not a database".utf8).write(to: store)
 
         let namer = FakePlaceNamer()
@@ -149,12 +154,97 @@ struct IndexPersistenceTests {
             let second = await startedStore(library, places: english, directory: dir, defaults: defaults, language: "en")
             #expect(await eventually { second.entry("a")?.placeName == "Yokohama" })
             #expect(english.lookups == 1)
+            #expect(english.languages == ["en"])
             await second.saveNow()
         }
         let again = FakePlaceNamer()
         let third = await startedStore(library, places: again, directory: dir, defaults: defaults, language: "en")
         #expect(await eventually { third.entry("a")?.placeName == "Yokohama" })
         #expect(again.lookups == 0)
+    }
+
+    /// 地名查到一半 App 被结束（大库第一次要查很久）：下次启动接着查缺的，已经查到的不清掉重查。
+    @Test func interruptedPlaceLookupResumesInsteadOfStartingOver() async throws {
+        let dir = temporaryDirectory()
+        let defaults = isolatedDefaults()
+        let library = FakeLibrary()
+        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
+        library.seed("b", caption: "寺", date: date(2026, 10, 2), latitude: 35.01, longitude: 135.77)
+        do {
+            let places = FakePlaceNamer()
+            places.set("横滨", latitude: 35.44, longitude: 139.64)
+            places.set("京都", latitude: 35.01, longitude: 135.77)
+            places.delay = .milliseconds(300)
+            let first = await startedStore(library, places: places, directory: dir, defaults: defaults)
+            // 正在查：语言已经记下了。
+            #expect(defaults.string(forKey: DiaryStore.placeLanguageKey) == "zh-Hans")
+            _ = await eventually { first.diaries.contains { $0.placeName != nil } }
+            await first.saveNow()
+            // 到这里“结束” App：另一个还没查完。
+        }
+        let again = FakePlaceNamer()
+        again.set("横滨", latitude: 35.44, longitude: 139.64)
+        again.set("京都", latitude: 35.01, longitude: 135.77)
+        let second = await startedStore(library, places: again, directory: dir, defaults: defaults)
+        #expect(await eventually { second.diaries.allSatisfy { $0.placeName != nil } })
+        #expect(again.lookups <= 1)
+    }
+
+    /// 还没记过地名语言（旧版本查到一半）：已有的地名照用，不当作换了语言。
+    @Test func missingPlaceLanguageIsNotALanguageChange() async throws {
+        let dir = temporaryDirectory()
+        let defaults = isolatedDefaults()
+        let library = FakeLibrary()
+        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
+        do {
+            let places = FakePlaceNamer()
+            places.set("横滨", latitude: 35.44, longitude: 139.64)
+            let first = await startedStore(library, places: places, directory: dir, defaults: defaults)
+            #expect(await eventually { first.entry("a")?.placeName == "横滨" })
+            await first.saveNow()
+        }
+        defaults.removeObject(forKey: DiaryStore.placeLanguageKey)
+        let again = FakePlaceNamer()
+        let second = await startedStore(library, places: again, directory: dir, defaults: defaults)
+        #expect(second.entry("a")?.placeName == "横滨")
+        #expect(again.lookups == 0)
+        #expect(defaults.string(forKey: DiaryStore.placeLanguageKey) == "zh-Hans")
+    }
+
+    /// 地名正在查的时候新写了一篇带位置的日记：这一轮查完接着补查它。
+    @Test func entryAddedDuringPlaceLookupIsResolvedToo() async throws {
+        let library = FakeLibrary()
+        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
+        library.seed("b", caption: nil, date: date(2026, 10, 2), latitude: 35.01, longitude: 135.77)
+        let places = FakePlaceNamer()
+        places.set("横滨", latitude: 35.44, longitude: 139.64)
+        places.set("京都", latitude: 35.01, longitude: 135.77)
+        places.delay = .milliseconds(200)
+        let store = await startedStore(library, places: places)
+        try await store.save(text: "寺", mode: .new, for: "b")
+        #expect(await eventually(timeout: .seconds(3)) { store.entry("b")?.placeName == "京都" })
+        #expect(store.entry("a")?.placeName == "横滨")
+    }
+
+    /// App 运行中在设置里换了语言：地名按新语言重查（不用重启）。
+    @Test func languageChangeWhileRunningRequeriesPlaces() async throws {
+        let defaults = isolatedDefaults()
+        let library = FakeLibrary()
+        library.seed("a", caption: "港口", date: date(2026, 10, 1), latitude: 35.44, longitude: 139.64)
+        let places = FakePlaceNamer()
+        places.set("横滨", latitude: 35.44, longitude: 139.64)
+        var language = "zh-Hans"
+        let store = DiaryStore(.init(library: library, indexDirectory: temporaryDirectory(), placeNamer: places,
+                                     defaults: defaults, now: { fixedNow }, saveDelay: .zero, changeDelay: .zero,
+                                     geocodeInterval: .zero, placeLanguage: { language }))
+        await store.start()
+        #expect(await eventually { store.entry("a")?.placeName == "横滨" })
+        places.set("Yokohama", latitude: 35.44, longitude: 139.64)
+        language = "en"
+        store.placeLanguageChanged()
+        #expect(await eventually { store.entry("a")?.placeName == "Yokohama" })
+        #expect(places.languages == ["zh-Hans", "en"])
+        #expect(defaults.string(forKey: DiaryStore.placeLanguageKey) == "en")
     }
 
     @Test func saveNowSkipsDebounce() async throws {

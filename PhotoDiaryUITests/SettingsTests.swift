@@ -45,20 +45,42 @@ final class SettingsTests: DiaryUITestCase {
         XCTAssertTrue(tab("日记").exists)
     }
 
+    /// 一周从周日开始：回顾里的本周换成从周日起的七天；改回周一再换回来。
     @MainActor func testWeekStartChangesCalendar() {
+        // 只在“从周日起”的这一周里的一天：今天是周日就取明天，否则取上一个周日。
+        var sundayFirst = Calendar(identifier: .gregorian)
+        sundayFirst.firstWeekday = 1
+        let today = Calendar.current.startOfDay(for: .now)
+        let isSunday = sundayFirst.component(.weekday, from: today) == 1
+        let probe = isSunday ? sundayFirst.date(byAdding: .day, value: 1, to: today)!
+                             : sundayFirst.dateInterval(of: .weekOfYear, for: today)!.start
+        let probeDay = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", shortDate(probe))).firstMatch
+
+        tap(tab("回顾"))
+        XCTAssertTrue(app.staticTexts["回顾"].waitForExistence(timeout: 10))
+        XCTAssertFalse(probeDay.exists, "一周从周一开始时不该有这一天")
+
+        // 设置在日记页的 ⋯ 菜单里。
+        tap(tab("日记"))
         openSettings()
         tap(button(containing: "一周从"))
         tap(app.buttons["周日"])
         closeSettings()
+        tap(tab("回顾"))
+        XCTAssertTrue(probeDay.waitForExistence(timeout: 10), "改成周日开始后，本周没有换成从周日起的七天")
+        tap(tab("日记"))
         tap(button(containing: "视图："))
         tap(app.buttons["日历"])
         assertAlive()
+
         openSettings()
         tap(button(containing: "一周从"))
         tap(app.buttons["周一"])
         closeSettings()
         tap(button(containing: "视图："))
         tap(app.buttons["列表"])
+        tap(tab("回顾"))
+        XCTAssertTrue(probeDay.waitForNonExistence(timeout: 10), "改回周一后本周没有换回来")
     }
 
     /// 晚间提醒：打开时问通知权限，允许后出现时间；再关掉，不影响别的测试。
@@ -86,22 +108,19 @@ final class SettingsTests: DiaryUITestCase {
     }
 
     /// 隐藏一段说明后它不再算日记，取消隐藏后回来。
+    /// 种子照片里有两张说明只有“0”的（导入工具留下的那种）：它们在“常见的短说明”里；隐藏后从建议里消失，取消隐藏后回来。
     @MainActor func testHideCaptionAndShowAgain() {
         openSettings()
         tap(button(containing: "隐藏的说明"))
-        tap(app.buttons["添加…"])
-        let field = app.alerts.textFields.firstMatch
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
-        field.typeText("界面测试隐藏")
-        app.alerts.buttons["隐藏"].tap()
-        let row = button(containing: "界面测试隐藏")
-        XCTAssertTrue(row.waitForExistence(timeout: 5) || text(containing: "界面测试隐藏").exists, "隐藏的说明没有出现在列表里")
-        // 取消隐藏。
-        let show = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "取消隐藏“界面测试隐藏”")).firstMatch
-        if show.exists { show.tap() } else {
-            text(containing: "界面测试隐藏").swipeLeft()
-            tap(app.buttons["取消隐藏"])
-        }
+        let suggestion = app.buttons["隐藏“0”，2 张照片"]
+        tap(suggestion, timeout: 10, "常见短说明里的 0")
+        let hidden = app.buttons["取消隐藏“0”"]
+        XCTAssertTrue(hidden.waitForExistence(timeout: 5), "隐藏后没有出现在已隐藏里")
+        XCTAssertTrue(suggestion.waitForNonExistence(timeout: 5), "隐藏后它们还算日记（还在常见的短说明里）")
+
+        tap(hidden)
+        XCTAssertTrue(suggestion.waitForExistence(timeout: 5), "取消隐藏后它们没有回到日记里")
+        XCTAssertFalse(hidden.exists)
         assertAlive()
     }
 

@@ -24,8 +24,11 @@ nonisolated enum PhotoFixtures {
         PHPhotoLibrary.authorizationStatus(for: .readWrite) == .authorized
     }
 
+    /// 没指定日期时用的拍摄时间：很早，排在照片库最后，不把界面测试要找的种子照片挤到下面去。
+    static let oldDate = Calendar(identifier: .gregorian).date(from: DateComponents(year: 2001, month: 1, day: 1, hour: 12))!
+
     /// 一张纯色照片，可选拍摄时间和位置。返回 localIdentifier。
-    static func makePhoto(date: Date = .now, location: CLLocation? = nil, hue: CGFloat = .random(in: 0...1)) async throws -> String {
+    static func makePhoto(date: Date = oldDate, location: CLLocation? = nil, hue: CGFloat = .random(in: 0...1)) async throws -> String {
         let image = UIGraphicsImageRenderer(size: CGSize(width: 64, height: 48)).image { context in
             UIColor(hue: hue, saturation: 0.6, brightness: 0.8, alpha: 1).setFill()
             context.fill(CGRect(x: 0, y: 0, width: 64, height: 48))
@@ -59,8 +62,8 @@ nonisolated enum PhotoFixtures {
         return created
     }
 
-    /// 测试造的照片。删照片要系统确认（测试里点不了），所以只清掉说明：
-    /// 照片还在，但不再是日记，不会把界面测试要找的日记挤到列表下面去。
+    /// 测试造的照片。删照片要系统确认（测试里点不了），所以只清掉说明：照片还在，但不再是日记。
+    /// `Tools/test.sh` 每次都抹掉模拟器，留下的照片不会越积越多。
     private static let created = Mutex<[String]>([])
 
     static func clearCreatedCaptions() async {

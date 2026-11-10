@@ -26,7 +26,7 @@ struct PhotoKitIntegrationTests {
         defer { PHPhotoLibrary.shared().unregisterChangeObserver(observer) }
 
         let id = try await PhotoFixtures.makePhoto()
-        try await LibraryScanner.write(caption: "回调测试", to: id)
+        try await LibraryScanner.write([id: "回调测试"])
         #expect(await eventually(timeout: .seconds(10)) { calls.value > 0 })
     }
 
@@ -39,7 +39,7 @@ struct PhotoKitIntegrationTests {
         let token = PhotoKitLibrary().observeChanges { changes.value += 1 }
         defer { withExtendedLifetime(token) {} }
 
-        try await LibraryScanner.write(caption: "保存不该闪退 #测试#", to: id)
+        try await LibraryScanner.write([id: "保存不该闪退 #测试#"])
         #expect(await eventually(timeout: .seconds(10)) { changes.value > 0 })
         // 再给取图缓存的观察者一点时间处理同一个通知。
         try await Task.sleep(for: .milliseconds(300))
@@ -51,7 +51,7 @@ struct PhotoKitIntegrationTests {
     @Test func captionAndKeywordsRoundTrip() async throws {
         let id = try await PhotoFixtures.makePhoto(date: date(2026, 10, 20))
 
-        try await LibraryScanner.write(caption: "海边 #旅行# #夏天#\n— 2026.10.20", to: id)
+        try await LibraryScanner.write([id: "海边 #旅行# #夏天#\n— 2026.10.20"])
         var stored = try #require(PhotoFixtures.metadata(id))
         #expect(stored.caption == "海边 #旅行# #夏天#\n— 2026.10.20")
         #expect(stored.keywords.sorted() == ["夏天", "旅行"])
@@ -61,12 +61,12 @@ struct PhotoKitIntegrationTests {
         #expect(entry.mediaKind == .photo)
 
         // 去掉一个标签：关键词跟着去掉。
-        try await LibraryScanner.write(caption: "海边 #旅行#", to: id)
+        try await LibraryScanner.write([id: "海边 #旅行#"])
         stored = try #require(PhotoFixtures.metadata(id))
         #expect(stored.keywords == ["旅行"])
 
         // 清除说明：不再是日记，关键词也清掉。
-        try await LibraryScanner.write(caption: nil, to: id)
+        try await LibraryScanner.write([id: nil])
         stored = try #require(PhotoFixtures.metadata(id))
         #expect(stored.caption?.isEmpty ?? true)
         #expect(stored.keywords.isEmpty)
@@ -84,7 +84,7 @@ struct PhotoKitIntegrationTests {
 
     @Test func externalKeywordChangeIsReconciled() async throws {
         let id = try await PhotoFixtures.makePhoto()
-        try await LibraryScanner.write(caption: "#猫#", to: id)
+        try await LibraryScanner.write([id: "#猫#"])
         // 在照片 App 里手动加了一个关键词。
         // 照片库在自己的队列上执行这个闭包：要标 @Sendable，否则继承测试的主线程隔离，运行时检查会直接终止进程。
         try await PHPhotoLibrary.shared().performChanges { @Sendable in
@@ -95,9 +95,33 @@ struct PhotoKitIntegrationTests {
         #expect(PhotoFixtures.metadata(id)?.keywords == ["猫"])
     }
 
+    /// 照片已经不在照片库里：写入报错，不能像以前那样什么都没改也算成功（表上口述的字会被当成写进去了）。
+    @Test func writingToMissingPhotoThrows() async throws {
+        let id = try await PhotoFixtures.makePhoto()
+        let missing = "00000000-0000-0000-0000-000000000000/L0/001"
+        await #expect(throws: LibraryScanner.WriteError.missing([missing])) {
+            try await LibraryScanner.write([id: "这张在", missing: "这张不在"])
+        }
+        // 一张都不写。
+        #expect(PhotoFixtures.metadata(id)?.caption?.isEmpty ?? true)
+    }
+
+    /// 没有新变化时增量沿用传进去的 token，不越过“列出变化之后才发生”的修改。
+    @Test func incrementalWithoutChangesKeepsToken() async throws {
+        var token: Data?
+        for await event in LibraryScanner.fullScan(batchSize: 500) {
+            if case .finished(let t) = event { token = t }
+        }
+        let since = try #require(token)
+        let result = try await LibraryScanner.incremental(since: since)
+        if result.updated.isEmpty && result.removed.isEmpty {
+            #expect(result.token == since)
+        }
+    }
+
     @Test func videoIsReadAsVideoEntry() async throws {
         let id = try await PhotoFixtures.makeVideo()
-        try await LibraryScanner.write(caption: "一段视频", to: id)
+        try await LibraryScanner.write([id: "一段视频"])
         let entry = try #require(LibraryScanner.fetchEntries(ids: [id]).first)
         #expect(entry.mediaKind == .video)
     }
@@ -106,7 +130,7 @@ struct PhotoKitIntegrationTests {
 
     @Test func fullScanAndIncrementalSeeWrites() async throws {
         let id = try await PhotoFixtures.makePhoto()
-        try await LibraryScanner.write(caption: "全量能读到", to: id)
+        try await LibraryScanner.write([id: "全量能读到"])
 
         var token: Data?
         var found = false
@@ -120,15 +144,15 @@ struct PhotoKitIntegrationTests {
         #expect(found)
         let since = try #require(token)
 
-        try await LibraryScanner.write(caption: "增量能读到", to: id)
+        try await LibraryScanner.write([id: "增量能读到"])
         let other = try await PhotoFixtures.makePhoto()
-        try await LibraryScanner.write(caption: "新照片", to: other)
+        try await LibraryScanner.write([other: "新照片"])
         let result = try await LibraryScanner.incremental(since: since)
         #expect(result.updated.first { $0.id == id }?.caption == "增量能读到")
         #expect(result.updated.contains { $0.id == other })
 
         // 说明被清空的照片算移除。
-        try await LibraryScanner.write(caption: nil, to: other)
+        try await LibraryScanner.write([other: nil])
         let again = try await LibraryScanner.incremental(since: try #require(result.token))
         #expect(again.removed.contains(other))
     }
@@ -183,14 +207,14 @@ struct PhotoKitIntegrationTests {
         #expect(PhotoFixtures.metadata(other)?.caption?.isEmpty ?? true)
 
         // 别的 App 改了说明：通过照片库通知和增量同步进来。
-        try await LibraryScanner.write(caption: "在照片 App 里改的", to: id)
+        try await LibraryScanner.write([id: "在照片 App 里改的"])
         #expect(await eventually(timeout: .seconds(10)) { store.entry(id)?.caption == "在照片 App 里改的" })
     }
 
     @Test func placeIsReadFromPhotoLocation() async throws {
         let tokyo = CLLocation(latitude: 35.68, longitude: 139.76)
         let id = try await PhotoFixtures.makePhoto(location: tokyo)
-        try await LibraryScanner.write(caption: "有地点", to: id)
+        try await LibraryScanner.write([id: "有地点"])
         let entry = try #require(LibraryScanner.fetchEntries(ids: [id]).first)
         #expect(abs((entry.latitude ?? 0) - 35.68) < 0.01)
         #expect(abs((entry.longitude ?? 0) - 139.76) < 0.01)
@@ -222,7 +246,8 @@ struct PhotoKitIntegrationTests {
     }
 
     @Test func recentAssetsListsNewPhotosFirst() async throws {
-        let id = try await PhotoFixtures.makePhoto(date: .now.addingTimeInterval(3600))
+        // 比照片库里任何一张都新（界面测试的种子照片有今天的）。
+        let id = try await PhotoFixtures.makePhoto(date: .now.addingTimeInterval(2 * 86400))
         #expect(AssetImages.recentAssets(limit: 5).first?.id == id)
     }
 
@@ -250,18 +275,24 @@ struct PhotoKitIntegrationTests {
         }
         #expect(options.contains(.banner))
 
+        let before = DayStamp(.now)
         await withCheckedContinuation { (done: CheckedContinuation<Void, Never>) in
             DispatchQueue.global().async {
                 delegate.userNotificationCenter?(center, didReceive: r) { done.resume() }
             }
         }
-        #expect(ReminderScheduler.shared.pending == Reminder.Response(assetID: "照片-123", day: DayStamp(.now), reply: "海边的风"))
+        // 跨零点时前后两天都算对。
+        let pending = try #require(ReminderScheduler.shared.pending)
+        #expect(pending.assetID == "照片-123" && pending.reply == "海边的风")
+        #expect([before, DayStamp(.now)].contains(pending.day))
     }
 
     /// 通用提醒（没带照片）点开时现挑当天的照片；带的照片已经删了就不开编辑器。
     @Test func reminderOpensEditorForTodaysPhoto() async throws {
-        let id = try await PhotoFixtures.makePhoto(date: .now)
-        let today = DayStamp(.now)
+        // 照片的日期和“今天”取同一个时刻，跨零点也对得上。
+        let now = Date.now
+        let id = try await PhotoFixtures.makePhoto(date: now)
+        let today = DayStamp(now)
         #expect(Reminder.photos(on: today).contains { $0.id == id })
 
         let store = makeStore(library: FakeLibrary())
@@ -274,6 +305,10 @@ struct PhotoKitIntegrationTests {
             for: Reminder.Response(assetID: id, day: today, reply: nil), store: store)
         #expect(given?.assetID == id)
         #expect(given?.seed == nil)
+
+        // 只拍了视频的日子也算拍了。
+        let video = try await PhotoFixtures.makeVideo()
+        #expect(Reminder.photos(on: DayStamp(.now)).contains { $0.id == video })
 
         let gone = await ReminderScheduler.shared.editorRequest(
             for: Reminder.Response(assetID: "不存在的照片/L0/001", day: today, reply: "x"), store: store)

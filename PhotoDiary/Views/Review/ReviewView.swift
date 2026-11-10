@@ -21,7 +21,7 @@ struct ReviewView: View {
                 TagsSection()
             }
             .padding(.top, 8)
-            .padding(.bottom, 150)
+            .padding(.bottom, Metrics.bottomBarInset)
         }
         .collapsesTabBarOnScroll()
         // 再点“回顾”标签时滚回顶部（大标题重新展开）。
@@ -51,14 +51,14 @@ private struct OnThisDaySection: View {
         let memories = store.onThisDay
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle(title: String(localized: "那年今日", bundle: .app, locale: .app))
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Metrics.text)
             if memories.isEmpty {
                 Text("往年的今天还没有日记")
                     .font(.headline)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(20)
-                .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
-                .padding(.horizontal, 16)
+                .background(Color.tile, in: .rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
+                .padding(.horizontal, Metrics.page)
             } else {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 10) {
@@ -101,16 +101,12 @@ private struct OnThisDaySection: View {
                         }
                 }
                 .overlay(alignment: .bottom) {
-                    LinearGradient(stops: [
-                        .init(color: .black.opacity(0), location: 0),
-                        .init(color: .black.opacity(0.35), location: 0.4),
-                        .init(color: .black.opacity(0.72), location: 1),
-                    ], startPoint: .top, endPoint: .bottom)
-                    .frame(height: 260)
+                    PhotoScrim(edge: .bottom, strength: 0.72)
+                        .frame(height: 260)
                 }
                 .overlay(alignment: .bottomLeading) { caption(entry) }
-                .clipShape(.rect(cornerRadius: 24, style: .continuous))
-                .contentShape(.rect(cornerRadius: 24))
+                .clipShape(.rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
+                .contentShape(.rect(cornerRadius: Metrics.Radius.hero))
         }
         .buttonStyle(.press)
         .overlay(alignment: .bottomTrailing) {
@@ -201,7 +197,7 @@ private struct WeekSection: View {
         VStack(alignment: .leading, spacing: 12) {
             SectionTitle(title: headline)
                 .contentTransition(.numericText())
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Metrics.text)
             HStack(spacing: 0) {
                 ForEach(Array(week.enumerated()), id: \.offset) { i, item in
                     let isToday = item.day == today
@@ -227,11 +223,11 @@ private struct WeekSection: View {
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .padding(.horizontal, 8)
             .padding(.vertical, 16)
-            .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
-            .padding(.horizontal, 16)
+            .background(Color.tile, in: .rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
+            .padding(.horizontal, Metrics.page)
             if intelligence.isEnabled, !store.weekEntries.isEmpty {
                 WeeklyReviewText(entries: store.weekEntries)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Metrics.page)
             }
         }
     }
@@ -252,6 +248,7 @@ private struct WeekSection: View {
 /// 每次打开重新生成，只在内存里按“这周 + 这些日记”缓存，不写进照片。
 private struct WeeklyReviewText: View {
     let entries: [DiaryEntry]
+    @Environment(DiaryStore.self) private var store
     @Environment(Intelligence.self) private var intelligence
     @State private var text = ""
 
@@ -265,11 +262,8 @@ private struct WeeklyReviewText: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
-            Image(systemName: "apple.intelligence")
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(Color.inkSecondary)
+            IntelligenceMark()
                 .padding(.top, 3)
-                .accessibilityHidden(true)
             Text(text)
                 .font(.diary(17, relativeTo: .body))
                 .lineSpacing(7)
@@ -290,7 +284,7 @@ private struct WeeklyReviewText: View {
                 return
             }
             text = ""
-            let input = WeeklyReviewInput(entries: entries, language: Intelligence.languageName)
+            let input = WeeklyReviewInput(entries: entries, week: Set(store.weekWriting.map(\.day)), language: Intelligence.languageName)
             do {
                 for try await partial in intelligence.engine.weeklyReview(input) {
                     guard !Task.isCancelled else { return }
@@ -311,11 +305,11 @@ private struct YearsSection: View {
     @State private var open: YearInReview?
 
     var body: some View {
-        let reviews = YearInReview.all(entries: store.diaries, today: .today)
+        let reviews = store.yearReviews()
         if !reviews.isEmpty {
             VStack(alignment: .leading, spacing: 12) {
                 SectionTitle(title: String(localized: "一年回顾", bundle: .app, locale: .app))
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Metrics.text)
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 10) {
                         ForEach(reviews) { review in
@@ -372,7 +366,7 @@ private struct UnwrittenSection: View {
                 SectionTitle(title: String(localized: "还没写的照片", bundle: .app, locale: .app), chevron: true)
             }
             .buttonStyle(.press)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, Metrics.text)
             if !photos.isEmpty {
                 ScrollView(.horizontal) {
                     LazyHStack(spacing: 8) {
@@ -400,7 +394,7 @@ private struct UnwrittenSection: View {
         } label: {
             AssetImage(id: photo.id, pointSize: CGSize(width: 150, height: 150))
                 .frame(width: 150, height: 150)
-                .clipShape(.rect(cornerRadius: 16, style: .continuous))
+                .clipShape(.rect(cornerRadius: Metrics.Radius.card, style: .continuous))
                 .overlay(alignment: .topLeading) {
                     if let label {
                         Text(label)
@@ -452,7 +446,7 @@ private struct SuggestionsSection: View {
                     .frame(width: 44, height: 44)
                     .background(
                         LinearGradient(colors: [.orange, .pink, .purple], startPoint: .topLeading, endPoint: .bottomTrailing),
-                        in: .rect(cornerRadius: 12, style: .continuous)
+                        in: .rect(cornerRadius: Metrics.Radius.tile, style: .continuous)
                     )
                 Text("手记建议")
                     .font(.headline)
@@ -463,11 +457,11 @@ private struct SuggestionsSection: View {
                     .foregroundStyle(Color(.tertiaryLabel))
             }
             .padding(14)
-            .background(Color.tile, in: .rect(cornerRadius: 24, style: .continuous))
-            .contentShape(.rect(cornerRadius: 24))
+            .background(Color.tile, in: .rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
+            .contentShape(.rect(cornerRadius: Metrics.Radius.hero))
         }
         .buttonStyle(.press)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .journalingSuggestionsPicker(isPresented: $picking) { suggestion in
             await open(suggestion)
         }
@@ -516,7 +510,7 @@ private struct TagsSection: View {
                     SectionTitle(title: String(localized: "标签", bundle: .app, locale: .app), chevron: true)
                 }
                 .buttonStyle(.press)
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Metrics.text)
                 LazyVGrid(columns: columns, spacing: 16) {
                     ForEach(tags.prefix(4), id: \.name) { tag in
                         NavigationLink(value: Route.tag(tag.name)) {
@@ -525,7 +519,7 @@ private struct TagsSection: View {
                         .buttonStyle(.press)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Metrics.page)
             }
         }
     }

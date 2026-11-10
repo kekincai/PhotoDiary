@@ -11,7 +11,8 @@ nonisolated protocol PhotoLibraryClient: Sendable {
     func fullScan() -> AsyncStream<LibraryScanner.ScanEvent>
     func incremental(since token: Data) async throws -> LibraryScanner.IncrementalResult
     func fetchEntries(ids: [String]) -> [DiaryEntry]
-    func currentCaption(for id: String) -> String?
+    /// 照片库里现在的说明（不经过索引）。照片不在时为 nil。
+    func currentCaption(for id: String) async -> String?
 
     func write(_ captions: [String: String?]) async throws
     func reconcileKeywords(ids: [String]) async throws
@@ -42,8 +43,12 @@ nonisolated struct PhotoKitLibrary: PhotoLibraryClient {
 
     func fetchEntries(ids: [String]) -> [DiaryEntry] { LibraryScanner.fetchEntries(ids: ids) }
 
-    func currentCaption(for id: String) -> String? {
-        PHAsset.fetchAssets(withLocalIdentifiers: [id], options: nil).firstObject?.extendedMetadata.caption
+    @concurrent
+    func currentCaption(for id: String) async -> String? {
+        let options = PHFetchOptions()
+        options.includeAssetSourceTypes = LibraryScanner.sourceTypes
+        options.prefetchAssetExtendedMetadata = true
+        return PHAsset.fetchAssets(withLocalIdentifiers: [id], options: options).firstObject?.extendedMetadata.caption
     }
 
     func write(_ captions: [String: String?]) async throws {
@@ -67,5 +72,13 @@ nonisolated private final class LibraryObserver: NSObject, PHPhotoLibraryChangeO
 
     func photoLibraryDidChange(_ changeInstance: PHChange) {
         Task { @MainActor in onChange() }
+    }
+}
+
+nonisolated extension Error {
+    /// 用户在系统的确认框里点了取消（改说明、删照片时系统会问一次）。这不是失败，不提示。
+    var isUserCancellation: Bool {
+        let e = self as NSError
+        return e.domain == PHPhotosErrorDomain && e.code == PHPhotosError.userCancelled.rawValue
     }
 }

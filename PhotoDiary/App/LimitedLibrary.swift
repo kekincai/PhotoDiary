@@ -9,7 +9,13 @@ enum LimitedLibrary {
         guard let scene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
               var top = scene.keyWindow?.rootViewController else { return }
         while let presented = top.presentedViewController { top = presented }
-        PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: top) { @Sendable added in
+        PHPhotoLibrary.shared().presentLimitedLibraryPicker(from: top, completionHandler: pickerFinished(store: store))
+    }
+
+    /// 选择器关掉时的回调。系统在后台队列上调它：必须是 @Sendable，不能带主线程隔离。
+    static func pickerFinished(store: DiaryStore) -> @Sendable ([String]) -> Void {
+        nonisolated(unsafe) let store = store
+        return { added in
             guard !added.isEmpty else { return }
             Task { @MainActor in store.rebuildIndex() }
         }

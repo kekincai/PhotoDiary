@@ -183,10 +183,18 @@ actor IndexDatabase {
         }
     }
 
-    /// SQLite 库连同 -wal、-shm 一起删。
-    private static func removeStore(at url: URL) {
+    /// SQLite 库连同 -wal、-shm 一起删。路径要用不带百分号编码的（Application Support 里有空格）。
+    static func removeStore(at url: URL) {
+        let folder = url.deletingLastPathComponent()
         for suffix in ["", "-wal", "-shm"] {
-            try? FileManager.default.removeItem(at: URL(filePath: url.path() + suffix))
+            let file = folder.appending(path: url.lastPathComponent + suffix)
+            do {
+                try FileManager.default.removeItem(at: file)
+            } catch CocoaError.fileNoSuchFile {
+                // 本来就没有（-wal、-shm 不一定在）。
+            } catch {
+                Log.index.error("删除 \(file.lastPathComponent, privacy: .public) 失败：\(error, privacy: .public)")
+            }
         }
     }
 
@@ -228,7 +236,8 @@ actor IndexDatabase {
 
     // MARK: 写
 
-    /// 条目、token、地名在同一个事务里写入。
+    /// 条目、token、地名一起写入：条目和 token 在条目库里，同一次保存；地名在另一个库文件里（条目库损坏重建时地名留着），
+    /// 用的是同一个上下文的同一次 save，但不是跨两个文件的原子事务。
     @discardableResult
     func apply(_ changes: Changes) throws -> Stats {
         let state = Log.signposter.beginInterval("index.save")
@@ -267,9 +276,13 @@ actor IndexDatabase {
         }
 
         if !changes.places.isEmpty {
-            let keys = Array(changes.places.keys)
-            let existing = try modelContext.fetch(FetchDescriptor<PlaceRecord>(predicate: #Predicate { keys.contains($0.key) }))
-            let byKey = Dictionary(existing.map { ($0.key, $0) }, uniquingKeysWith: { a, _ in a })
+            var byKey: [String: PlaceRecord] = [:]
+            for chunk in Self.chunks(Array(changes.places.keys)) {
+                let keys = Array(chunk)
+                for record in try modelContext.fetch(FetchDescriptor<PlaceRecord>(predicate: #Predicate { keys.contains($0.key) })) {
+                    byKey[record.key] = record
+                }
+            }
             for (key, place) in changes.places {
                 if let record = byKey[key] {
                     record.name = place.name

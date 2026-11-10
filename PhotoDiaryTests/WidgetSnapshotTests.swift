@@ -28,7 +28,6 @@ struct WidgetSnapshotTests {
         #expect(snapshot.memories(on: today).map(\.id) == ["去年今天", "三年前今天"])
         #expect(snapshot.memories(on: DayStamp(year: 2026, month: 11, day: 1)!).map(\.id) == ["去年明天"])
         #expect(snapshot.memories.first?.title == "去年今天 的标题。")
-        #expect(snapshot.memories.first?.placeName == "京都")
     }
 
     @Test func atMostThreePerDay() {

@@ -74,6 +74,11 @@ struct DeepLinkRoutingTests {
         let router = Router()
         router.open(.writeLatest, latestPhoto: nil)
         #expect(router.editor == nil)
+        // 开着的编辑器也不动。
+        let open = EditorRequest(assetID: "x", mode: .append)
+        router.editor = open
+        router.open(.writeLatest, latestPhoto: nil)
+        #expect(router.editor == open)
     }
 
     @Test func writeLatestClosesOtherSheetsFirst() async throws {
@@ -82,8 +87,7 @@ struct DeepLinkRoutingTests {
         router.open(.writeLatest, latestPhoto: .init(id: "P/L0/001", hasDiary: false))
         #expect(!router.showAddFromPhotos)
         #expect(router.editor == nil)
-        try await Task.sleep(for: .seconds(1))
-        #expect(router.editor?.assetID == "P/L0/001")
+        #expect(await eventually(timeout: .seconds(3)) { router.editor?.assetID == "P/L0/001" })
     }
 
     @Test func todayOpensTodaysPage() {
@@ -104,6 +108,7 @@ struct DeepLinkRoutingTests {
         #expect(!router.showSettings)
     }
 
+    /// 编辑器开着但没写字：直接收起，去链接指的地方。
     @Test func entryOpensDetail() {
         let router = Router()
         router.journalPath = [.tags, .tag("旅行")]
@@ -112,6 +117,36 @@ struct DeepLinkRoutingTests {
         #expect(router.tab == .journal)
         #expect(router.journalPath == [.entry("A/L0/001")])
         #expect(router.editor == nil)
+    }
+
+    /// 编辑器里有没保存的字：链接（小组件、快捷指令）不顶掉编辑器，字不丢；编辑器关掉后再去链接指的地方。
+    @Test func linkWaitsWhileEditorHasUnsavedText() async {
+        let router = Router()
+        let editing = EditorRequest(assetID: "x", mode: .append)
+        router.editor = editing
+        router.editorIsDirty = true
+        for link in [DeepLink.today, .onThisDay, .entry("A/L0/001"), .search("京都")] {
+            router.open(link)
+            #expect(router.editor == editing)
+            #expect(router.tab == .journal && router.journalPath.isEmpty)
+        }
+        router.open(.writeLatest, latestPhoto: .init(id: "P/L0/001", hasDiary: false))
+        #expect(router.editor == editing)
+
+        // 保存或放弃后：编辑器收起，最后一个链接接着打开。
+        router.editor = nil
+        router.editorIsDirty = false
+        #expect(await eventually(timeout: .seconds(3)) { router.editor?.assetID == "P/L0/001" })
+    }
+
+    /// 没保存就被手势收起的编辑器：字留成草稿，再打开同一张照片的同一种编辑器时放回去，只放一次。
+    @Test func draftsAreKeptPerPhotoAndMode() {
+        let router = Router()
+        router.saveDraft("写了一半", for: "x", mode: .append)
+        #expect(router.takeDraft(for: "x", mode: .new) == nil)
+        #expect(router.takeDraft(for: "y", mode: .append) == nil)
+        #expect(router.takeDraft(for: "x", mode: .append) == "写了一半")
+        #expect(router.takeDraft(for: "x", mode: .append) == nil)
     }
 
     @Test func searchCarriesText() {

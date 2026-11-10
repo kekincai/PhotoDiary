@@ -85,3 +85,13 @@ struct SegmentDivider: View {
         Rectangle().fill(Color.hairline).frame(height: 1)
     }
 }
+
+/// Apple Intelligence 的标记：模型给的东西（建议的标签、本周回顾、拆出来的搜索条件）前面放一枚，和用户自己写的分开。
+struct IntelligenceMark: View {
+    var body: some View {
+        Image(systemName: "apple.intelligence")
+            .font(.system(size: 15, weight: .medium))
+            .foregroundStyle(Color.inkSecondary)
+            .accessibilityHidden(true)
+    }
+}

@@ -2,7 +2,7 @@ import Testing
 import Foundation
 @testable import PhotoDiary
 
-/// 列表、日历、回顾、标签、地点、搜索、导出读的派生数据。“今天”固定为 2026-10-31（周六，本周从 10-25 周日起）。
+/// 列表、日历、回顾、标签、地点、搜索、导出读的派生数据。“今天”固定为 2026-10-31（周六；一周默认从周一起，本周是 10-26 到 11-01）。
 struct DerivedDataTests {
     let library = FakeLibrary()
     let places = FakePlaceNamer()
@@ -34,6 +34,27 @@ struct DerivedDataTests {
         #expect(store.calendarMonths == [date(2026, 10, 1), date(2026, 9, 1), date(2025, 10, 1), date(2024, 10, 1)]
             .map { Calendar.diary.dateInterval(of: .month, for: $0)!.start })
         #expect(store.entries(on: DayStamp(year: 2026, month: 10, day: 30)!).map(\.id) == ["a"])
+    }
+
+    /// 拍摄地在东边一个时区的凌晨照片，时刻比本地前一天深夜的照片还早：月份照样连在一起，不出现两个同 id 的月份。
+    @Test func monthsStayContiguousAcrossTimeZones() async {
+        let local = FakeLibrary()
+        let places = FakePlaceNamer()
+        let east = TimeZone(secondsFromGMT: TimeZone.current.secondsFromGMT() + 3600)!.identifier
+        places.set("东边", timeZone: east, latitude: 35.68, longitude: 139.77)
+        var eastCalendar = Calendar.diary
+        eastCalendar.timeZone = TimeZone(identifier: east)!
+        let lateNight = Calendar.diary.date(from: DateComponents(year: 2026, month: 10, day: 31, hour: 23, minute: 45))!
+        let earlyMorning = eastCalendar.date(from: DateComponents(year: 2026, month: 11, day: 1, hour: 0, minute: 30))!
+        #expect(earlyMorning < lateNight)
+        local.seed("十一月", caption: "十一月", date: date(2026, 11, 2))
+        local.seed("深夜", caption: "十月最后", date: lateNight)
+        local.seed("东边凌晨", caption: "十一月第一张", date: earlyMorning, latitude: 35.68, longitude: 139.77)
+        local.seed("十月", caption: "十月", date: date(2026, 10, 30))
+        let store = await startedStore(local, places: places, clock: TestClock(date(2026, 11, 3)))
+        #expect(await eventually { store.entry("东边凌晨")?.timeZoneID == east })
+        #expect(store.months.map(\.id) == ["2026-11", "2026-10"])
+        #expect(store.diaries.map(\.id) == ["十一月", "东边凌晨", "深夜", "十月"])
     }
 
     @Test func calendarAlwaysIncludesThisMonth() async {

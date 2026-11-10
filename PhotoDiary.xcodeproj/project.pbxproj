@@ -34,6 +34,7 @@
 		30DBFE59442AF451E2846E68 /* PlaceNamer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AFE1BB90B9A08FC23F3D15B /* PlaceNamer.swift */; };
 		36411BAFB6DE0E0A18FCE36A /* CaptionFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2BDEAEA7193F206C7622EF9 /* CaptionFilter.swift */; };
 		36E31A99C21D5386E967F44C /* IndexDatabaseTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44082C169AC3A4A80556CA0B /* IndexDatabaseTests.swift */; };
+		3A169D67B0C7D4E121D6D1BD /* MoreFlowsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7AA3D584FB650D740D4D45D4 /* MoreFlowsTests.swift */; };
 		3B107A832B8FEF928B453666 /* WatchBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 465DF80D0D6128A83B89B879 /* WatchBridgeTests.swift */; };
 		42DE4F04648D9E4C63C488DE /* YearInReview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EFEC6889DD7223A1A535C2C /* YearInReview.swift */; };
 		43596D3724AF034030005F2E /* DiaryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E6D263197946BC1AC0CC66F /* DiaryEntry.swift */; };
@@ -143,6 +144,7 @@
 		FBA90F4D468429CA46E92B25 /* DayStamp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EE36142E20AD20527851492 /* DayStamp.swift */; };
 		FE03B82AF1C0C39B973E691F /* PhotoDiaryWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 7866D1C66E2DB8910CAF0FB1 /* PhotoDiaryWatch.app */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		FE817274943E68C58B4D1952 /* BrowsingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DB7F8E88173C9AA1E31E715 /* BrowsingTests.swift */; };
+		FE913F0A2BC44C0D75460C10 /* WidgetBridgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95CF8BF17A69975A9D7DB64E /* WidgetBridgeTests.swift */; };
 		FEFBB800EC7E723F770770A1 /* WriteDiaryControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2062174D548356C21B34ED41 /* WriteDiaryControl.swift */; };
 		FF33F9E416617751FBBA620B /* UITestSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1482E82141EFC81AD0F75C32 /* UITestSupport.swift */; };
 /* End PBXBuildFile section */
@@ -277,6 +279,7 @@
 		7571F7FC7477DFEB4D9E925E /* LibraryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryScanner.swift; sourceTree = "<group>"; };
 		76C2A768FEF71F9A31369347 /* RotatingCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RotatingCover.swift; sourceTree = "<group>"; };
 		7866D1C66E2DB8910CAF0FB1 /* PhotoDiaryWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PhotoDiaryWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		7AA3D584FB650D740D4D45D4 /* MoreFlowsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreFlowsTests.swift; sourceTree = "<group>"; };
 		7F698A603FD4456C8971CAFF /* IntelligenceEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceEngine.swift; sourceTree = "<group>"; };
 		7F9413BD40115D4AB6996D69 /* CaptionFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CaptionFormat.swift; sourceTree = "<group>"; };
 		818426A2C43D5BCF2ACD7056 /* IntelligenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IntelligenceTests.swift; sourceTree = "<group>"; };
@@ -287,6 +290,7 @@
 		8E3388A1E4175CE442977C3A /* DiaryTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryTextView.swift; sourceTree = "<group>"; };
 		8EFEC6889DD7223A1A535C2C /* YearInReview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = YearInReview.swift; sourceTree = "<group>"; };
 		94AB6343B51BCC98F61F83A3 /* DiaryStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiaryStoreTests.swift; sourceTree = "<group>"; };
+		95CF8BF17A69975A9D7DB64E /* WidgetBridgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetBridgeTests.swift; sourceTree = "<group>"; };
 		97EE9861ECCF4F7F44FF1651 /* ShareCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareCard.swift; sourceTree = "<group>"; };
 		99894C7489F9ADDB80585096 /* ShaderWarmup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShaderWarmup.swift; sourceTree = "<group>"; };
 		99FCF4A837647EB2008638EC /* AppLocalization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLocalization.swift; sourceTree = "<group>"; };
@@ -535,6 +539,7 @@
 				CD3511816DF16328D71510DC /* SyncTests.swift */,
 				465DF80D0D6128A83B89B879 /* WatchBridgeTests.swift */,
 				24EFCB1FD1E4B7C5D9890945 /* WatchSyncTests.swift */,
+				95CF8BF17A69975A9D7DB64E /* WidgetBridgeTests.swift */,
 				641920CA0BB2189BD7030BA5 /* WidgetSnapshotTests.swift */,
 				1E10DDD1415F4F7DFBADD932 /* WriteRaceTests.swift */,
 				20A1867858FDE02F45EE0AD2 /* YearInReviewTests.swift */,
@@ -638,6 +643,7 @@
 				9DB7F8E88173C9AA1E31E715 /* BrowsingTests.swift */,
 				818426A2C43D5BCF2ACD7056 /* IntelligenceTests.swift */,
 				2196532247F3A3AF054B0D00 /* LinkTests.swift */,
+				7AA3D584FB650D740D4D45D4 /* MoreFlowsTests.swift */,
 				CF067B50BDCAD8D060FD5B42 /* SettingsTests.swift */,
 				1482E82141EFC81AD0F75C32 /* UITestSupport.swift */,
 				8729877555A84955202738B9 /* WritingTests.swift */,
@@ -842,7 +848,6 @@
 				en,
 				ja,
 				"zh-Hans",
-				"zh-Hant",
 			);
 			mainGroup = 3928844854610370C16C332E;
 			minimizedProjectReferenceProxies = 1;
@@ -917,6 +922,7 @@
 				C09C8C809A09814025B3DC9A /* TestSupport.swift in Sources */,
 				3B107A832B8FEF928B453666 /* WatchBridgeTests.swift in Sources */,
 				54406E6A936B7EB3F2CC8B17 /* WatchSyncTests.swift in Sources */,
+				FE913F0A2BC44C0D75460C10 /* WidgetBridgeTests.swift in Sources */,
 				00537DCC42FDC8307CB01E08 /* WidgetSnapshotTests.swift in Sources */,
 				BC811E6FB09F0977E438F7F9 /* WriteRaceTests.swift in Sources */,
 				68AD165295BC30CE693AE301 /* YearInReviewTests.swift in Sources */,
@@ -1008,6 +1014,7 @@
 				FE817274943E68C58B4D1952 /* BrowsingTests.swift in Sources */,
 				A0E0D7ABDF254D0E8F318B5F /* IntelligenceTests.swift in Sources */,
 				EA4F2996E0151EC2112D6DC7 /* LinkTests.swift in Sources */,
+				3A169D67B0C7D4E121D6D1BD /* MoreFlowsTests.swift in Sources */,
 				A90C15744D1C53000FBC798B /* SettingsTests.swift in Sources */,
 				FF33F9E416617751FBBA620B /* UITestSupport.swift in Sources */,
 				94A75043DC3EBD7A9BAE1230 /* WritingTests.swift in Sources */,
@@ -1127,7 +1134,6 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
@@ -1285,7 +1291,6 @@
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
 				INFOPLIST_KEY_WKApplication = YES;
@@ -1308,7 +1313,6 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiaryWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1355,7 +1359,6 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo Diary keeps your diary in each photo's caption. It needs to read and edit captions, and never copies or uploads your photos.";
@@ -1385,7 +1388,6 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiaryWidgets/Info.plist;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -1432,7 +1434,6 @@
 				DEVELOPMENT_LANGUAGE = "zh-Hans";
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = PhotoDiary/Info.plist;
-				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = "Photo Diary";
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.lifestyle";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Photo Diary keeps your diary in each photo's caption. It needs to read and edit captions, and never copies or uploads your photos.";

@@ -17,14 +17,14 @@ struct CaptionFormatTests {
         #expect(parsed.segments[0].date == DayStamp(year: 2026, month: 10, day: 31))
         #expect(parsed.segments[1].text == "三年后再看，还是喜欢这张")
         #expect(parsed.tags == ["旅行", "镜头测试"])
-        #expect(parsed.hasDateLine)
+        #expect(parsed.segments.contains { $0.date != nil })
     }
 
     @Test func externalCaptionHasNoDate() {
         let parsed = CaptionFormat.parse("Sunset at Kamakura beach")
         #expect(parsed.segments.count == 1)
         #expect(parsed.segments[0].date == nil)
-        #expect(!parsed.hasDateLine)
+        #expect(!parsed.segments.contains { $0.date != nil })
     }
 
     @Test func malformedDateLineIsBodyText() {
@@ -107,7 +107,7 @@ struct CaptionFormatTests {
                                longitude: nil, mediaKind: .photo, isCloudShared: false, pixelWidth: 4, pixelHeight: 3)
         #expect(entry.title == "风很舒服，第一次用新镜头拍日落")
         #expect(entry.preview == "三年后再看，还是喜欢这张")
-        #expect(entry.tagLine == "#旅行# #镜头测试#")
+        #expect(entry.tagLine == "#旅行#  #镜头测试#")
     }
 
     @Test func hiddenCaptionsMatchExactlyAndGetOverwritten() {

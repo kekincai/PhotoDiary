@@ -4,13 +4,9 @@ import UniformTypeIdentifiers
 
 /// 一年回顾最后一张：分享出去的图。和单篇的分享图（ShareCard）是同一张相纸：
 /// 上面是这一年的几张照片（9、4 或 1 张），下面是年份、篇数和常用的标签，右下角一个小拍立得。
-/// 固定浅色，不跟深色模式。
 struct YearShareCard<Photo: View>: View {
     let review: YearInReview
     @ViewBuilder let photo: (String) -> Photo
-
-    static var width: CGFloat { 390 }
-    private static var margin: CGFloat { 18 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -24,19 +20,17 @@ struct YearShareCard<Photo: View>: View {
                     .font(.footnote.weight(.semibold))
                     .foregroundStyle(Color.meta)
                 if !review.tags.isEmpty {
-                    YearTagLine(tags: review.tags.prefix(3).map(\.name))
+                    SharePaper.Tags(tags: review.tags.prefix(3).map(\.name))
                         .padding(.top, 4)
                 }
             }
             .padding(.horizontal, 6)
             .padding(.top, 20)
-            BrandMark(width: 16, palette: .light, shadow: false)
-                .opacity(0.8)
-                .frame(maxWidth: .infinity, alignment: .trailing)
+            SharePaper.Signature()
                 .padding(.top, 8)
         }
-        .padding(Self.margin)
-        .background(Color(red: 0.99, green: 0.985, blue: 0.975))
+        .padding(SharePaper.margin)
+        .background(SharePaper.color)
         .environment(\.colorScheme, .light)
         .dynamicTypeSize(.large)
     }
@@ -58,17 +52,6 @@ struct YearShareCard<Photo: View>: View {
                 }
             }
         }
-    }
-}
-
-private struct YearTagLine: View {
-    let tags: [String]
-    @Environment(\.brand) private var brand
-
-    var body: some View {
-        Text(tags.map { "#\($0)#" }.joined(separator: "  "))
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(brand)
     }
 }
 
@@ -99,9 +82,9 @@ nonisolated struct SharedYear: Transferable, Sendable {
                 Image(uiImage: image).resizable().scaledToFill()
             }
         }
-        let renderer = ImageRenderer(content: card.frame(width: YearShareCard<EmptyView>.width).environment(\.brand, brand))
+        let renderer = ImageRenderer(content: card.frame(width: SharePaper.width).environment(\.brand, brand))
         renderer.scale = 3
-        renderer.proposedSize = ProposedViewSize(width: YearShareCard<EmptyView>.width, height: nil)
+        renderer.proposedSize = ProposedViewSize(width: SharePaper.width, height: nil)
         guard let data = renderer.uiImage?.jpegData(compressionQuality: 0.9) else { throw CocoaError(.fileWriteUnknown) }
         return data
     }

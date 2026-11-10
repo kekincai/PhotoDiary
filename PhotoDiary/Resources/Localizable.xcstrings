@@ -17,6 +17,38 @@
         }
       }
     },
+    "%@…… %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ … %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@…… %2$@"
+          }
+        }
+      }
+    },
+    "%@。%@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@. %2$@"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@。%2$@"
+          }
+        }
+      }
+    },
     "%@写得最多": {
       "localizations": {
         "en": {
@@ -795,22 +827,6 @@
         }
       }
     },
-    "全部时间": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All Time"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "すべての期間"
-          }
-        }
-      }
-    },
     "全部照片": {
       "localizations": {
         "en": {
@@ -1031,6 +1047,22 @@
           "stringUnit": {
             "state": "translated",
             "value": "リスト"
+          }
+        }
+      }
+    },
+    "删掉这段": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この文を削除"
           }
         }
       }
@@ -2354,22 +2386,6 @@
         }
       }
     },
-    "更多": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "More"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "その他"
-          }
-        }
-      }
-    },
     "更多选项": {
       "localizations": {
         "en": {
@@ -2794,6 +2810,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "キャプションを読み込み中 %lld%%"
+          }
+        }
+      }
+    },
+    "没写进去": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not Written"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "書き込めませんでした"
+          }
+        }
+      }
+    },
+    "没写进照片说明": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not written into the caption"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "説明に書き込めませんでした"
           }
         }
       }
@@ -3774,6 +3822,38 @@
         }
       }
     },
+    "这一天还没写日记": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entries on this day yet"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この日の日記はまだありません"
+          }
+        }
+      }
+    },
+    "这个地点没有日记了": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No entries at this place"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この場所の日記はありません"
+          }
+        }
+      }
+    },
     "这个标签下没有日记了": {
       "localizations": {
         "en": {
@@ -3862,6 +3942,38 @@
           "stringUnit": {
             "state": "translated",
             "value": "この写真はもうありません"
+          }
+        }
+      }
+    },
+    "这张照片已经不在照片库里了": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This photo is no longer in your library"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この写真はもうライブラリにありません"
+          }
+        }
+      }
+    },
+    "这张照片的说明改不了": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This photo’s caption can’t be changed"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "この写真のキャプションは変更できません"
           }
         }
       }

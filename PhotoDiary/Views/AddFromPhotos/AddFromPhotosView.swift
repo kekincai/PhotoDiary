@@ -36,7 +36,7 @@ struct AddFromPhotosView: View {
         NavigationStack(path: $path) {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
-                    if store.isLimited { LimitedAccessBanner().padding(.horizontal, 16).padding(.bottom, 16) }
+                    if store.isLimited { LimitedAccessBanner().padding(.horizontal, Metrics.page).padding(.bottom, 16) }
 
                     ForEach(sections, id: \.title) { section in
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
@@ -46,7 +46,7 @@ struct AddFromPhotosView: View {
                                 Text(detail).font(.footnote).foregroundStyle(Color.meta)
                             }
                         }
-                        .padding(.horizontal, 16)
+                        .padding(.horizontal, Metrics.page)
                         .padding(.top, 4)
                         .padding(.bottom, 12)
                         .accessibilityElement(children: .combine)
@@ -69,7 +69,7 @@ struct AddFromPhotosView: View {
                     }
                 }
                 .padding(.top, 8)
-                .padding(.bottom, 110)
+                .padding(.bottom, Metrics.bottomControlInset)
             }
             .overlay { if !loaded { ProgressView() } }
             .overlay(alignment: .bottom) {
@@ -120,7 +120,8 @@ struct AddFromPhotosView: View {
                     if hasDiary {
                         Image(systemName: "text.alignleft")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Color(.label))
+                            // 白底上固定用黑色：跟随深色模式的 label 会变成白字白底。
+                            .foregroundStyle(.black)
                             .frame(width: 20, height: 20)
                             .background(.white.opacity(0.94), in: .circle)
                             .shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
@@ -135,7 +136,7 @@ struct AddFromPhotosView: View {
 
     private func cellLabel(_ id: String, hasDiary: Bool) -> Text {
         guard let date = dates[id] else { return hasDiary ? Text("已写日记的照片") : Text("还没写日记的照片") }
-        let when = date.formatted(.dateTime.month().day().hour().minute().locale(.app))
+        let when = DiaryDates.dayAndTime(date)
         return hasDiary ? Text("已写日记的照片，\(when)") : Text("还没写日记的照片，\(when)")
     }
 

@@ -57,7 +57,7 @@ struct JournalView: View {
             switch mode {
             case .list, .calendar: scroll
             // 还没有日记时，照片视图和列表一样显示空状态。
-            case .media: if store.timeline.isEmpty { scroll } else { mediaScroll }
+            case .media: if store.diaries.isEmpty { scroll } else { mediaScroll }
             case .map: MapContent().ignoresSafeArea()
             }
         }
@@ -68,7 +68,7 @@ struct JournalView: View {
 
         .navigationTitle("日记")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbarColorScheme(mode == .media && !pastTitle ? .dark : nil, for: .navigationBar)
+        .toolbarColorScheme(mode == .media && !pastTitle && !store.diaries.isEmpty ? .dark : nil, for: .navigationBar)
         .toolbarBackgroundVisibility(mode == .map ? .hidden : .automatic, for: .navigationBar)
         .toolbar {
             ToolbarItem(placement: .principal) {
@@ -106,7 +106,7 @@ struct JournalView: View {
                     if mode == .calendar { WeekdayHeader().padding(.top, 16) }
                 }
             }
-            .padding(.bottom, 170)
+            .padding(.bottom, Metrics.bottomBarInset)
         }
         .scrollIndicators(.hidden)
         .collapsesTabBarOnScroll()
@@ -131,19 +131,14 @@ struct JournalView: View {
                     .id(Self.topID)
                     .overlay(alignment: .top) {
                         ZStack(alignment: .top) {
-                            LinearGradient(stops: [
-                                .init(color: .black.opacity(0.55), location: 0),
-                                .init(color: .black.opacity(0.28), location: 0.55),
-                                .init(color: .black.opacity(0), location: 1),
-                            ], startPoint: .top, endPoint: .bottom)
-                            .frame(height: max(190, viewport.safeAreaInsets.top + 92))
-                            .allowsHitTesting(false)
+                            PhotoScrim(edge: .top)
+                                .frame(height: max(190, viewport.safeAreaInsets.top + 92))
                             TitleBlock(subtitle: subtitle, onPhoto: true)
                                 .padding(.top, viewport.safeAreaInsets.top)
                                 .allowsHitTesting(false)
                         }
                     }
-                    .padding(.bottom, 170)
+                    .padding(.bottom, Metrics.bottomBarInset)
             }
             .scrollIndicators(.hidden)
             .collapsesTabBarOnScroll()
@@ -216,7 +211,7 @@ private struct TitleBlock: View {
         .foregroundStyle(onPhoto ? Color.white : Color.ink)
         .shadow(color: .black.opacity(onPhoto ? 0.25 : 0), radius: 8, y: 1)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Metrics.text)
         .padding(.top, 2)
     }
 }
@@ -234,8 +229,8 @@ struct LimitedAccessBanner: View {
             Button("选择更多") { LimitedLibrary.present(store: store) }
                 .font(.footnote.weight(.semibold))
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.vertical, 12)
-        .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
+        .background(Color.tile, in: .rect(cornerRadius: Metrics.Radius.card, style: .continuous))
     }
 }

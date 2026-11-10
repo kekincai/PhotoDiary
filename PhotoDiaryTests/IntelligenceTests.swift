@@ -6,7 +6,7 @@ import FoundationModels
 /// 模型给的东西都要对回真实数据才用：搜索条件、标签建议、本周回顾的输入，以及开关。模型本身不在这里测。
 struct IntelligenceTests {
     let context = SearchContext(today: DayStamp(year: 2026, month: 10, day: 31)!,
-                                tags: ["旅行", "日常", "Coffee"], places: ["镰仓", "京都"], language: "Simplified Chinese")
+                                tags: ["旅行", "日常", "Coffee"], places: ["镰仓", "京都"])
 
     // MARK: 搜索条件
 
@@ -31,6 +31,12 @@ struct IntelligenceTests {
         let open = SearchIntent(keywords: [], tags: [], place: nil, from: "2026-10-01", to: nil).resolved(in: context)
         #expect(open?.days?.upperBound == context.today)
         #expect(SearchIntent(keywords: [], tags: [], place: nil, from: "2026-13-01", to: nil).resolved(in: context) == nil)
+    }
+
+    /// 只给了起点、而且在今天之后（“明年的计划”，或模型写错了年份）：不闪退，只看那一天。
+    @Test func intentWithFutureStartDoesNotCrash() {
+        let future = SearchIntent(keywords: [], tags: [], place: nil, from: "2027-03-01", to: nil).resolved(in: context)
+        #expect(future?.days == DayStamp(year: 2027, month: 3, day: 1)!...DayStamp(year: 2027, month: 3, day: 1)!)
     }
 
     @Test func filterSearchOrsKeywordsAndAndsTags() async {
@@ -58,7 +64,8 @@ struct IntelligenceTests {
         #expect(TagSuggestions.refine(["a\nb"], text: "", existing: []) == ["a b"])
     }
 
-    @Test func fakeEngineFollowsItsRules() async {
+    /// 界面测试（-fakeIntelligence）靠假模型的这几条规则写断言；规则一改，界面测试会莫名失败，所以在这里钉住。
+    @Test func fakeEngineRulesThatUITestsRelyOn() async {
         let engine = FakeIntelligenceEngine()
         let intent = await engine.interpret("去年 旅行 海边 京都", context: context)
         #expect(intent?.resolved(in: context) == SearchFilter(keywords: ["海边"], tags: ["旅行"], place: "京都",
@@ -77,6 +84,30 @@ struct IntelligenceTests {
         #expect(input.items.allSatisfy { $0.text.count <= 101 && $0.text.hasSuffix("…") })
         #expect(input.items[0].place == "镰仓")
         #expect(input.items[0].date == DayStamp(year: 2026, month: 10, day: 30)!)
+    }
+
+    /// 只有一句话的日记也要传给模型（预览是首句之后的内容，会是空的）；标签不传；日期是这周写的那天，不是拍照那天。
+    @Test func weeklyReviewInputKeepsTitleAndUsesWritingDate() {
+        let short = DiaryEntry(id: "a", caption: "下午去海边了。 #旅行#\n— 2026.10.30", keywords: [], creationDate: date(2026, 10, 30),
+                               latitude: nil, longitude: nil, mediaKind: .photo, isCloudShared: false, pixelWidth: 0, pixelHeight: 0)
+        let old = DiaryEntry(id: "b", caption: "那年的雪。\n— 2021.01.05\n\n五年后再看，还是冷。\n— 2026.10.29", keywords: [],
+                             creationDate: date(2021, 1, 5), latitude: nil, longitude: nil, mediaKind: .photo, isCloudShared: false,
+                             pixelWidth: 0, pixelHeight: 0)
+        let week = Set((26...31).map { DayStamp(year: 2026, month: 10, day: $0)! } + [DayStamp(year: 2026, month: 11, day: 1)!])
+        let input = WeeklyReviewInput(entries: [short, old], week: week, language: "Simplified Chinese")
+        #expect(input.items.map(\.text) == ["下午去海边了。", "五年后再看，还是冷。"])
+        #expect(input.items.map(\.date) == [DayStamp(year: 2026, month: 10, day: 30)!, DayStamp(year: 2026, month: 10, day: 29)!])
+    }
+
+    /// 篇数多到每篇的保底字数也放不下时，总量照样封顶。
+    @Test func weeklyReviewInputStaysUnderLimitWithManyEntries() {
+        let entries = (0..<80).map { i in
+            DiaryEntry(id: "\(i)", caption: String(repeating: "字", count: 120), keywords: [], creationDate: date(2026, 10, 30),
+                       latitude: nil, longitude: nil, mediaKind: .photo, isCloudShared: false, pixelWidth: 0, pixelHeight: 0)
+        }
+        let input = WeeklyReviewInput(entries: entries, language: "Simplified Chinese")
+        #expect(input.items.reduce(0) { $0 + $1.text.count } <= WeeklyReviewInput.maxCharacters)
+        #expect(!input.items.isEmpty)
     }
 
     // MARK: 开关
@@ -105,7 +136,7 @@ struct FoundationModelsTests {
             return
         }
         let engine = FoundationModelsEngine()
-        let context = SearchContext(today: .today, tags: ["旅行", "散步"], places: ["京都"], language: "Simplified Chinese")
+        let context = SearchContext(today: .today, tags: ["旅行", "散步"], places: ["京都"])
         let intent = await engine.interpret("去年夏天在京都散步", context: context)?.resolved(in: context)
         #expect(intent != nil)
         let tags = await engine.suggestTags(for: "下午沿着鸭川走了很久，傍晚在河边喝了杯咖啡。", existing: ["散步"])

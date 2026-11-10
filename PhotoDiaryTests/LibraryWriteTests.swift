@@ -57,6 +57,46 @@ struct LibraryWriteTests {
         #expect(store.entry("a")?.segments.count == 2)
     }
 
+    /// App 没开时在 Mac 上改了说明、增量同步还没回来：追加感想、补标签都以照片库里现在的说明为准，不拿索引里的旧说明盖掉。
+    @Test func appendAndAddTagStartFromLibraryNotStaleIndex() async throws {
+        let library = FakeLibrary()
+        library.seed("a", caption: "旧的\n— 2026.10.01", date: date(2026, 10, 1))
+        let store = await startedStore(library)
+        library.externalEdit("a", caption: "在 Mac 上改过\n— 2026.10.01", notify: false)
+        #expect(store.entry("a")?.caption == "旧的\n— 2026.10.01")
+
+        try await store.save(text: "表上说的", mode: .append, for: "a")
+        #expect(library.caption(of: "a") == "在 Mac 上改过\n— 2026.10.01\n\n表上说的\n— 2026.10.31")
+
+        library.externalEdit("a", caption: "又改过\n— 2026.10.01", notify: false)
+        try await store.addTag("秋天", to: "a")
+        #expect(library.caption(of: "a") == "又改过 #秋天#\n— 2026.10.01")
+    }
+
+    /// 照片已经删了（或不在有限访问的范围里）：写入报错，不当作写进去了。
+    @Test func writingToMissingPhotoThrows() async throws {
+        let library = FakeLibrary()
+        library.seed("a", caption: "在", date: date(2026, 10, 1))
+        let store = await startedStore(library)
+        await #expect(throws: LibraryScanner.WriteError.missing(["没了"])) {
+            try await store.save(text: "写不进去", mode: .new, for: "没了")
+        }
+        #expect(library.writes.isEmpty)
+    }
+
+    /// 标签改名时有一张共享相簿里别人的照片改不了：跳过它，其余照改。
+    @Test func renameSkipsLockedPhotos() async throws {
+        let library = FakeLibrary()
+        library.seed("a", caption: "一 #旧#", date: date(2026, 10, 1))
+        library.seed("b", caption: "二 #旧#", date: date(2026, 10, 2))
+        library.lock("b")
+        let store = await startedStore(library)
+        try await store.renameTags(["旧"], to: "新")
+        #expect(library.caption(of: "a") == "一 #新#")
+        #expect(library.caption(of: "b") == "二 #旧#")
+        #expect(store.entry("a")?.tags == ["新"])
+    }
+
     @Test func editKeepsTextAndAddsMissingDateLine() async throws {
         let library = FakeLibrary()
         library.seed("a", caption: "Sunset at Kamakura", date: date(2026, 10, 1))
@@ -119,6 +159,21 @@ struct LibraryWriteTests {
         #expect(library.reconciled == [["tagged"]])
         #expect(library.keywords(of: "tagged") == ["旅行"])
         #expect(library.keywords(of: "imported") == ["Fujifilm", "Kanagawa"])
+    }
+
+    /// 照片库把关键词改成了别的写法（例如规范化大小写）：同一组标签只改一次，不来回改个没完。
+    @Test func keywordReconcileDoesNotLoop() async {
+        let library = FakeLibrary()
+        library.seed("a", caption: "猫 #Cat#", keywords: ["dog"], date: date(2026, 10, 1))
+        let store = await startedStore(library)
+        #expect(await eventually { library.reconciled.count == 1 })
+        library.externalUpdate("a") { $0.keywords = ["cat"] }
+        #expect(await eventually { store.entry("a")?.keywords == ["cat"] })
+        try? await Task.sleep(for: .milliseconds(100))
+        #expect(library.reconciled.count == 1)
+        // 标签真的变了，照样改。
+        library.externalEdit("a", caption: "猫 #Cat# #宠物#")
+        #expect(await eventually { library.reconciled.count == 2 })
     }
 
     @Test func keywordChangeIsMinimal() {

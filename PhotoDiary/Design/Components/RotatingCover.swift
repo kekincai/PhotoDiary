@@ -7,7 +7,7 @@ import Photos
 struct RotatingCover: View {
     let ids: [String]
     let pointSize: CGSize
-    var period: Duration = .seconds(7)
+    private static let period: Duration = .seconds(7)
     var stagger: Duration = .zero
 
     @State private var index = 0
@@ -32,7 +32,7 @@ struct RotatingCover: View {
             guard ids.count > 1, !reduceMotion else { return }
             try? await Task.sleep(for: stagger)
             while !Task.isCancelled {
-                try? await Task.sleep(for: period)
+                try? await Task.sleep(for: Self.period)
                 guard !Task.isCancelled else { return }
                 let next = (index + 1) % ids.count
                 await prefetch(ids[next])

@@ -21,8 +21,20 @@ final class WidgetBridge {
     private init() {}
 
     func start(store: DiaryStore) {
-        self.store = store
+        attach(store: store)
         scheduleUpdate(after: .zero)
+    }
+
+    /// 只连上日记库（测试直接调 updateNow）。
+    func attach(store: DiaryStore) {
+        self.store = store
+        last = nil
+    }
+
+    /// 不等防抖，现在就写。
+    func updateNow() async {
+        task?.cancel()
+        await update()
     }
 
     func scheduleUpdate(after delay: Duration = .seconds(2)) {
@@ -35,8 +47,8 @@ final class WidgetBridge {
     }
 
     private func update() async {
-        guard let store, store.hasLoaded, let directory = WidgetSnapshot.directory else { return }
-        // 没有照片权限时不留旧的日记在小组件上。
+        // 有权限时等索引读出来再写（不然写出去的是空的）；没有权限时直接写一份空的：撤销权限后不留旧的日记和照片在小组件上。
+        guard let store, store.hasLoaded || !store.canRead, let directory = WidgetSnapshot.directory else { return }
         let diaries = store.canRead ? store.diaries : []
         var snapshot = WidgetSnapshot.make(diaries: diaries, today: .today, language: AppLanguage.current.rawValue)
         if let last {

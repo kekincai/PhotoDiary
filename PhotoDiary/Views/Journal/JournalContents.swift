@@ -13,64 +13,39 @@ struct ListContent: View {
     @Environment(\.displayScale) private var scale
     @State private var width: CGFloat = 0
 
-    /// iPad 上卡片排成两三栏。
-    private var columns: [GridItem] { [GridItem(.adaptive(minimum: 340, maximum: 520), spacing: Metrics.Spacing.xl, alignment: .top)] }
-
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 0) {
             if store.isLimited {
-                LimitedAccessBanner().padding(.horizontal, 16).padding(.top, 18)
+                LimitedAccessBanner().padding(.horizontal, Metrics.page).padding(.top, 18)
             }
             // 第一次读取照片库的整个过程都显示进度；读到的日记接在下面先显示出来。
-            if store.isFirstScan && !store.timeline.isEmpty {
+            if store.isFirstScan && !store.diaries.isEmpty {
                 FirstScanView(placeholders: false)
             }
             if let memory = store.onThisDay.first {
                 OnThisDayBanner(entry: memory)
-                    .padding(.horizontal, 16)
+                    .padding(.horizontal, Metrics.page)
                     .padding(.top, 16)
             }
-            if store.timeline.isEmpty {
+            if store.diaries.isEmpty {
                 emptyState
             }
             ForEach(Array(store.months.enumerated()), id: \.element.id) { index, month in
                 MonthHeading(date: month.start, count: month.entries.count)
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, Metrics.text)
                     .padding(.top, index == 0 ? 26 : 4)
                     .padding(.bottom, 12)
-                if wide {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: Metrics.Spacing.xxl) {
-                        ForEach(month.entries) { entry in card(entry) }
-                    }
-                    .padding(.horizontal, Metrics.page)
+                EntryCardGrid(entries: month.entries, onAppear: prefetch(after:))
                     .padding(.bottom, Metrics.Spacing.xxl)
-                } else {
-                    ForEach(month.entries) { entry in
-                        card(entry)
-                            .padding(.horizontal, Metrics.page)
-                            .padding(.bottom, Metrics.Spacing.xxl)
-                    }
-                }
             }
         }
         .onGeometryChange(for: CGFloat.self, of: { $0.size.width }) { width = $0 }
     }
 
-    private func card(_ entry: DiaryEntry) -> some View {
-        NavigationLink(value: Route.entry(entry.id)) {
-            EntryCard(entry: entry, namespace: namespace)
-        }
-        .buttonStyle(.press)
-        .entryContextMenu(entry)
-        .onAppear { prefetch(after: entry) }
-    }
-
     /// 一张卡片出现时，让后面几张的照片先解好；手机上卡片宽 = 屏宽 − 32，4:3。
     private func prefetch(after entry: DiaryEntry) {
         guard !wide, width > 0 else { return }
-        let ids = store.timeline.map(\.id)
-        guard let index = ids.firstIndex(of: entry.id) else { return }
-        let next = Array(ids[(index + 1)..<min(index + 7, ids.count)])
+        let next = store.entries(after: entry.id, count: 6).map(\.id)
         guard !next.isEmpty else { return }
         let cardWidth = width - Metrics.page * 2
         let px = AssetImages.pixelSize(points: CGSize(width: cardWidth, height: cardWidth * 3 / 4), scale: scale)
@@ -78,7 +53,7 @@ struct ListContent: View {
     }
 
     @ViewBuilder private var emptyState: some View {
-        if !store.hasSynced && store.timeline.isEmpty {
+        if !store.hasSynced && store.diaries.isEmpty {
             FirstScanView()
         } else {
             EmptyHint(title: "还没有写过说明的照片",
@@ -91,7 +66,6 @@ struct ListContent: View {
 struct FirstScanView: View {
     var placeholders = true
     @Environment(DiaryStore.self) private var store
-    @Environment(\.brand) private var brand
 
     var body: some View {
         VStack(alignment: .leading, spacing: 32) {
@@ -100,7 +74,7 @@ struct FirstScanView: View {
                 ForEach(0..<2, id: \.self) { _ in PlaceholderCard() }
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.top, 16)
     }
 
@@ -117,14 +91,15 @@ struct FirstScanView: View {
                       written: max(0, (fraction - 0.85) / 0.15), shadow: false)
                 .animation(.easeOut(duration: 0.6), value: fraction)
                 .frame(width: 72, height: 80)
-                .background(brand.gradient, in: .rect(cornerRadius: Metrics.Radius.card, style: .continuous))
+                // 和 App 图标一样的底色，不用主题色（主题色只给标签、“+”、选中态这些）。
+                .background(MarkPalette.light.background, in: .rect(cornerRadius: Metrics.Radius.card, style: .continuous))
             VStack(alignment: .leading, spacing: 6) {
                 Text("正在读取照片说明")
                     .font(.headline)
                     .foregroundStyle(Color.ink)
                 Group {
                     if let progress {
-                        Text("已读 \(progress.done) / \(progress.total) 张 · 找到 \(store.timeline.count) 篇")
+                        Text("已读 \(progress.done) / \(progress.total) 张 · 找到 \(store.diaries.count) 篇")
                     } else {
                         Text("正在打开照片库…")
                     }
@@ -134,7 +109,7 @@ struct FirstScanView: View {
                 .contentTransition(.numericText())
                 .animation(.snappy, value: progress?.done)
                 ProgressView(value: progress.map { Double($0.done) / Double($0.total) } ?? 0)
-                    .tint(brand)
+                    .tint(Color.ink)
                     .padding(.top, 4)
                     .animation(.snappy, value: progress?.done)
             }
@@ -149,7 +124,7 @@ struct FirstScanView: View {
 private struct PlaceholderCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            RoundedRectangle(cornerRadius: 24, style: .continuous)
+            RoundedRectangle(cornerRadius: Metrics.Radius.hero, style: .continuous)
                 .aspectRatio(4 / 3, contentMode: .fit)
             Group {
                 Capsule().frame(width: 150, height: 11)
@@ -209,7 +184,7 @@ private struct OnThisDayBanner: View {
             HStack(spacing: 12) {
                 AssetImage(id: entry.id, pointSize: CGSize(width: 48, height: 48))
                     .frame(width: 48, height: 48)
-                    .clipShape(.rect(cornerRadius: 8, style: .continuous))
+                    .clipShape(.rect(cornerRadius: Metrics.Radius.thumb, style: .continuous))
                 VStack(alignment: .leading, spacing: 2) {
                     Text(DiaryDates.onThisDay(entry.day))
                         .font(.footnote.weight(.semibold))
@@ -227,8 +202,8 @@ private struct OnThisDayBanner: View {
             .padding(.leading, 8)
             .padding(.trailing, 16)
             .padding(.vertical, 8)
-            .background(Color.tile, in: .rect(cornerRadius: 16, style: .continuous))
-            .contentShape(.rect(cornerRadius: 16))
+            .background(Color.tile, in: .rect(cornerRadius: Metrics.Radius.card, style: .continuous))
+            .contentShape(.rect(cornerRadius: Metrics.Radius.card))
         }
         .buttonStyle(.press)
     }
@@ -277,12 +252,11 @@ struct CalendarContent: View {
     }
 }
 
-private struct MonthGrid: View {
+/// 一个月：标题（有日记时带篇数）+ 七列格子，月初前面空出一周起始日之前的格子。日记的日历和选日期的日历共用。
+struct MonthFrame<Cell: View>: View {
     let firstDay: Date
-    let today: DayStamp
+    @ViewBuilder let cell: (DayStamp) -> Cell
     @Environment(DiaryStore.self) private var store
-    @Environment(\.brand) private var brand
-    @Environment(\.zoomNamespace) private var namespace
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
 
@@ -295,16 +269,28 @@ private struct MonthGrid: View {
 
         VStack(alignment: .leading, spacing: 12) {
             MonthHeading(date: firstDay, count: total == 0 ? nil : total)
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Metrics.page)
             LazyVGrid(columns: columns, spacing: 2) {
                 ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit).accessibilityHidden(true) }
-                ForEach(days, id: \.self) { day in
-                    cell(day: day, entries: store.entries(on: day))
-                }
+                ForEach(days, id: \.self) { day in cell(day) }
             }
             // 七列的格子不能变宽：日期字号封顶，读不清的靠 VoiceOver 和大字查看。
             .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
             .padding(.horizontal, 4)
+        }
+    }
+}
+
+private struct MonthGrid: View {
+    let firstDay: Date
+    let today: DayStamp
+    @Environment(DiaryStore.self) private var store
+    @Environment(\.brand) private var brand
+    @Environment(\.zoomNamespace) private var namespace
+
+    var body: some View {
+        MonthFrame(firstDay: firstDay) { day in
+            cell(day: day, entries: store.entries(on: day))
         }
     }
 
@@ -325,7 +311,7 @@ private struct MonthGrid: View {
                 Color.clear
                     .aspectRatio(1, contentMode: .fit)
                     .overlay { AssetImage(id: first.id) }
-                    .clipShape(.rect(cornerRadius: 8, style: .continuous))
+                    .clipShape(.rect(cornerRadius: Metrics.Radius.thumb, style: .continuous))
                     .overlay(alignment: .topLeading) {
                         Text("\(day.day)")
                             .font(.caption.weight(.semibold).monospacedDigit())
@@ -346,10 +332,10 @@ private struct MonthGrid: View {
                     }
                     .overlay {
                         if day == today {
-                            RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(brand, lineWidth: 2)
+                            RoundedRectangle(cornerRadius: Metrics.Radius.thumb, style: .continuous).strokeBorder(brand, lineWidth: 2)
                         }
                     }
-                    .modifier(TransitionSource(id: first.id, namespace: entries.count == 1 ? namespace : nil, cornerRadius: 8))
+                    .zoomSource(first.id, in: entries.count == 1 ? namespace : nil, cornerRadius: Metrics.Radius.thumb)
             }
             .buttonStyle(.press)
             .modifier(OptionalEntryMenu(entry: entries.count == 1 ? first : nil))
@@ -396,7 +382,7 @@ struct MediaGridContent: View {
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 2) {
-            ForEach(store.timeline) { entry in
+            ForEach(store.diaries) { entry in
                 NavigationLink(value: Route.entry(entry.id)) {
                     Color.clear
                         .aspectRatio(1, contentMode: .fit)
@@ -406,7 +392,7 @@ struct MediaGridContent: View {
                             if entry.segments.count > 1 { ParagraphBadge(count: entry.segments.count, compact: true).padding(6) }
                         }
                         .overlay(alignment: .topTrailing) { MediaBadge(kind: entry.mediaKind).padding(6) }
-                        .modifier(TransitionSource(id: entry.id, namespace: namespace, cornerRadius: 0))
+                        .zoomSource(entry.id, in: namespace, cornerRadius: 0)
                 }
                 .buttonStyle(.press)
                 .entryContextMenu(entry)
@@ -424,16 +410,16 @@ struct MapContent: View {
     @Environment(Router.self) private var router
 
     var body: some View {
-        let located = store.timeline.filter { $0.coordinate != nil }
+        let located = store.diaries.filter { $0.coordinate != nil }
         Map(initialPosition: .automatic) {
             ForEach(located) { entry in
                 Annotation(entry.title, coordinate: entry.coordinate!, anchor: .bottom) {
                     Button { router.push(.entry(entry.id)) } label: {
                         AssetImage(id: entry.id, pointSize: CGSize(width: 46, height: 46))
                             .frame(width: 46, height: 46)
-                            .clipShape(.rect(cornerRadius: 8, style: .continuous))
+                            .clipShape(.rect(cornerRadius: Metrics.Radius.thumb, style: .continuous))
                             .padding(4)
-                            .background(.white, in: .rect(cornerRadius: 12, style: .continuous))
+                            .background(.white, in: .rect(cornerRadius: Metrics.Radius.tile, style: .continuous))
                             .shadow(color: .black.opacity(0.18), radius: 4, y: 2)
                     }
                     .buttonStyle(.press)
@@ -448,7 +434,7 @@ struct MapContent: View {
                 Text("写过说明的照片里，还没有带位置的")
                     .font(.footnote)
                     .multilineTextAlignment(.center)
-                    .padding(.horizontal, 16).padding(.vertical, 12)
+                    .padding(.horizontal, Metrics.page).padding(.vertical, 12)
                     .glassEffect(.regular, in: .capsule)
             }
         }
@@ -462,18 +448,22 @@ struct DayEntriesView: View {
     @Environment(DiaryStore.self) private var store
 
     var body: some View {
+        let entries = store.entries(on: day)
         ScrollView {
             LazyVStack(spacing: 0) {
-                let entries = store.entries(on: day)
                 ForEach(entries) { entry in
                     NavigationLink(value: Route.entry(entry.id)) {
                         EntryRow(entry: entry, showsSeparator: entry.id != entries.last?.id)
                     }
-                    .buttonStyle(.row())
+                    .buttonStyle(.row)
                     .entryContextMenu(entry)
                 }
             }
             .padding(.vertical, 8)
+        }
+        // “打开今天的日记”（小组件、快捷指令）在今天还没写时也会到这里。
+        .overlay {
+            if entries.isEmpty { EmptyHint(title: "这一天还没写日记") }
         }
         .navigationTitle(DiaryDates.full(day))
         .navigationBarTitleDisplayMode(.inline)

@@ -13,6 +13,8 @@ struct YearReviewView: View {
     @State private var position: YearCard?
     /// “减少动态效果”时的当前页。
     @State private var index = 0
+    /// 一页的宽度：点左边三分之一上一张，其余下一张。
+    @State private var pageWidth: CGFloat = 390
 
     private var cards: [YearCard] { YearCard.cards(for: review) }
     private var current: Int {
@@ -67,6 +69,13 @@ struct YearReviewView: View {
             .gesture(DragGesture(minimumDistance: 24).onEnded { value in
                 if value.translation.width < -40 { go(by: 1) } else if value.translation.width > 40 { go(by: -1) }
             })
+            // 没有滚动视图时，VoiceOver（三指轻扫）和切换控制靠这个翻页，不然只能停在封面上。
+            .accessibilityScrollAction { edge in
+                switch edge {
+                case .trailing, .bottom: go(by: 1)
+                case .leading, .top: go(by: -1)
+                }
+            }
     }
 
     private func page(_ card: YearCard, active: Bool) -> some View {
@@ -74,9 +83,10 @@ struct YearReviewView: View {
             .padding(.top, 64)
             .padding(.bottom, 32)
             .contentShape(.rect)
-            // 点右边三分之二下一张，左边上一张（和“快拍”一样）。卡片里的按钮先拿到点按。
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { pageWidth = $0 }
+            // 点右边三分之二下一张，左边三分之一上一张（和“快拍”一样）。卡片里的按钮先拿到点按。
             .onTapGesture(coordinateSpace: .local) { location in
-                go(by: location.x < 120 ? -1 : 1)
+                go(by: location.x < pageWidth / 3 ? -1 : 1)
             }
             .accessibilityElement(children: .contain)
     }
@@ -122,7 +132,7 @@ struct YearReviewView: View {
                 .largeContent(String(localized: "关闭", bundle: .app, locale: .app), systemImage: "xmark")
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.top, 8)
     }
 
@@ -300,17 +310,17 @@ private struct MonthsCard: View {
 
     /// 柱子下面的月份：J F M… / 1 2 3…（太长的就用数字）。
     private static var monthSymbols: [String] {
-        let symbols = DateFormatter.localized("MMMMM").veryShortStandaloneMonthSymbols ?? []
+        let symbols = DiaryDates.veryShortMonthSymbols
         if symbols.count == 12, symbols.allSatisfy({ $0.count <= 2 }) { return symbols }
         return (1...12).map(String.init)
     }
 
-    /// 读屏：“1月，2 篇；3月，1 篇……”（只读写过的月份）。
+    /// 读屏：“1月，2 篇、3月，1 篇和……”（只读写过的月份，按界面语言连起来）。
     private static func spokenCounts(_ review: YearInReview) -> String {
         review.monthCounts.enumerated().filter { $0.element > 0 }.map { i, count in
             let date = Calendar.diary.date(from: DateComponents(year: review.year, month: i + 1, day: 1)) ?? .now
             return String(localized: "\(DiaryDates.monthName(date))，\(count) 篇", bundle: .app, locale: .app)
-        }.joined(separator: "；")
+        }.formatted(.list(type: .and).locale(.app))
     }
 }
 
@@ -364,11 +374,11 @@ private struct EntryCardPage: View {
         GeometryReader { proxy in
             DevelopingPhoto(id: entry.id, active: active, pointSize: proxy.size)
                 .frame(width: proxy.size.width, height: proxy.size.height)
-                .clipShape(.rect(cornerRadius: 24, style: .continuous))
+                .clipShape(.rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
                 .overlay(alignment: .bottom) {
                     PhotoScrim(edge: .bottom, strength: 0.7)
                         .frame(height: min(320, proxy.size.height * 0.55))
-                        .clipShape(.rect(cornerRadius: 24, style: .continuous))
+                        .clipShape(.rect(cornerRadius: Metrics.Radius.hero, style: .continuous))
                 }
                 .overlay(alignment: .bottomLeading) {
                     VStack(alignment: .leading, spacing: 8) {
@@ -385,7 +395,7 @@ private struct EntryCardPage: View {
                     .padding(.bottom, 8)
                 }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .accessibilityElement(children: .combine)
     }
 }
@@ -399,7 +409,7 @@ private struct ShareCardPage: View {
         VStack(spacing: 28) {
             Spacer(minLength: 0)
             YearShareCard(review: review) { id in AssetImage(id: id) }
-                .frame(width: YearShareCard<EmptyView>.width)
+                .frame(width: SharePaper.width)
                 .clipShape(.rect(cornerRadius: 6, style: .continuous))
                 .shadow(color: .black.opacity(0.35), radius: 24, y: 12)
                 .scaleEffect(0.78)

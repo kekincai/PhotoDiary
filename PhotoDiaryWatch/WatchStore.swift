@@ -15,14 +15,19 @@ final class WatchStore: NSObject {
     private(set) var snapshot: WatchSnapshot?
     /// 快照里的日记，按照片日期倒序（和 iPhone 的列表一致）。
     private(set) var entries: [DiaryEntry] = []
-    private(set) var onThisDay: [DiaryEntry] = []
     private(set) var isReachable = false
-    /// 已发给 iPhone、还没收到“已写入”回执的段落。
-    private(set) var pending: [WatchWrite] = []
-    /// 最近一次成功写入的段落，用来在界面上打个勾。
-    private(set) var lastConfirmed: UUID?
-    /// 正在向 iPhone 要缩略图。
-    private(set) var isLoadingImages = false
+    /// 已经写进照片说明的段落（iPhone 的回执），用来在界面上打个勾。
+    private(set) var confirmed: Set<UUID> = []
+    /// iPhone 写不进去的段落（照片删了、改不了说明）：字留在表上，用户看过再删。
+    private(set) var failed: [WatchWrite] = [] {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(failed), forKey: Self.failedKey) }
+    }
+    /// 发出去、还没收到回执的段落；收到“没写进去”时从这里找回原文。
+    private var sent: [WatchWrite] = [] {
+        didSet { UserDefaults.standard.set(try? JSONEncoder().encode(sent), forKey: Self.sentKey) }
+    }
+    private static let failedKey = "failedWrites"
+    private static let sentKey = "sentWrites"
 
     private var images: [String: UIImage] = [:]
     private var byID: [String: DiaryEntry] = [:]
@@ -38,6 +43,9 @@ final class WatchStore: NSObject {
     // MARK: 启动
 
     func start() {
+        let defaults = UserDefaults.standard
+        failed = defaults.data(forKey: Self.failedKey).flatMap { try? JSONDecoder().decode([WatchWrite].self, from: $0) } ?? []
+        sent = defaults.data(forKey: Self.sentKey).flatMap { try? JSONDecoder().decode([WatchWrite].self, from: $0) } ?? []
         load()
         guard WCSession.isSupported() else { return }
         let session = WCSession.default
@@ -59,9 +67,8 @@ final class WatchStore: NSObject {
         Calendar.diaryFirstWeekday = snapshot.firstWeekday ?? WeekStart.default.rawValue
         let all = snapshot.entries.map(\.entry)
         byID = Dictionary(all.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
-        let recentIDs = Set(snapshot.entries.prefix(WatchSnapshot.maxEntries).map(\.id))
-        entries = all.filter { recentIDs.contains($0.id) }.sorted { $0.sortDate > $1.sortDate }
-        onThisDay = snapshot.onThisDay.compactMap { byID[$0] }
+        // 快照前面是最近的日记（已经按照片日期倒序），后面补的是那年今日。
+        entries = Array(all.prefix(WatchSnapshot.maxEntries))
         // 本地缓存里已有的图直接用，缺的去要。
         var loaded: [String: UIImage] = [:]
         for id in snapshot.imageIDs {
@@ -70,6 +77,7 @@ final class WatchStore: NSObject {
         images = loaded
         pruneCache(keeping: Set(snapshot.imageIDs))
         Self.log.info("快照：\(snapshot.entries.count) 篇，那年今日 \(snapshot.onThisDay.count) 篇，缺图 \(self.missingImageIDs.count) 张")
+        // 正在取图时到的快照，缺的图等这一轮取完再补（见 fetchMissingImages）。
         fetchMissingImages()
     }
 
@@ -97,13 +105,14 @@ final class WatchStore: NSObject {
     /// 逐张向 iPhone 要缺的图（一条消息最多约 64 KB）。
     private func fetchMissingImages() {
         guard !fetching, WCSession.default.isReachable else { return }
-        let missing = missingImageIDs
-        guard !missing.isEmpty else { return }
+        guard !missingImageIDs.isEmpty else { return }
         fetching = true
-        isLoadingImages = true
         Task {
-            defer { fetching = false; isLoadingImages = false }
-            for id in missing {
+            defer { fetching = false }
+            // 取的时候到了新快照，又缺了别的图：接着取，直到这一轮没有新的可要。
+            var asked = Set<String>()
+            while let id = missingImageIDs.first(where: { !asked.contains($0) }), WCSession.default.isReachable {
+                asked.insert(id)
                 // 一次一张：JSON 里的 Base64 会把 20 KB 的图撑到 27 KB，两张就可能超过一条消息的上限。
                 guard let reply = await send(.thumbnails(ids: [id])), case .images(let received) = reply else { continue }
                 for (id, data) in received {
@@ -143,15 +152,29 @@ final class WatchStore: NSObject {
     func entry(_ id: String) -> DiaryEntry? { byID[id] }
     func image(_ id: String) -> UIImage? { images[id] }
     var unwritten: [WatchPhoto] { snapshot?.unwritten ?? [] }
-    var week: [WatchWeekDay] { snapshot?.week ?? [] }
-    var writtenThisWeek: Int { snapshot?.writtenThisWeek ?? 0 }
     var hasSnapshot: Bool { snapshot != nil }
+
+    /// 表上今天的那年今日。过了零点、iPhone 还没发新快照时用快照里往后几天的。
+    func onThisDay(today: DayStamp = .today) -> [DiaryEntry] {
+        (snapshot?.onThisDay(on: today) ?? []).compactMap { byID[$0] }
+    }
+
+    /// 表上今天所在的一周；进了新的一周就从头算。
+    func week(today: DayStamp = .today) -> (days: [WatchWeekDay], written: Int) {
+        snapshot?.week(on: today) ?? ([], 0)
+    }
+
+    /// 看过了，删掉这段没写进去的。
+    func dismissFailed(_ id: UUID) {
+        failed.removeAll { $0.id == id }
+    }
 
     // MARK: 写
 
     /// 口述的一段发给 iPhone：可达时直接送到；不可达时排队，连上后自动送达。
     func send(_ write: WatchWrite) {
-        pending.append(write)
+        // 只留最近的一些：回执丢了的不能越攒越多。
+        sent = Array((sent + [write]).suffix(50))
         Self.log.info("发出一段（\(write.mode.rawValue, privacy: .public)）")
         if WCSession.default.isReachable {
             Task {
@@ -185,9 +208,20 @@ final class WatchStore: NSObject {
         }
     }
 
-    private func confirm(_ id: UUID) {
-        pending.removeAll { $0.id == id }
-        lastConfirmed = id
+    /// iPhone 的回执：写进去了打勾；写不进去的把原文留在表上。
+    private func receive(_ message: WatchMessage) {
+        switch message {
+        case .wrote(let id):
+            sent.removeAll { $0.id == id }
+            confirmed.insert(id)
+        case .failed(let id):
+            guard let write = sent.first(where: { $0.id == id }) else { return }
+            sent.removeAll { $0.id == id }
+            if !failed.contains(where: { $0.id == id }) { failed.append(write) }
+            Self.log.error("一段没写进照片说明")
+        default:
+            break
+        }
     }
 
     private func update(reachable: Bool) {
@@ -222,7 +256,13 @@ extension WatchStore: WCSessionDelegate {
     }
 
     nonisolated func session(_ session: WCSession, didReceiveMessageData messageData: Data) {
-        guard let message = WatchMessage(data: messageData), case .wrote(let id) = message else { return }
-        Task { @MainActor in self.confirm(id) }
+        guard let message = WatchMessage(data: messageData) else { return }
+        Task { @MainActor in self.receive(message) }
+    }
+
+    /// 表不在旁边时 iPhone 把回执排进 userInfo 队列，连上后到这里。
+    nonisolated func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let message = WatchMessage(userInfo: userInfo) else { return }
+        Task { @MainActor in self.receive(message) }
     }
 }

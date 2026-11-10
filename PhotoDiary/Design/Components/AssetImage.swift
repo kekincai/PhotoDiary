@@ -8,6 +8,8 @@ struct AssetImage: View {
     var allowNetwork = false
     /// 不传则按视图实际大小请求。
     var pointSize: CGSize? = nil
+    /// 请求的像素封顶。整屏的大图传 AssetImages.largePixels。
+    var maxPixels: CGFloat = AssetImages.maxPixels
 
     @State private var image: UIImage?
     @State private var size: CGSize = .zero
@@ -28,7 +30,7 @@ struct AssetImage: View {
             .task(id: TaskKey(id: id, size: pointSize ?? size)) {
                 let pts = pointSize ?? size
                 guard pts.width > 0, pts.height > 0 else { return }
-                let px = AssetImages.pixelSize(points: pts, scale: scale)
+                let px = AssetImages.pixelSize(points: pts, scale: scale, cap: maxPixels)
                 let mode: PHImageContentMode = contentMode == .fill ? .aspectFill : .aspectFit
                 for await img in AssetImages.shared.images(for: id, pixelSize: px, contentMode: mode, allowNetwork: allowNetwork) {
                     image = img
@@ -41,25 +43,12 @@ struct AssetImage: View {
     private var cachedImage: UIImage? {
         let pts = pointSize ?? size
         guard pts.width > 0, pts.height > 0 else { return nil }
-        return AssetImages.shared.cached(id, pixelSize: AssetImages.pixelSize(points: pts, scale: scale))
+        return AssetImages.shared.cached(id, pixelSize: AssetImages.pixelSize(points: pts, scale: scale, cap: maxPixels),
+                                         contentMode: contentMode == .fill ? .aspectFill : .aspectFit)
     }
 
     private struct TaskKey: Equatable {
         var id: String
         var size: CGSize
-    }
-}
-
-/// zoom 转场的起点：有命名空间时把视图登记为转场源。
-struct TransitionSource: ViewModifier {
-    let id: String
-    let namespace: Namespace.ID?
-    var cornerRadius: CGFloat = Metrics.Radius.tile
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.matchedTransitionSource(id: id, in: namespace) { $0.clipShape(.rect(cornerRadius: cornerRadius, style: .continuous)) }
-        } else {
-            content
-        }
     }
 }

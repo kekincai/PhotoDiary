@@ -93,8 +93,13 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Sendable {
     }
 
 
-    mutating func reparse() {
+    private mutating func reparse() {
         apply(CaptionDisplay(caption: caption))
+    }
+
+    /// 系统时区变了：没有拍摄地时区的照片按新的时区重算是哪一天。
+    mutating func timeZoneChanged() {
+        updateDay()
     }
 
     private mutating func apply(_ display: CaptionDisplay) {
@@ -130,5 +135,8 @@ nonisolated struct DiaryEntry: Identifiable, Hashable, Sendable {
         return CGFloat(pixelWidth) / CGFloat(pixelHeight)
     }
 
-    var tagLine: String { tags.map { "#\($0)#" }.joined(separator: " ") }
+    /// 一行标签：#旅行#  #镜头测试#（中间两个空格，卡片、行、分享图都用这个）。
+    var tagLine: String { Self.tagLine(tags) }
+
+    static func tagLine(_ tags: [String]) -> String { tags.map { "#\($0)#" }.joined(separator: "  ") }
 }

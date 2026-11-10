@@ -19,12 +19,6 @@ nonisolated struct PerformanceTests {
         }
     }
 
-    static func measure(_ label: String, _ body: () throws -> Void) rethrows {
-        let start = ContinuousClock.now
-        try body()
-        print("⏱ \(label)：\(ContinuousClock.now - start)")
-    }
-
     static func measure(_ label: String, _ body: () async throws -> Void) async rethrows {
         let start = ContinuousClock.now
         try await body()

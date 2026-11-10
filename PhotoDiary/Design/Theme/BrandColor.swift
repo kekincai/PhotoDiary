@@ -149,8 +149,6 @@ extension Color {
             ? UIColor(white: 1, alpha: high ? 0.3 : 0.12)
             : (high ? UIColor(white: 0.72, alpha: 1) : UIColor(red: 0.925, green: 0.925, blue: 0.937, alpha: 1))
     })
-    static let card = Color(.secondarySystemGroupedBackground)
-    /// 白底上的灰色块：那年今日横幅、编辑器的照片卡片、胶囊。
+    /// 白底上的灰色块：那年今日横幅、本周写作、胶囊。
     static let tile = Color(.secondarySystemBackground)
-    static let groupedBackground = Color(.systemGroupedBackground)
 }

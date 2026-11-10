@@ -8,7 +8,7 @@ struct SearchView: View {
 
         var title: String {
             switch self {
-            case .any: String(localized: "全部时间", bundle: .app, locale: .app)
+            case .any: ""  // 没有时间筛选，不显示
             case .month: String(localized: "最近 30 天", bundle: .app, locale: .app)
             case .year: String(localized: "最近一年", bundle: .app, locale: .app)
             case .onThisDay: String(localized: "那年今日", bundle: .app, locale: .app)
@@ -21,6 +21,7 @@ struct SearchView: View {
     @Environment(Router.self) private var router
     @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var query = ""
     /// 模型从输入的句子里拆出来的条件（“去年夏天在海边” → 日期 + 关键词）。
     @State private var intent: SearchFilter?
@@ -31,7 +32,8 @@ struct SearchView: View {
     @State private var customTo = Date.now
     @State private var showCustom = false
     /// 有筛选条件时往下拉：拉过这个距离松手就清掉所有条件。
-    @State private var pull: CGFloat = 0
+    /// 下拉了多少。放在单独的对象里、只有光圈读它：放在 @State 里的话每一帧都要重算整页（含全部搜索结果）。
+    @State private var pull = PullAmount()
     @State private var armed = false
     @State private var phase: ScrollPhase = .idle
     private static let clearPull: CGFloat = 96
@@ -74,22 +76,21 @@ struct SearchView: View {
         .onScrollGeometryChange(for: CGFloat.self) { geo in
             max(0, -(geo.contentOffset.y + geo.contentInsets.top))
         } action: { _, amount in
-            guard isFiltering, phase == .interacting || phase == .decelerating else { pull = 0; return }
-            pull = amount
+            guard isFiltering, phase == .interacting || phase == .decelerating else { pull.value = 0; return }
+            pull.value = amount
             let nowArmed = phase == .interacting && amount > Self.clearPull
             if nowArmed != armed { withAnimation(.snappy) { armed = nowArmed } }
         }
         .onScrollPhaseChange { _, newPhase in
             phase = newPhase
             if newPhase != .interacting, armed { clearFilters() }
-            if newPhase == .idle { pull = 0 }
+            if newPhase == .idle { pull.value = 0 }
         }
         .overlay(alignment: .top) {
             if isFiltering {
-                PullToClear(progress: pull / Self.clearPull, armed: armed)
-                    .offset(y: pull / 2 - 20)
+                PullToClearIndicator(pull: pull, threshold: Self.clearPull, armed: armed)
                     .allowsHitTesting(false)
-                    .transition(.scale(scale: 0.3).combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .scale(scale: 0.3).combined(with: .opacity))
             }
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: armed) { _, new in new }
@@ -118,8 +119,7 @@ struct SearchView: View {
             }
             try? await Task.sleep(for: .milliseconds(500))
             guard !Task.isCancelled else { return }
-            let context = SearchContext(today: .today, tags: store.allTags, places: store.places.map(\.name),
-                                        language: Intelligence.languageName)
+            let context = SearchContext(today: .today, tags: store.allTags, places: store.places.map(\.name))
             let result = await intelligence.engine.interpret(text, context: context)?.resolved(in: context)
             guard !Task.isCancelled, text == trimmed else { return }
             withAnimation(.snappy) { intent = result }
@@ -149,7 +149,7 @@ struct SearchView: View {
     // MARK: 输入前：标签、地点、时间
 
     @ViewBuilder private var browse: some View {
-        if store.timeline.isEmpty {
+        if store.diaries.isEmpty {
             EmptyHint(title: "搜索日记")
         } else {
             if !store.tagCounts.isEmpty {
@@ -160,7 +160,7 @@ struct SearchView: View {
                             .buttonStyle(.press)
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Metrics.page)
             }
 
             let places = store.places
@@ -180,18 +180,20 @@ struct SearchView: View {
             }
 
             groupTitle(String(localized: "时间", bundle: .app, locale: .app)).padding(.top, 28)
-            let pools = timePools
+            // 每段时间的日记只查一次：卡片上的篇数和轮换的照片都从这里取。
+            let found = timeEntries
+            let pools = timePools(found)
             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: wide ? 4 : 2), spacing: 10) {
                 ForEach(Array(timeOptions.enumerated()), id: \.element) { index, option in
                     Button {
                         focused = false
                         // 自选日期：在日历里点完“完成”才生效。
                         if option == .custom { showCustom = true } else { range = option }
-                    } label: { timeTile(option, pool: pools[option] ?? [], stagger: index) }
+                    } label: { timeTile(option, count: found[option]?.count ?? 0, pool: pools[option] ?? [], stagger: index) }
                         .buttonStyle(.press)
                 }
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, Metrics.page)
         }
     }
 
@@ -204,13 +206,18 @@ struct SearchView: View {
         option == .onThisDay ? store.onThisDay : store.search(text: "", tags: [], range: dateRange(option))
     }
 
+    /// 那年今日、最近 30 天、最近一年各自的日记。
+    private var timeEntries: [Range: [DiaryEntry]] {
+        [.onThisDay: store.onThisDay, .month: entries(in: .month), .year: entries(in: .year)]
+    }
+
     /// 每块时间卡片轮换的照片。几块尽量不放同一批：最近一年去掉最近 30 天里的，
     /// “选择日期”用一年以前的；哪块没得挑了就用这段时间里的全部。每块最多轮 12 张，
     /// 从早到晚排——地点卡片是从最近一张起，这样两排不会同时翻到同一张。
-    private var timePools: [Range: [String]] {
-        let month = entries(in: .month).map(\.id)
-        let year = entries(in: .year).map(\.id)
-        let all = store.timeline.map(\.id)
+    private func timePools(_ found: [Range: [DiaryEntry]]) -> [Range: [String]] {
+        let month = (found[.month] ?? []).map(\.id)
+        let year = (found[.year] ?? []).map(\.id)
+        let all = store.diaries.map(\.id)
         let monthSet = Set(month)
         let yearSet = Set(year)
         let yearOnly = year.filter { !monthSet.contains($0) }
@@ -226,15 +233,14 @@ struct SearchView: View {
 
     /// 时间范围也用照片表示，和地点卡片一样压白字；封面在这段时间的照片里慢慢轮换。
     /// “选择日期”同样是一块照片，标题前多一个日历符号。
-    private func timeTile(_ option: Range, pool: [String], stagger: Int) -> some View {
-        let count = option == .custom ? 0 : entries(in: option).count
+    private func timeTile(_ option: Range, count: Int, pool: [String], stagger: Int) -> some View {
         let shape = RoundedRectangle(cornerRadius: Metrics.Radius.card, style: .continuous)
         return Color.tile
             .frame(height: 96)
             .overlay {
                 if !pool.isEmpty {
                     RotatingCover(ids: pool, pointSize: CGSize(width: 220, height: 96), stagger: .seconds(2.3 * Double(stagger)))
-                    LinearGradient(colors: [.black.opacity(0), .black.opacity(0.6)], startPoint: .top, endPoint: .bottom)
+                    PhotoScrim(edge: .bottom, strength: 0.6)
                 }
             }
             .overlay(alignment: .bottomLeading) {
@@ -289,7 +295,7 @@ struct SearchView: View {
                              stagger: .seconds(1.7 * Double(stagger) + 1))
             .frame(width: 140, height: 172)
             .overlay(alignment: .bottom) {
-                LinearGradient(colors: [.black.opacity(0), .black.opacity(0.62)], startPoint: .top, endPoint: .bottom)
+                PhotoScrim(edge: .bottom, strength: 0.62)
                     .frame(height: 103)
             }
             .overlay(alignment: .bottomLeading) {
@@ -306,7 +312,7 @@ struct SearchView: View {
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
             }
-            .clipShape(.rect(cornerRadius: 16, style: .continuous))
+            .clipShape(.rect(cornerRadius: Metrics.Radius.card, style: .continuous))
             .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             .accessibilityElement(children: .combine)
     }
@@ -326,7 +332,7 @@ struct SearchView: View {
                     .buttonStyle(.press)
             }
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.top, 16)
     }
 
@@ -377,7 +383,7 @@ struct SearchView: View {
                     NavigationLink(value: Route.entry(entry.id)) {
                         EntryRow(entry: entry, showsSeparator: entry.id != month.entries.last?.id)
                     }
-                    .buttonStyle(.row())
+                    .buttonStyle(.row)
                     .entryContextMenu(entry)
                 }
             }
@@ -421,11 +427,8 @@ struct SearchView: View {
                 }
                 // 模型理解出来的条件：浅色胶囊，前面一枚 Apple Intelligence 标记。点一下采纳成正式条件。
                 if let intent = visibleIntent {
-                    Image(systemName: "apple.intelligence")
-                        .font(.system(size: 15, weight: .medium))
-                        .foregroundStyle(Color.inkSecondary)
+                    IntelligenceMark()
                         .padding(.leading, 4)
-                        .accessibilityHidden(true)
                     ForEach(intent.tags, id: \.self) { tag in
                         IntentToken(label: "#\(tag)#", spoken: Spoken.tag(tag)) {
                             if !tags.contains(tag) { tags.append(tag) }
@@ -521,14 +524,14 @@ struct SearchView: View {
                         .accessibilityLabel("清除")
                     }
                 }
-                .padding(.horizontal, 16)
+                .padding(.horizontal, Metrics.page)
                 .frame(minHeight: 54)
                 .glassEffect(.regular.interactive(), in: .capsule)
                 .onTapGesture { focused = true }
             }
         }
         .frame(maxWidth: 640)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, Metrics.page)
         .padding(.bottom, 6)
         .dynamicTypeSize(...DynamicTypeSize.accessibility2)
         .frame(maxWidth: .infinity)
@@ -643,6 +646,7 @@ private struct IntentToken: View {
     var symbol: String?
     let accept: () -> Void
     @Environment(\.brand) private var brand
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         Button(action: accept) {
@@ -663,7 +667,25 @@ private struct IntentToken: View {
         .buttonStyle(.press)
         .accessibilityLabel(spoken ?? label)
         .accessibilityHint(Text("加入筛选"))
-        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+        .transition(reduceMotion ? .opacity : .opacity.combined(with: .scale(scale: 0.9)))
+    }
+}
+
+/// 下拉了多少（见 SearchView.pull）。
+@Observable
+private final class PullAmount {
+    var value: CGFloat = 0
+}
+
+/// 跟着下拉移动的光圈；只有它读下拉的距离。
+private struct PullToClearIndicator: View {
+    let pull: PullAmount
+    let threshold: CGFloat
+    let armed: Bool
+
+    var body: some View {
+        PullToClear(progress: pull.value / threshold, armed: armed)
+            .offset(y: pull.value / 2 - 20)
     }
 }
 

@@ -10,6 +10,7 @@ struct EditorView: View {
     var onFinish: (_ saved: Bool) -> Void
 
     @Environment(DiaryStore.self) private var store
+    @Environment(Router.self) private var router
     @Environment(Intelligence.self) private var intelligence
     @Environment(\.brand) private var brand
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -22,6 +23,8 @@ struct EditorView: View {
     @State private var confirmClear = false
     @State private var errorMessage: String?
     @State private var savedCount = 0
+    /// 保存了，或者用户明确放弃了。没走到这一步就被收起（zoom 手势）时，没保存的字留成草稿。
+    @State private var finished = false
 
     init(assetID: String, mode: DiaryStore.WriteMode, existingCaption: String?, seed: String? = nil,
          onFinish: @escaping (Bool) -> Void) {
@@ -79,6 +82,22 @@ struct EditorView: View {
                 Text(errorMessage ?? "")
             }
             .sensoryFeedback(.success, trigger: savedCount)
+            // 有没保存的字时，从外面来的链接（小组件、快捷指令）先不顶掉编辑器。
+            .onChange(of: isDirty, initial: true) { router.editorIsDirty = isDirty }
+            .onAppear {
+                if !isDirty, let draft = router.takeDraft(for: assetID, mode: mode) { controller.restore(draft) }
+            }
+            // 编辑整条说明时以照片库里现在的为准：索引里的可能是旧的（别处刚改过），整条写回会盖掉那边的修改。
+            .task {
+                guard mode == .edit, let current = await store.currentCaption(for: assetID),
+                      current != original, !isDirty else { return }
+                original = current
+                controller.restore(current)
+            }
+            .onDisappear {
+                if !finished, isDirty { router.saveDraft(controller.text, for: assetID, mode: mode) }
+                router.editorIsDirty = false
+            }
             // 停笔不到一秒就按正文建议标签；追加时连同以前写的一起看。
             .task(id: controller.text) {
                 let text = controller.text
@@ -96,6 +115,7 @@ struct EditorView: View {
     }
 
     private func close(saved: Bool) {
+        finished = true
         controller.dismissKeyboard()
         onFinish(saved)
     }
@@ -161,10 +181,17 @@ struct EditorView: View {
     private var earlierWriting: String? {
         guard let entry else { return nil }
         let segs = entry.displaySegments
-        if segs.count > 1, let last = segs.last { return entry.title + "…… " + last.text }
+        if segs.count > 1, let last = segs.last {
+            return String(localized: "\(entry.title)…… \(last.text)", bundle: .app, locale: .app)
+        }
         let text = segs.first?.text ?? entry.caption
         return text.isEmpty ? nil : text
     }
+
+    /// SwiftUI 可能在渲染线程上解析动态颜色：闭包不能带主线程隔离。
+    private static let sharedWarningColor = Color(UIColor { @Sendable trait in
+        trait.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.8, blue: 0.5, alpha: 1) : UIColor(red: 0.42, green: 0.25, blue: 0, alpha: 1)
+    })
 
     private var sharedWarning: some View {
         Label {
@@ -173,7 +200,7 @@ struct EditorView: View {
             Image(systemName: "person.2")
         }
         .font(.footnote)
-        .foregroundStyle(Color(UIColor { $0.userInterfaceStyle == .dark ? UIColor(red: 1, green: 0.8, blue: 0.5, alpha: 1) : UIColor(red: 0.42, green: 0.25, blue: 0, alpha: 1) }))
+        .foregroundStyle(Self.sharedWarningColor)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -244,11 +271,8 @@ struct EditorView: View {
             ScrollView(.horizontal) {
                 HStack(spacing: 6) {
                     if !typing, !suggestions.isEmpty {
-                        Image(systemName: "apple.intelligence")
-                            .font(.system(size: 15, weight: .medium))
-                            .foregroundStyle(Color.inkSecondary)
+                        IntelligenceMark()
                             .padding(.leading, 6)
-                            .accessibilityHidden(true)
                     }
                     ForEach(suggestions, id: \.self) { tag in
                         Button {
@@ -334,8 +358,7 @@ struct EditorView: View {
                 original = controller.text
                 close(saved: true)
             } catch {
-                let nsError = error as NSError
-                if nsError.domain == PHPhotosErrorDomain, nsError.code == PHPhotosError.userCancelled.rawValue { return }
+                if error.isUserCancellation { return }
                 errorMessage = String(localized: "写入照片说明失败：\(error.localizedDescription)", bundle: .app, locale: .app)
             }
         }
@@ -343,34 +366,23 @@ struct EditorView: View {
 }
 
 /// 从详情页、回顾页打开的编辑器：表单。从“追加感想”按钮打开时，按钮放大成表单，关闭时收回按钮（系统的 zoom 转场，全程可以拖着中途放回去）。
+/// 写完一篇新日记后和“从照片添加”一样：回到日记、打开这篇。追加和编辑只收起表单，回到原来的地方。
 struct EditorSheet: View {
     let request: EditorRequest
     @Environment(DiaryStore.self) private var store
+    @Environment(Router.self) private var router
     @Environment(\.dismiss) private var dismiss
     @Environment(\.zoomNamespace) private var namespace
 
     var body: some View {
         NavigationStack {
             EditorView(assetID: request.assetID, mode: request.mode,
-                       existingCaption: store.entry(request.assetID)?.caption ?? store.currentCaption(for: request.assetID),
-                       seed: request.seed) { _ in
+                       existingCaption: store.entry(request.assetID)?.caption,
+                       seed: request.seed) { saved in
                 dismiss()
+                if saved, request.mode == .new { router.showNewEntry(request.assetID) }
             }
         }
-        .modifier(ZoomFromSource(sourceID: request.zoomSource, namespace: namespace))
-    }
-}
-
-/// 有来源按钮时从按钮放大出来；没有（长按菜单、通知、快捷指令）就是普通的表单上滑。
-private struct ZoomFromSource: ViewModifier {
-    let sourceID: String?
-    let namespace: Namespace.ID?
-
-    func body(content: Content) -> some View {
-        if let sourceID, let namespace {
-            content.navigationTransition(.zoom(sourceID: sourceID, in: namespace))
-        } else {
-            content
-        }
+        .zoomDestination(request.zoomSource, in: namespace)
     }
 }

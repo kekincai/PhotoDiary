@@ -122,17 +122,15 @@ nonisolated struct WidgetMemory: Codable, Sendable, Hashable, Identifiable {
     var day: DayStamp
     var title: String
     var preview: String
-    var placeName: String?
 
-    init(id: String, day: DayStamp, title: String, preview: String, placeName: String? = nil) {
+    init(id: String, day: DayStamp, title: String, preview: String) {
         self.id = id
         self.day = day
         self.title = title
         self.preview = preview
-        self.placeName = placeName
     }
 
     init(entry: DiaryEntry) {
-        self.init(id: entry.id, day: entry.day, title: entry.title, preview: entry.preview, placeName: entry.placeName)
+        self.init(id: entry.id, day: entry.day, title: entry.title, preview: entry.preview)
     }
 }

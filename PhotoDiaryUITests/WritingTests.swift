@@ -140,7 +140,7 @@ final class WritingTests: DiaryUITestCase {
         saveEditor()
 
         openEntry(mark)
-        tap(app.buttons["更多"])
+        tap(app.buttons["更多选项"])
         tap(app.buttons["删除照片…"])
         tap(app.buttons["删除照片和日记"], "删除的确认")
         confirmPhotoDeletion()
@@ -151,7 +151,7 @@ final class WritingTests: DiaryUITestCase {
     }
 }
 
-/// 写入照片失败：字恢复原样、提示错误，编辑器留着，写的字不丢。
+/// 写入照片失败：提示错误，编辑器留着，写的字不丢。
 final class SaveFailureTests: DiaryUITestCase {
     override var extraLaunchArguments: [String] { ["-failCaptionWrites"] }
 

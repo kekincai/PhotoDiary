@@ -1,6 +1,13 @@
 # 缓存与测试改进计划
 
-2026-10-31 调研结论 + 分阶段计划。先评审这份计划，再动代码。
+2026-10-31 调研结论 + 分阶段计划。
+
+> **2026-11-10 现状**：阶段 1、2 照计划做完（见文末“进度”）。阶段 3–5 没按下面写的做，下面那几段只是当时的计划。实际有的：
+> - 图片：没有 `ThumbnailCache`、`ImageManaging`，大图也没有 iCloud 进度。缓存在 `Library/AssetImages.swift` 里：解码好的图进 `NSCache`（键是“照片|宽|高”，按像素计成本，上限 160MB）；列表用 `startCaching` 预热；请求尺寸封顶 1024 像素（大图除外）；内存警告时清空并 `stopCachingImagesForAllAssets`；照片库变化时只换掉变了的那几张。
+> - 真实照片库测试：没有 `Integration.xctestplan`，是 `PhotoKitIntegrationTests`，`Tools/test.sh` 在专用模拟器“照片日记 自动测试”上打开它。
+> - 界面测试：有 `PhotoDiaryUITests`，但没有 `-UITestFixture` 假照片库：`Tools/TestPhotos/seed.sh` 往测试模拟器导入真照片，App 收到 `-uiTesting`。
+> - 没有检查 xcstrings 三语齐全的测试；`Tools/test.sh` 不收集覆盖率。
+> - 性能：`PerformanceTests`（`TEST_RUNNER_PERF=1`），数字见“索引改用 SwiftData”。
 
 ## 现状
 
@@ -101,7 +108,7 @@
 
 - 1 万、5 万条目下：`rebuildDerived()` 耗时、`IndexStore` 编码 / 解码耗时与文件大小、全量扫描批次合并耗时。
 - 判断标准：主线程单次超过 16ms 就要优化（例如批次合并时不每批全量重算、改成增量合并）。（存储格式已经换成 SwiftData，见“进度”。）
-- `Tools/test.sh` 一条命令跑单元测试 + 覆盖率；之后需要的话再加 GitHub Actions（取决于托管 runner 是否有 Xcode 27）。
+- `Tools/test.sh` 一条命令跑单元测试（计划里的覆盖率没有做）；之后需要的话再加 GitHub Actions（取决于托管 runner 是否有 Xcode 27）。
 
 ## 进度
 
@@ -155,5 +162,5 @@
 ## 需要你决定的
 
 1. **是否把 `Model/` + `Library/` 抽成本地 Swift Package**：好处是单元测试不需要宿主 App、能在 Mac 上秒跑；代价是改动大、访问控制要加 `public`。计划默认**不抽**，只加注入点。
-2. **集成测试会改写模拟器照片库的说明和关键词**：建议只在专用模拟器（现在的“照片日记测试”）上跑。
-3. **缩略图内存缓存上限**：默认 80MB，老机型上可以按 `ProcessInfo.physicalMemory` 调低。
+2. **集成测试会改写模拟器照片库的说明和关键词**：只在专用模拟器“照片日记 自动测试”上跑（`Tools/test.sh`）。
+3. **缩略图内存缓存上限**：现在是 160MB，老机型上可以按 `ProcessInfo.physicalMemory` 调低。

@@ -129,4 +129,15 @@ struct YearInReviewTests {
         #expect(YearCard.cards(for: full) == [.cover, .months, .tags, .places,
                                               .entry("jan"), .entry("mar1"), .entry("mar2"), .entry("mar3"), .entry("oct"), .share])
     }
+
+    /// 一年里全是只有标签、没有正文的说明：挑不出“写得多”的日记，也照样能出回顾，不闪退。
+    @Test func yearWithOnlyTagCaptionsStillHasCover() {
+        let entries = (1...3).map { i in
+            DiaryEntry(id: "t\(i)", caption: "#旅行#", keywords: [], creationDate: date(2025, 3, i), latitude: nil, longitude: nil,
+                       mediaKind: .photo, isCloudShared: false, pixelWidth: 0, pixelHeight: 0)
+        }
+        let review = YearInReview.all(entries: entries, today: DayStamp(year: 2026, month: 6, day: 1)!).first
+        #expect(review?.year == 2025)
+        #expect(review.map { ["t1", "t2", "t3"].contains($0.cover) } == true)
+    }
 }

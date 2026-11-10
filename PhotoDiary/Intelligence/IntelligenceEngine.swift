@@ -11,27 +11,26 @@ nonisolated protocol IntelligenceEngine: Sendable {
     func weeklyReview(_ input: WeeklyReviewInput) -> AsyncThrowingStream<String, Error>
 }
 
-/// 解析搜索时给模型看的背景：今天、已有的标签和地点、输出语言。
+/// 解析搜索时给模型看的背景：今天、已有的标签和地点。
 nonisolated struct SearchContext: Sendable, Hashable {
     var today: DayStamp
     var tags: [String]
     var places: [String]
-    var language: String
 
     static let maxTags = 60
     static let maxPlaces = 30
 
-    init(today: DayStamp, tags: [String], places: [String], language: String) {
+    init(today: DayStamp, tags: [String], places: [String]) {
         self.today = today
         self.tags = Array(tags.prefix(Self.maxTags))
         self.places = Array(places.prefix(Self.maxPlaces))
-        self.language = language
     }
 }
 
-/// 本周回顾的输入：每篇一行“日期 · 地点 · 正文”，总量封顶，模型的上下文窗口有限。
+/// 本周回顾的输入：每篇一行“写作日期 · 地点 · 正文”，总量封顶，模型的上下文窗口有限。
 nonisolated struct WeeklyReviewInput: Sendable, Hashable {
     struct Item: Sendable, Hashable {
+        /// 这一段的写作日期（给旧照片追加的感想，是追加那天，不是拍照那天）。
         var date: DayStamp
         var place: String?
         var text: String
@@ -40,14 +39,29 @@ nonisolated struct WeeklyReviewInput: Sendable, Hashable {
     var items: [Item]
     var language: String
     static let maxCharacters = 2000
+    /// 每篇至少留这么多字；篇数多到连这个都放不下时，只取前面几篇。
+    static let minPerItem = 40
 
-    init(entries: [DiaryEntry], language: String, limit: Int = WeeklyReviewInput.maxCharacters) {
+    /// `week` 是这周的日子：一篇日记只取这周写的那几段（标题句也在里面，行尾标签去掉）；没给就取全文。
+    init(entries: [DiaryEntry], week: Set<DayStamp>? = nil, language: String, limit: Int = WeeklyReviewInput.maxCharacters) {
         self.language = language
-        // 先每篇取预览；放不下就按篇数平分。
-        var items = entries.map { Item(date: $0.day, place: $0.placeName, text: $0.preview) }
+        var items: [Item] = entries.compactMap { entry in
+            var segments = entry.displaySegments
+            if let week {
+                let inWeek = segments.filter { $0.date.map(week.contains) == true }
+                if !inWeek.isEmpty { segments = inWeek }
+            }
+            let text = segments.map(\.text).filter { !$0.isEmpty }.joined(separator: "\n")
+            guard !text.isEmpty else { return nil }
+            let date = segments.compactMap(\.date).max() ?? entry.day
+            return Item(date: date, place: entry.placeName, text: text)
+        }
+        // 放不下就按篇数平分；篇数太多时先少放几篇，保证总量不超。
         let total = items.reduce(0) { $0 + $1.text.count }
         if total > limit, !items.isEmpty {
-            let each = max(40, limit / items.count)
+            let fit = max(1, limit / Self.minPerItem)
+            if items.count > fit { items = Array(items.prefix(fit)) }
+            let each = max(Self.minPerItem, limit / items.count) - 1
             for i in items.indices where items[i].text.count > each {
                 items[i].text = String(items[i].text.prefix(each)) + "…"
             }

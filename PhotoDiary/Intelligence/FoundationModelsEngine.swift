@@ -3,7 +3,8 @@ import FoundationModels
 import OSLog
 
 /// 真实现：Apple 设备上的语言模型。每次调用新开一个会话，不保留对话。
-/// 提示词用英文写，输出语言跟界面语言；标签跟日记原文的语言。出错一律静默，界面上就当没有建议。
+/// 提示词用英文写。本周回顾用界面语言写；标签跟日记原文的语言；搜索的关键词跟查询的语言。
+/// 搜索和标签出错时静默（界面上就当没有结果）；本周回顾把错误交给调用方，界面上不显示这一段。
 nonisolated struct FoundationModelsEngine: IntelligenceEngine {
     func interpret(_ query: String, context: SearchContext) async -> SearchIntent? {
         let instructions = """

@@ -3,7 +3,6 @@ import Photos
 
 struct RootView: View {
     @Environment(DiaryStore.self) private var store
-    @Environment(Router.self) private var router
     /// 只在冷启动时出现一次；切换语言重建界面时不再出现。
     @State private var splash = !LaunchSplash.finished
     @Environment(\.legibilityWeight) private var legibilityWeight
@@ -37,7 +36,7 @@ extension EnvironmentValues {
 /// 三个标签页（保留各自的滚动位置）。
 ///
 /// - iPhone：隐藏系统标签栏，底部是自己的浮动玻璃标签栏 + 主题色“+”按钮；往下滚时收起成小胶囊。
-///   日记在根页面时，标签栏上方多一条视图切换；搜索页用自己的底部搜索框代替标签栏。
+///   日记的视图切换在右上角的菜单里，长按“日记”标签也能换；搜索页用自己的底部搜索框代替标签栏。
 /// - iPad（宽屏）：系统标签栏（顶部，可展开成侧栏），搜索是独立的搜索标签；“+”在导航栏右上角。
 private struct MainTabs: View {
     @Environment(DiaryStore.self) private var store

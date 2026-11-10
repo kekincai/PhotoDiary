@@ -13,9 +13,6 @@ enum AppLanguage: String, CaseIterable, Identifiable {
 
     static let storageKey = "appLanguage"
 
-    /// 本 App 提供的语言，按回退顺序。
-    static let supported: [AppLanguage] = [.chinese, .japanese, .english]
-
     /// 语言名用各自的文字写，“跟随系统”跟着当前界面语言。
     var displayName: String {
         switch self {
@@ -27,6 +24,7 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     }
 
     /// 实际使用的语言：跟随系统时取系统首选语言里第一个支持的，都不支持时用英语。
+    /// 繁体中文也用简体中文的界面（读得懂，比英语近）；App 名和权限说明这些系统显示的文字没有繁体，回退到开发语言简体中文，两边一致。
     var resolved: AppLanguage {
         guard self == .system else { return self }
         for identifier in Locale.preferredLanguages {
@@ -57,11 +55,14 @@ enum AppLanguage: String, CaseIterable, Identifiable {
     nonisolated(unsafe) fileprivate static var bundle: Bundle?
 
     /// 切换界面语言。App 内的文字立即生效；系统自己画的界面（权限弹窗、分享面板、文字选择菜单等）下次启动生效。
-    static func apply(_ choice: AppLanguage) {
-        if choice == .system {
-            UserDefaults.standard.removeObject(forKey: "AppleLanguages")
-        } else {
-            UserDefaults.standard.set([choice.rawValue], forKey: "AppleLanguages")
+    /// `persist: false` 只改本次运行（单元测试的宿主用，不留下 AppleLanguages）。
+    static func apply(_ choice: AppLanguage, persist: Bool = true) {
+        if persist {
+            if choice == .system {
+                UserDefaults.standard.removeObject(forKey: "AppleLanguages")
+            } else {
+                UserDefaults.standard.set([choice.rawValue], forKey: "AppleLanguages")
+            }
         }
         current = choice.resolved
         bundle = Bundle.main.path(forResource: current.rawValue, ofType: "lproj").flatMap(Bundle.init(path:))

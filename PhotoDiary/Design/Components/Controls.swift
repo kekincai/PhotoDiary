@@ -1,12 +1,10 @@
 import SwiftUI
 
-/// 浮在内容上的玻璃分段控件（日记的四种视图、从照片添加的范围）。
+/// 浮在内容上的玻璃分段控件（“从照片添加”的范围：还没写 / 全部照片）。
 struct GlassSegmented<Value: Hashable>: View {
     let options: [Value]
     @Binding var selection: Value
     let title: (Value) -> String
-    /// 点已选中的那一段。
-    var onReselect: (() -> Void)? = nil
     @Namespace private var pill
 
     var body: some View {
@@ -14,7 +12,7 @@ struct GlassSegmented<Value: Hashable>: View {
             ForEach(options, id: \.self) { option in
                 let selected = option == selection
                 Button {
-                    if selected { onReselect?() } else { selection = option }
+                    if !selected { selection = option }
                 } label: {
                     Text(title(option))
                         .font(.subheadline.weight(selected ? .semibold : .medium))

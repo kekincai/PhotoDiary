@@ -50,7 +50,12 @@ final class DiaryStore {
     }
 
     /// 所有写了说明的照片，按照片日期倒序。
-    private(set) var diaries: [DiaryEntry] = []
+    private(set) var diaries: [DiaryEntry] = [] {
+        didSet { diariesVersion += 1 }
+    }
+    @ObservationIgnored private var diariesVersion = 0
+    /// 一年回顾按“日记 + 今天”缓存：回顾页每次重绘都要，算一遍要把每一年的日记挑一遍。
+    @ObservationIgnored private var yearCache: (version: Int, day: DayStamp, reviews: [YearInReview])?
     /// 标签及数量，按数量排序。
     private(set) var tagCounts: [TagCount] = []
 
@@ -63,15 +68,18 @@ final class DiaryStore {
     private(set) var places: [PlaceGroup] = []
     /// 那年今日：往年同月同日的照片日记。
     private(set) var onThisDay: [DiaryEntry] = []
-    /// 本周（周日起）每一天是否写过日记。
+    /// 本周（从设置的一周起始日起）每一天是否写过日记。
     private(set) var weekWriting: [WeekDay] = []
-    /// 本周写了几篇（按说明里的写作日期）。
+    /// 本周写了几段（按说明里的写作日期行计数：一篇里这周追加了两段算两次）。
     private(set) var writtenThisWeek = 0
     /// 本周写过的日记（按说明里的写作日期），给本周回顾用。
     private(set) var weekEntries: [DiaryEntry] = []
-    /// 本月写了几篇（按说明里的写作日期）。
+    /// 本月写了几段（同上，按写作日期行计数）。
     private(set) var writtenThisMonth = 0
     private var byDay: [DayStamp: [DiaryEntry]] = [:]
+    private var byPlace: [String: [DiaryEntry]] = [:]
+    /// 每篇在 diaries 里的位置（列表预取后面几张时用，不必每次从头找）。
+    @ObservationIgnored private var positions: [String: Int] = [:]
     private var byTag: [String: [DiaryEntry]] = [:]
     /// 被设置里的说明过滤规则隐藏的照片。
     private var hiddenIDs: Set<String> = []
@@ -101,9 +109,6 @@ final class DiaryStore {
         var wrote: Bool
     }
 
-    /// 列表、日历、照片、地图里显示的条目。
-    var timeline: [DiaryEntry] { diaries }
-
     private var changeToken: Data? {
         didSet { if changeToken != oldValue { tokenDirty = true } }
     }
@@ -112,6 +117,8 @@ final class DiaryStore {
         didSet { if tokenAccess != oldValue { tokenDirty = true } }
     }
     private var writtenInApp: Set<String> = []
+    /// 本次运行里按哪组标签改写过哪张照片的关键词（防止来回改）。
+    private var reconciledTags: [String: Set<String>] = [:]
     private var placeCache: [String: String] = [:]
     private var timeZoneCache: [String: String] = [:]
     private var observer: AnyObject?
@@ -126,7 +133,7 @@ final class DiaryStore {
     private var placeFailures = Set<String>()
     /// 界面语言变了就加一，旧语言那一轮查到的地名不再写回。
     private var placeGeneration = 0
-    /// 已有地名是用哪种语言查的；全部查完才写入。
+    /// 已有地名是用哪种语言查的。开始查之前就写入：查到一半被结束，下次启动接着查缺的，不当作换了语言全部重查。
     static let placeLanguageKey = "placeLanguage"
 
     private var database: IndexDatabase?
@@ -136,7 +143,7 @@ final class DiaryStore {
     private var removedIDs = Set<String>()
     private var dirtyPlaces: [String: (name: String, timeZone: String?)] = [:]
     private var tokenDirty = false
-    /// 最近一次保存写了多少行（日志和测试用）。
+    /// 最近一次保存写了多少行（测试用来确认只写了变化的行；日志在 IndexDatabase.apply 里）。
     private(set) var lastSaveStats: IndexDatabase.Stats?
 
     init(_ dependencies: Dependencies = Dependencies()) {
@@ -178,6 +185,8 @@ final class DiaryStore {
             // 打开、读取都在数据库自己的线程上，一次回到主线程。
             prepare()
             guard let (database, loaded) = await preparing?.value else { return }
+            // 两处同时调 start()（启动和权限变化）：先回来的那个已经读进来了，后一个不再读一遍。
+            guard !hasLoaded else { return }
             self.database = database
             placeCache = loaded.places.names
             timeZoneCache = loaded.places.timeZones
@@ -295,9 +304,10 @@ final class DiaryStore {
                 if case .scanning(_, let total) = syncState {
                     syncState = .scanning(processed: processed, total: total)
                 }
-                // 建好的部分先可用。读取开始后本 App 写过的照片不拿旧结果盖掉。
+                // 建好的部分先可用。读取开始后本 App 写过的照片不拿旧结果盖掉；和索引里一样的不再写一遍
+                // （重建索引时大多一样，每批都赋值会让整个列表、日历跟着重算）。
                 let written = writes(since: started)
-                decorated.removeAll { written.contains($0.0) }
+                decorated.removeAll { written.contains($0.0) || entries[$0.0] == $0.1 }
                 if !decorated.isEmpty {
                     entries.merge(decorated, uniquingKeysWith: { _, b in b })
                 }
@@ -305,7 +315,7 @@ final class DiaryStore {
                 if let token {
                     Log.sync.info("全量读取完成：\(fresh.count) 篇日记")
                     reread(writes(since: started), into: &fresh)
-                    entries = fresh
+                    if fresh != entries { entries = fresh }
                     changeToken = token
                     tokenAccess = access
                 }
@@ -330,8 +340,9 @@ final class DiaryStore {
         }
         reread(writes(since: started), into: &copy)
         // 没有变化时不重写索引（每次启动都会走一遍增量）；地名补查照常进行。
-        let changed = copy != entries || result.token != changeToken
-        if copy != entries { entries = copy }
+        let entriesChanged = copy != entries
+        let changed = entriesChanged || result.token != changeToken
+        if entriesChanged { entries = copy }
         changeToken = result.token
         if changed { scheduleSave() }
         afterSync(ids: result.updated.map(\.id))
@@ -375,8 +386,10 @@ final class DiaryStore {
     private func afterSync(ids: [String]) {
         // 关键词由说明里的标签生成。说明里没有标签、也没在本 App 写过的照片不动，
         // 以免抹掉 Lightroom 等导入时自带的关键词。
+        // 同一张照片按同一组标签只改一次：万一照片库把关键词规范化了（大小写、全角），两边永远对不上，不能来回改个没完。
         let mismatched = ids.compactMap { entries[$0] }.filter {
             (!$0.tags.isEmpty || $0.writtenInApp) && Set($0.keywords) != Set($0.tags)
+                && reconciledTags.updateValue(Set($0.tags), forKey: $0.id) != Set($0.tags)
         }.map(\.id)
         if !mismatched.isEmpty {
             Log.library.info("按标签改写关键词：\(mismatched.count) 张")
@@ -398,11 +411,12 @@ final class DiaryStore {
     }
 
     /// 写日记 / 追加感想 / 编辑整条说明。成功后立即更新索引。
+    /// 追加时以照片库里现在的说明为准：索引可能还是旧的（在 Mac 上刚改过、增量同步还没回来），拿旧的拼接会盖掉别处的修改。
     func save(text: String, mode: WriteMode, for id: String) async throws {
-        let existing = entries[id]?.caption ?? currentCaption(for: id)
         let caption: String?
         switch mode {
         case .new, .append:
+            let existing = await library.currentCaption(for: id)
             caption = CaptionFormat.appending(text, to: existing, on: today,
                                               hidden: CaptionFilter.matcher(defaults: deps.defaults))
         case .edit:
@@ -419,9 +433,9 @@ final class DiaryStore {
         refresh(ids: [id])
     }
 
-    /// 给一篇日记补一个标签（采纳建议）。写在最后一段末尾，关键词随后照常同步。
+    /// 给一篇日记补一个标签（采纳建议）。写在最后一段末尾，关键词随后照常同步。以照片库里现在的说明为准。
     func addTag(_ tag: String, to id: String) async throws {
-        guard let existing = entries[id]?.caption ?? currentCaption(for: id) else { return }
+        guard let existing = await library.currentCaption(for: id) else { return }
         let caption = CaptionFormat.addingTag(tag, to: existing)
         guard caption != existing else { return }
         do {
@@ -435,22 +449,34 @@ final class DiaryStore {
         refresh(ids: [id])
     }
 
-    /// 标签改名或合并：一次修改所有相关照片。
+    /// 标签改名或合并：一次修改所有相关照片。按照片库里现在的说明改；改不了的（共享相簿里别人的照片）、已经删掉的跳过，其余照改。
     func renameTags(_ olds: Set<String>, to new: String) async throws {
+        let affected = diaries.filter { !olds.isDisjoint(with: $0.tags) }.map(\.id)
         var captions: [String: String?] = [:]
-        for entry in diaries where !olds.isDisjoint(with: entry.tags) {
+        for entry in library.fetchEntries(ids: affected) {
             var caption = entry.caption
             for old in olds { caption = CaptionFormat.renamingTag(old, to: new, in: caption) }
             if caption != entry.caption { captions[entry.id] = caption }
         }
         do {
-            try await library.write(captions)
+            do {
+                try await library.write(captions)
+            } catch let error as LibraryScanner.WriteError {
+                let skipped: Set<String>
+                switch error {
+                case .missing(let ids), .notEditable(let ids): skipped = ids
+                }
+                captions = captions.filter { !skipped.contains($0.key) }
+                guard !captions.isEmpty else { throw error }
+                Log.library.notice("标签改名跳过 \(skipped.count) 张写不了的照片")
+                try await library.write(captions)
+            }
         } catch {
             Log.library.error("标签改名失败（\(captions.count) 张）：\(error, privacy: .public)")
             throw error
         }
         Log.library.info("标签改名：\(olds.count) 个标签，\(captions.count) 张照片")
-        refresh(ids: Array(captions.keys))
+        refresh(ids: Array(Set(affected)))
     }
 
     func delete(id: String) async throws {
@@ -470,7 +496,8 @@ final class DiaryStore {
         noteLocalWrite(ids)
         var copy = entries
         let fetched = library.fetchEntries(ids: ids)
-        for id in ids where !fetched.contains(where: { $0.id == id }) { copy.removeValue(forKey: id) }
+        let found = Set(fetched.map(\.id))
+        for id in ids where !found.contains(id) { copy.removeValue(forKey: id) }
         for var entry in fetched {
             decorate(&entry)
             copy[entry.id] = entry
@@ -480,8 +507,9 @@ final class DiaryStore {
         resolvePlaces()
     }
 
-    func currentCaption(for id: String) -> String? {
-        library.currentCaption(for: id)
+    /// 照片库里现在的说明（不经过索引，在后台读）。
+    func currentCaption(for id: String) async -> String? {
+        await library.currentCaption(for: id)
     }
 
     // MARK: 派生数据
@@ -499,11 +527,18 @@ final class DiaryStore {
         for entry in entries.values {
             if hidden(entry.caption) { hiddenIDs.insert(entry.id) } else { visible.append(entry) }
         }
-        visible.sort { $0.sortDate > $1.sortDate }
+        // 先按照片日期（拍摄地的日历日）再按时刻倒序，同一刻按 id：月份分组要求同一个月的连在一起
+        // （按时刻排，东京凌晨的照片会排到本地前一天深夜的照片后面，月份就断开了）。
+        visible.sort { a, b in
+            if a.day != b.day { return a.day > b.day }
+            if a.sortDate != b.sortDate { return a.sortDate > b.sortDate }
+            return a.id < b.id
+        }
 
         var counts: [String: Int] = [:]
         var byTag: [String: [DiaryEntry]] = [:]
         var byDay: [DayStamp: [DiaryEntry]] = [:]
+        var byPlace: [String: [DiaryEntry]] = [:]
         var months: [MonthGroup] = []
         var placeCounts: [String: (count: Int, cover: String)] = [:]
         var placeOrder: [String] = []
@@ -527,6 +562,7 @@ final class DiaryStore {
                 months.append(MonthGroup(id: key, start: start, entries: [entry]))
             }
             if let place = entry.placeName {
+                byPlace[place, default: []].append(entry)
                 if let p = placeCounts[place] { placeCounts[place] = (p.count + 1, p.cover) }
                 else { placeCounts[place] = (1, entry.id); placeOrder.append(place) }
             }
@@ -560,6 +596,8 @@ final class DiaryStore {
             .sorted { ($0.count, $1.name) > ($1.count, $0.name) })
         update(\.byTag, byTag)
         update(\.byDay, byDay)
+        update(\.byPlace, byPlace)
+        positions = Dictionary(visible.enumerated().map { ($1.id, $0) }, uniquingKeysWith: { a, _ in a })
         update(\.months, months)
         update(\.calendarMonths, calendarMonths)
         update(\.places, placeOrder.map { PlaceGroup(name: $0, count: placeCounts[$0]!.count, cover: placeCounts[$0]!.cover) }
@@ -583,6 +621,13 @@ final class DiaryStore {
 
     /// 设置里改了一周起始日后，本周写作要按新的一周重算。
     func weekStartChanged() { rebuildDerived() }
+
+    /// 系统时区变了（旅行时 App 留在后台）：照片日期按新时区重算，“今天”、那年今日、本周跟着重算。
+    func timeZoneChanged() {
+        var copy = entries
+        for id in copy.keys where copy[id]?.timeZoneID == nil { copy[id]?.timeZoneChanged() }
+        if copy != entries { entries = copy } else { rebuildDerived() }
+    }
 
     /// 索引里出现多次的短说明（不像日记的那种），给设置里的过滤规则做建议。
     func frequentShortCaptions(limit: Int = 8) -> [(caption: String, count: Int)] {
@@ -611,15 +656,30 @@ final class DiaryStore {
 
     var allTags: [String] { tagCounts.map(\.name) }
 
+    /// 所有可以打开的一年回顾（见 YearInReview.all），日记没变就用上次算好的。
+    func yearReviews(today: DayStamp = .today) -> [YearInReview] {
+        let diaries = self.diaries  // 读一下，界面才会在日记变了时跟着更新
+        if let cache = yearCache, cache.version == diariesVersion, cache.day == today { return cache.reviews }
+        let reviews = YearInReview.all(entries: diaries, today: today)
+        yearCache = (diariesVersion, today, reviews)
+        return reviews
+    }
+
     func entries(tagged tag: String) -> [DiaryEntry] { byTag[tag] ?? [] }
 
     func entries(on day: DayStamp) -> [DiaryEntry] { byDay[day] ?? [] }
 
-    func entries(at place: String) -> [DiaryEntry] { diaries.filter { $0.placeName == place } }
+    func entries(at place: String) -> [DiaryEntry] { byPlace[place] ?? [] }
+
+    /// 列表里排在这一篇后面的几篇。
+    func entries(after id: String, count: Int) -> [DiaryEntry] {
+        guard let index = positions[id] else { return [] }
+        return Array(diaries[(index + 1)..<min(index + 1 + count, diaries.count)])
+    }
 
     func search(text: String, tags: [String], range: ClosedRange<Date>?) -> [DiaryEntry] {
         let needle = text.trimmingCharacters(in: .whitespaces)
-        return timeline.filter { e in
+        return diaries.filter { e in
             if !tags.allSatisfy(e.tags.contains) { return false }
             if let range, !range.contains(e.sortDate) { return false }
             if needle.isEmpty { return true }
@@ -630,7 +690,7 @@ final class DiaryStore {
     /// 模型拆出来的条件：关键词任一命中即可，标签都要有，地点、日期照旧。
     func search(_ filter: SearchFilter) -> [DiaryEntry] {
         let range = filter.dateRange
-        return timeline.filter { e in
+        return diaries.filter { e in
             if !filter.tags.allSatisfy(e.tags.contains) { return false }
             if let place = filter.place, e.placeName != place { return false }
             if let range, !range.contains(e.sortDate) { return false }
@@ -658,9 +718,18 @@ final class DiaryStore {
     /// 地名跟着界面语言：语言和查地名时用的不一样时，丢掉旧地名，按新语言重新查（时区不变）。
     func placeLanguageChanged() {
         let language = deps.placeLanguage()
-        guard deps.defaults.string(forKey: Self.placeLanguageKey) != language,
-              !placeCache.isEmpty || entries.values.contains(where: { $0.placeName != nil }) else { return }
-        Log.places.info("地名改用 \(language, privacy: .public) 重新查询")
+        let stored = deps.defaults.string(forKey: Self.placeLanguageKey)
+        guard stored != language else { return }
+        // 还没记过语言（第一次查、或旧版本查到一半）：已有的地名就是按现在的语言查的，记下来，不重查。
+        guard let stored else {
+            deps.defaults.set(language, forKey: Self.placeLanguageKey)
+            return
+        }
+        guard !placeCache.isEmpty || entries.values.contains(where: { $0.placeName != nil }) else {
+            deps.defaults.set(language, forKey: Self.placeLanguageKey)
+            return
+        }
+        Log.places.info("地名从 \(stored, privacy: .public) 改用 \(language, privacy: .public) 重新查询")
         placeGeneration += 1
         placeTask?.cancel()
         placeTask = nil
@@ -675,7 +744,9 @@ final class DiaryStore {
     private func resolvePlaces() {
         guard placeTask == nil else { return }
         let generation = placeGeneration
+        // 先记下这一轮按哪种语言查：中途被结束，下次启动只补查缺的。
         let language = deps.placeLanguage()
+        deps.defaults.set(language, forKey: Self.placeLanguageKey)
         placeTask = Task {
             // 一次列出还缺地名的坐标；同一坐标只查一次。
             var pending: [String: CLLocationCoordinate2D] = [:]
@@ -695,7 +766,7 @@ final class DiaryStore {
                 if let cached = placeCache[key] {
                     filled += 1
                     resolved[key] = (cached, timeZoneCache[key])
-                } else if let coordinate = pending[key], let place = await deps.placeNamer.place(for: coordinate), let name = place.name {
+                } else if let coordinate = pending[key], let place = await deps.placeNamer.place(for: coordinate, language: language), let name = place.name {
                     guard generation == placeGeneration else { break }
                     looked += 1
                     filled += 1
@@ -719,10 +790,13 @@ final class DiaryStore {
             guard generation == placeGeneration else { return }
             applyPlaces(resolved)
             if looked > 0 { Log.places.info("地名解析结束：查询 \(looked) 次，失败 \(failures) 次") }
-            if !Task.isCancelled { deps.defaults.set(language, forKey: Self.placeLanguageKey) }
             placeTask = nil
             // 有条目补上了地名才需要保存。
             if filled > 0 { scheduleSave() }
+            // 查的时候又来了没地名的条目（新写的日记）：再查一轮。
+            if !Task.isCancelled, diaries.contains(where: { $0.placeName == nil && $0.coordinate != nil && !placeFailures.contains($0.id) }) {
+                resolvePlaces()
+            }
         }
     }
 

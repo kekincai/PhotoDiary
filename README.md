@@ -26,11 +26,17 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 - **日记**：按月分组的时间线，另有日历、照片网格、地图三种视图，切换时背景不动、只换内容
 - **编辑器**：微博式 `#话题#` 标签，输入 `#` 弹出用过的标签；保存时自动补写作日期；可以给旧照片“追加感想”
 - **回顾**：那年今日、本周写作、还没写日记的照片
+- **一年回顾**：全屏左右翻，照片像拍立得一样显影，最后能分享成图片
+- **晚间提醒**：今天拍了照片、还没写的晚上提醒（默认关），在通知上就能写一句，回到编辑器确认后保存
+- **小组件**：主屏的那年今日，锁屏的“写日记”
+- **快捷指令和控制中心**：给最新一张照片写日记、打开今天的日记、那年今日、搜索日记；控制中心、锁屏、操作按钮上可以放“写日记”
+- **Apple Intelligence**（支持的机型）：用一句话搜索、按正文建议标签、回顾页的本周回顾；全在设备上跑，设置里可以关
 - **标签**：标签自动同步为照片关键词；支持批量改名、合并
 - **搜索**：全文、标签、日期范围
 - **长按预览**：列表、日历、网格里长按一篇，预览照片并直接追加感想、编辑、分享
 - **Apple Watch**：最近的日记、那年今日、本周写作和还没写的照片同步到手表；在表上口述一段，由 iPhone 写进照片说明
 - **iPad**：系统标签栏（可展开成侧栏）、多栏卡片、自适应网格、正文限宽
+- **Mac**：同一个 App 的 Mac Catalyst 版，有菜单栏快捷键；没有 Watch 和小组件
 - **外观**：浅色 / 深色 / 跟随系统；九种主题色，也可以用调色板自选
 - **多语言**：简体中文、日本語、English，地名跟随界面语言；系统语言不在其中时用英语
 - 照片、视频、实况照片都可以写；支持“有限访问”；全部日记可导出为 Markdown
@@ -67,29 +73,24 @@ Apple 的“手记”App 会为附加的照片保存一份副本，内容锁在�
 ## 工程结构
 
 ```
-Shared/          iPhone 和 Apple Watch 共用：说明格式、日期、条目模型、品牌图形、同步数据结构
-PhotoDiary/      iPhone/iPad App
-  App/           入口、路由、日志、Watch 连接
-  Design/Theme   主题色、字体、动效、尺寸（Metrics）
-  Design/Components  可复用组件：卡片、行、胶囊、分段控件、上下文菜单、效果
-  Library/       照片库读写、索引数据库、地名
-  Views/         按页面分组
-PhotoDiaryWatch/ Apple Watch App
-PhotoDiaryTests/ 单元测试（假照片库）和真实照片库测试
-PhotoDiaryUITests/ 界面测试：每一条用户操作走一遍
-Tools/           测试脚本、图标生成、测试照片导入
+Shared/             iPhone 和 Apple Watch 共用：说明格式、日期、条目模型、界面语言、品牌图形、同步数据结构
+WidgetShared/       App 和小组件共用：小组件快照、photodiary:// 链接、“给最新一张照片写日记”
+PhotoDiary/         iPhone / iPad / Mac App
+  App/              入口、路由、日志、晚间提醒、快捷指令、Watch 和小组件的连接
+  Design/Theme      主题色、字体、动效、尺寸（Metrics）
+  Design/Components 可复用组件：卡片、胶囊、分段控件、上下文菜单、效果、着色器（.metal）
+  Intelligence/     Apple Intelligence：自然语言搜索、标签建议、本周回顾
+  Library/          照片库读写、索引数据库、缩略图、地名、一年回顾
+  Resources/        文字和翻译（.xcstrings）
+  Views/            按页面分组
+PhotoDiaryWatch/    Apple Watch App
+PhotoDiaryWidgets/  小组件和控制中心按钮
+PhotoDiaryTests/    单元测试（假照片库）和真实照片库测试
+PhotoDiaryUITests/  界面测试：每一条用户操作走一遍
+Tools/              测试脚本、图标生成、测试照片导入
 ```
 
 用 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 生成工程：`xcodegen generate`。开屏动画可以用 `-holdSplash` 启动参数多停几秒，方便截图。
-
-```
-PhotoDiary/
-├── App/          入口、导航
-├── Model/        说明格式解析（CaptionFormat）、日记条目
-├── Library/      照片库扫描与写入、索引数据库、缩略图、地名
-├── Design/       主题色、字体、动效、通用组件
-└── Views/        日记、详情、编辑器、从照片添加、回顾、搜索、设置
-```
 
 ## 构建
 
@@ -113,12 +114,12 @@ xcodegen generate
 Tools/test.sh
 ```
 
-脚本在一台专用的模拟器“照片日记 自动测试”上跑（没有就新建），不碰平时看效果用的模拟器。`Tools/test.sh unit` 只跑单元测试，`Tools/test.sh ui` 只跑界面测试，`--fresh` 先抹掉模拟器、重新导入测试照片（`Tools/TestPhotos/seed.sh`：不联网，3 张带日记、3 张空白）。
+脚本在一台专用的模拟器“照片日记 自动测试”上跑（没有就新建，选最新 iOS 支持的 iPhone），不碰平时看效果用的模拟器。每次先抹掉它、重新导入测试照片（`Tools/TestPhotos/seed.sh`：不联网，3 张带日记、3 张空白、2 张说明只有“0”，日期按当天算），所以每次都是同一个起点。`Tools/test.sh unit` 只跑单元测试，`Tools/test.sh ui` 只跑界面测试，`--keep` 不抹掉、接着上次的照片库跑（调试单个测试时省时间）。
 
 三层测试：
 
 - **单元测试**（`PhotoDiaryTests/`）：内存里的假照片库（`Support/FakeLibrary.swift`），覆盖说明格式、同步、索引、写入、标签改名、Watch 消息。假照片库可以让增量读取、全量读取停在半路，用来测“同步和保存同时发生”。
-- **真实照片库测试**（`PhotoKitIntegrationTests`）：在测试模拟器的照片库里造照片和视频，真的写说明、关键词，读增量、取图取视频。PhotoKit 在哪条线程回调只有这里测得到。会往照片库里加照片，所以默认不跑，`Tools/test.sh` 用 `TEST_RUNNER_PHOTODIARY_PHOTOKIT_TESTS=1` 打开；每个测试结束后清掉自己写的说明。
+- **真实照片库测试**（`PhotoKitIntegrationTests`）：在测试模拟器的照片库里造照片和视频，真的写说明、关键词，读增量、取图取视频。PhotoKit 在哪条线程回调只有这里测得到。会往照片库里加照片，所以默认不跑，`Tools/test.sh` 用 `TEST_RUNNER_PHOTODIARY_PHOTOKIT_TESTS=1` 打开；每个测试结束后清掉自己写的说明；造的照片默认拍于 2001 年，排在照片库最后。
 - **界面测试**（`PhotoDiaryUITests/`）：像用户一样点完每一条流程——写日记、追加、编辑、清除、取消、删除、长按菜单、标签补全和改名、四种视图、日历、大图、分享、搜索、回顾、设置（外观、主题色、语言、一周起始日、隐藏的说明、导出、重建索引）。每次保存后都确认 App 还在前台。App 收到 `-uiTesting` 时关掉动画、从“跟随系统”的语言开始。
 
 1 万篇日记规模的耗时测试默认不跑，加 `TEST_RUNNER_PERF=1` 运行（`PhotoDiaryTests/PerformanceTests.swift`）。
@@ -135,10 +136,12 @@ Tools/TestPhotos/fetch.sh
 
 ### 图标
 
-`Tools/AppIcon/make-icon.swift` 生成浅色、深色、着色三个版本的图标：
+`Tools/AppIcon/make-icon.swift` 生成浅色、深色、着色三个版本的图标；第二个参数给了就同时生成启动画面中间的拍立得（浅色、深色各 1–3 倍），第三个是 Watch 图标。改了图形三样一起重新生成：
 
 ```bash
-swift Tools/AppIcon/make-icon.swift PhotoDiary/Assets.xcassets/AppIcon.appiconset
+swift Tools/AppIcon/make-icon.swift PhotoDiary/Assets.xcassets/AppIcon.appiconset \
+    PhotoDiary/Assets.xcassets/LaunchMark.imageset \
+    PhotoDiaryWatch/Assets.xcassets/AppIcon.appiconset
 ```
 
 ## 待在真机上验证

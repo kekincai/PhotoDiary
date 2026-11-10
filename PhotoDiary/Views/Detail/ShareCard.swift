@@ -2,17 +2,42 @@ import SwiftUI
 import Photos
 import UniformTypeIdentifiers
 
+/// 两张分享图（单篇、一年回顾）共用的相纸：宽度、边距、纸色、标签行、右下角的小拍立得。固定浅色，不跟深色模式。
+enum SharePaper {
+    static let width: CGFloat = 390
+    static let margin: CGFloat = 18
+    static let color = Color(red: 0.99, green: 0.985, blue: 0.975)
+
+    /// 一行标签，主题色。
+    struct Tags: View {
+        let tags: [String]
+        @Environment(\.brand) private var brand
+
+        var body: some View {
+            Text(DiaryEntry.tagLine(tags))
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(brand)
+        }
+    }
+
+    /// 右下角一个小拍立得，代替 App 名。
+    struct Signature: View {
+        var body: some View {
+            BrandMark(width: 16, palette: .light, shadow: false)
+                .opacity(0.8)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+    }
+}
+
 /// 分享出去的是一张图：照片和日记排在同一张相纸上，像 App 图标里的拍立得。
-/// 固定浅色，不跟深色模式；多段日记按详情页的样子排，段落之间是同样的分隔线。
+/// 多段日记按详情页的样子排，段落之间是同样的分隔线。
 struct ShareCard: View {
     let entry: DiaryEntry
     let photo: UIImage
 
-    static let width: CGFloat = 390
-    private static let margin: CGFloat = 18
-
     var body: some View {
-        let inner = Self.width - Self.margin * 2
+        let inner = SharePaper.width - SharePaper.margin * 2
         let ratio = min(max(photo.size.width / max(photo.size.height, 1), 0.75), 1.6)
         VStack(alignment: .leading, spacing: 0) {
             Image(uiImage: photo)
@@ -23,12 +48,12 @@ struct ShareCard: View {
             article
                 .padding(.horizontal, 6)
                 .padding(.top, 22)
-            signature
+            SharePaper.Signature()
                 .padding(.top, 16)
         }
-        .padding(Self.margin)
-        .frame(width: Self.width)
-        .background(Color(red: 0.99, green: 0.985, blue: 0.975))
+        .padding(SharePaper.margin)
+        .frame(width: SharePaper.width)
+        .background(SharePaper.color)
         .environment(\.colorScheme, .light)
     }
 
@@ -64,34 +89,16 @@ struct ShareCard: View {
                 }
             }
             if !entry.tags.isEmpty {
-                TagLine(tags: entry.tags)
+                SharePaper.Tags(tags: entry.tags)
                     .padding(.top, 16)
             }
         }
         .fixedSize(horizontal: false, vertical: true)
     }
 
-    /// 右下角一个小拍立得，代替 App 名。
-    private var signature: some View {
-        BrandMark(width: 16, palette: .light, shadow: false)
-            .opacity(0.8)
-            .frame(maxWidth: .infinity, alignment: .trailing)
-    }
-
     /// 2023年10月31日 周二 · 杉并区
     private var metaLine: String {
         [DiaryDates.fullWithWeekday(entry.displayDate), entry.placeName].compactMap { $0 }.joined(separator: " · ")
-    }
-}
-
-private struct TagLine: View {
-    let tags: [String]
-    @Environment(\.brand) private var brand
-
-    var body: some View {
-        Text(tags.map { "#\($0)#" }.joined(separator: "  "))
-            .font(.footnote.weight(.semibold))
-            .foregroundStyle(brand)
     }
 }
 
@@ -117,7 +124,7 @@ nonisolated struct SharedDiary: Transferable, Sendable {
         guard let photo else { throw CocoaError(.fileReadUnknown) }
         let renderer = ImageRenderer(content: ShareCard(entry: entry, photo: photo).environment(\.brand, brand))
         renderer.scale = 3
-        renderer.proposedSize = ProposedViewSize(width: ShareCard.width, height: nil)
+        renderer.proposedSize = ProposedViewSize(width: SharePaper.width, height: nil)
         guard let data = renderer.uiImage?.jpegData(compressionQuality: 0.9) else { throw CocoaError(.fileWriteUnknown) }
         return data
     }

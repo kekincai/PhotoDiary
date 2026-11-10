@@ -20,7 +20,7 @@ struct EntryCard: View {
                 .overlay(alignment: .topTrailing) {
                     MediaBadge(kind: entry.mediaKind).padding(Metrics.Spacing.m)
                 }
-                .modifier(TransitionSource(id: entry.id, namespace: namespace, cornerRadius: Metrics.Radius.hero))
+                .zoomSource(entry.id, in: namespace, cornerRadius: Metrics.Radius.hero)
 
             VStack(alignment: .leading, spacing: Metrics.Spacing.xs) {
                 Text(metaLine)
@@ -42,7 +42,7 @@ struct EntryCard: View {
                         .foregroundStyle(Color.inkSecondary)
                 }
                 if !entry.tags.isEmpty {
-                    Text(entry.tags.map { "#\($0)#" }.joined(separator: "  "))
+                    Text(entry.tagLine)
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(Color.meta)
                         .padding(.top, 2)
@@ -70,7 +70,6 @@ struct EntryCard: View {
 struct EntryRow: View {
     let entry: DiaryEntry
     var showsSeparator = true
-    var namespace: Namespace.ID?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
@@ -150,6 +149,5 @@ struct EntryRow: View {
             .overlay(alignment: .topTrailing) {
                 MediaBadge(kind: entry.mediaKind).padding(6)
             }
-            .modifier(TransitionSource(id: entry.id, namespace: namespace))
     }
 }

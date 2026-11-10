@@ -24,16 +24,18 @@ final class AssetImages {
     private let manager = PHCachingImageManager()
     private var assets: [String: PHAsset] = [:]
     private let observer = ChangeObserver()
-    /// 解码好的图：键是 “照片|宽|高”，按像素数计成本。
+    /// 解码好的图：键是 “照片|宽|高|裁切方式”，按像素数计成本（同尺寸的 fit 和 fill 是两张不同的图）。
     private let decoded = NSCache<NSString, UIImage>()
     private var decodedKeys: [String: Set<NSString>] = [:]
-    /// 已交给 PHCachingImageManager 预取的 “照片|宽|高”。
+    /// 已交给 PHCachingImageManager 预取的 “照片|宽|高|裁切方式”。
     private var caching: Set<String> = []
     private var mainThreadMisses = 0
     /// 正在后台取的 PHAsset，避免列表连着变两次就取两遍。
     private var warming: Set<String> = []
     /// 已经记过“原图在 iCloud”的照片，每张只记一次。
     fileprivate var notedInCloud: Set<String> = []
+    /// 预取时照片库里没有的照片（已经删了）。日记列表每变一次都会 warm，不必每次都再查一遍；照片库变了再查。
+    private var notFound: Set<String> = []
 
     private init() {
         decoded.totalCostLimit = 160 * 1024 * 1024
@@ -46,12 +48,15 @@ final class AssetImages {
 
     // MARK: 像素尺寸
 
-    /// 按屏幕倍率换算像素，再封顶：最长边不超过 maxPixels。
-    nonisolated static func pixelSize(points: CGSize, scale: CGFloat) -> CGSize {
+    /// 整屏显示的大图（详情页头图、一年回顾的卡片）的封顶：要解原图，慢一些，但放大到整屏不糊。
+    nonisolated static let largePixels: CGFloat = 2048
+
+    /// 按屏幕倍率换算像素，再封顶：最长边不超过 cap（默认 maxPixels）。
+    nonisolated static func pixelSize(points: CGSize, scale: CGFloat, cap: CGFloat = maxPixels) -> CGSize {
         var px = CGSize(width: points.width * scale, height: points.height * scale)
         let longest = max(px.width, px.height)
-        if longest > maxPixels {
-            let k = maxPixels / longest
+        if longest > cap {
+            let k = cap / longest
             px = CGSize(width: (px.width * k).rounded(), height: (px.height * k).rounded())
         }
         return px
@@ -79,7 +84,7 @@ final class AssetImages {
 
     /// 后台一次取齐这些照片的 PHAsset，日记列表一变就调；之后界面上不再查照片库。
     func warm(ids: [String]) {
-        let missing = ids.filter { assets[$0] == nil && !warming.contains($0) }
+        let missing = ids.filter { assets[$0] == nil && !warming.contains($0) && !notFound.contains($0) }
         guard !missing.isEmpty else { return }
         warming.formUnion(missing)
         Task.detached(priority: .utility) {
@@ -101,27 +106,39 @@ final class AssetImages {
                 let shared = AssetImages.shared
                 shared.assets.merge(batch.assets) { _, new in new }
                 shared.warming.subtract(missing)
+                shared.notFound.formUnion(missing.filter { batch.assets[$0] == nil })
                 Log.images.notice("预取 PHAsset \(batch.assets.count, privacy: .public)/\(missing.count, privacy: .public) 张，\(ms, privacy: .public) ms")
             }
         }
     }
 
     /// 照片库变了：只换掉变了的那几张，删掉的拿走，其余缓存照用。内容变了的照片，解码缓存一并作废。
+    /// 逐张问 PHChange 要在后台做：缓存里是全部日记的照片，App 自己每次写入也会触发一次。
     private func apply(_ change: PHChange) {
-        var updated = 0, removed = 0
-        for (id, asset) in assets {
-            guard let details = change.changeDetails(for: asset) else { continue }
-            if details.objectWasDeleted {
-                assets.removeValue(forKey: id)
-                removed += 1
-            } else if let after = details.objectAfterChanges {
-                assets[id] = after
-                updated += 1
+        notFound.removeAll()
+        let snapshot = AssetBatch(assets: assets)
+        let box = ChangeBox(change: change)
+        Task.detached(priority: .utility) {
+            var updated: [String: PHAsset] = [:]
+            var removed = Set<String>(), contentChanged = Set<String>()
+            for (id, asset) in snapshot.assets {
+                guard let details = box.change.changeDetails(for: asset) else { continue }
+                if details.objectWasDeleted {
+                    removed.insert(id)
+                } else if let after = details.objectAfterChanges {
+                    updated[id] = after
+                }
+                if details.assetContentChanged || details.objectWasDeleted { contentChanged.insert(id) }
             }
-            if details.assetContentChanged || details.objectWasDeleted { forgetDecoded(id) }
-        }
-        if updated + removed > 0 {
-            Log.images.notice("照片库变化：更新 \(updated, privacy: .public) 张、移除 \(removed, privacy: .public) 张 PHAsset")
+            guard !updated.isEmpty || !removed.isEmpty || !contentChanged.isEmpty else { return }
+            let batch = AssetBatch(assets: updated)
+            await MainActor.run {
+                let shared = AssetImages.shared
+                shared.assets.merge(batch.assets) { _, new in new }
+                for id in removed { shared.assets.removeValue(forKey: id) }
+                for id in contentChanged { shared.forgetDecoded(id) }
+                Log.images.notice("照片库变化：更新 \(batch.assets.count, privacy: .public) 张、移除 \(removed.count, privacy: .public) 张 PHAsset")
+            }
         }
     }
 
@@ -135,17 +152,17 @@ final class AssetImages {
 
     // MARK: 解码缓存
 
-    private func key(_ id: String, _ px: CGSize) -> NSString {
-        "\(id)|\(Int(px.width))|\(Int(px.height))" as NSString
+    private func key(_ id: String, _ px: CGSize, _ mode: PHImageContentMode) -> String {
+        "\(id)|\(Int(px.width))|\(Int(px.height))|\(mode == .aspectFit ? "fit" : "fill")"
     }
 
     /// 已解码好的图，有就同步给，界面第一帧直接画出来。
-    func cached(_ id: String, pixelSize: CGSize) -> UIImage? {
-        decoded.object(forKey: key(id, pixelSize))
+    func cached(_ id: String, pixelSize: CGSize, contentMode: PHImageContentMode = .aspectFill) -> UIImage? {
+        decoded.object(forKey: key(id, pixelSize, contentMode) as NSString)
     }
 
-    private func remember(_ image: UIImage, id: String, px: CGSize) {
-        let k = key(id, px)
+    private func remember(_ image: UIImage, id: String, px: CGSize, mode: PHImageContentMode) {
+        let k = key(id, px, mode) as NSString
         let cost = Int(image.size.width * image.scale * image.size.height * image.scale * 4)
         decoded.setObject(image, forKey: k, cost: cost)
         decodedKeys[id, default: []].insert(k)
@@ -161,7 +178,7 @@ final class AssetImages {
     func startCaching(ids: [String], pixelSize: CGSize) {
         var fresh: [PHAsset] = []
         for id in ids {
-            let k = "\(id)|\(Int(pixelSize.width))|\(Int(pixelSize.height))"
+            let k = key(id, pixelSize, .aspectFill)
             guard !caching.contains(k), cached(id, pixelSize: pixelSize) == nil, let asset = assets[id] else { continue }
             caching.insert(k)
             fresh.append(asset)
@@ -169,7 +186,7 @@ final class AssetImages {
         guard !fresh.isEmpty else { return }
         if caching.count > 600 {
             manager.stopCachingImagesForAllAssets()
-            caching = Set(fresh.map { "\($0.localIdentifier)|\(Int(pixelSize.width))|\(Int(pixelSize.height))" })
+            caching = Set(fresh.map { key($0.localIdentifier, pixelSize, .aspectFill) })
         }
         let options = PHImageRequestOptions()
         options.deliveryMode = .opportunistic
@@ -183,7 +200,7 @@ final class AssetImages {
     /// 先给低清图，再给清晰图。命中解码缓存时直接给清晰图。
     func images(for id: String, pixelSize: CGSize, contentMode: PHImageContentMode = .aspectFill,
                 allowNetwork: Bool = false) -> AsyncStream<UIImage> {
-        if let hit = cached(id, pixelSize: pixelSize) {
+        if let hit = cached(id, pixelSize: pixelSize, contentMode: contentMode) {
             return AsyncStream { continuation in
                 continuation.yield(hit)
                 continuation.finish()
@@ -207,7 +224,7 @@ final class AssetImages {
                 if let image {
                     continuation.yield(image)
                     if !degraded {
-                        Task { @MainActor in AssetImages.shared.remember(image, id: id, px: pixelSize) }
+                        Task { @MainActor in AssetImages.shared.remember(image, id: id, px: pixelSize, mode: contentMode) }
                     }
                 }
                 if degraded { gotDegraded = true }
@@ -290,8 +307,8 @@ final class AssetImages {
         return box.value
     }
 
-    /// 最近的照片（不读说明），用于“从照片添加”。
-    nonisolated static func recentAssets(limit: Int) -> [(id: String, date: Date?)] {
+    /// 最近的照片（不读说明），用于“从照片添加”。`editableOnly` 时去掉改不了说明的（共享相簿里别人的照片）。
+    nonisolated static func recentAssets(limit: Int, editableOnly: Bool = false) -> [(id: String, date: Date?)] {
         let options = PHFetchOptions()
         options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
         options.includeAssetSourceTypes = LibraryScanner.sourceTypes
@@ -299,7 +316,10 @@ final class AssetImages {
         let result = PHAsset.fetchAssets(with: options)
         var out: [(String, Date?)] = []
         out.reserveCapacity(result.count)
-        result.enumerateObjects { asset, _, _ in out.append((asset.localIdentifier, asset.creationDate)) }
+        result.enumerateObjects { asset, _, _ in
+            if editableOnly, !asset.canPerform(.properties) { return }
+            out.append((asset.localIdentifier, asset.creationDate))
+        }
         return out
     }
 
@@ -333,6 +353,11 @@ final class AssetImages {
 /// PHAsset 不是 Sendable，但它是只读快照，后台取好一批再交给主线程是安全的。
 private struct AssetBatch: @unchecked Sendable {
     let assets: [String: PHAsset]
+}
+
+/// PHChange 只读，交给后台任务去逐张查。
+private struct ChangeBox: @unchecked Sendable {
+    let change: PHChange
 }
 
 /// 系统在后台队列上交过来的对象，交出去之后那边不会再碰它。

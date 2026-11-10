@@ -65,6 +65,16 @@ final class Router {
     /// 快捷指令带来的搜索文字，搜索页接过去后清空。
     var searchRequest: String?
 
+    /// 有编辑器开着、里面写了还没保存的字（表单里的和“从照片添加”里推入的都算）。
+    /// 这时从外面来的链接不顶掉编辑器，等它关掉（保存或放弃）再打开。
+    var editorIsDirty = false {
+        didSet { if oldValue, !editorIsDirty { openDeferredLink() } }
+    }
+    private var deferredLink: (link: DeepLink, latestPhoto: LatestPhoto?)?
+    /// 没保存就被收起的编辑器留下的字（zoom 转场的下拉、捏合返回不经过“放弃这次修改？”）。
+    /// 下次打开同一张照片的同一种编辑器时放回去；只在内存里。
+    private var drafts: [String: String] = [:]
+
     var isAtRoot: Bool {
         switch tab {
         case .journal: journalPath.isEmpty
@@ -106,14 +116,6 @@ final class Router {
         journalPath = [.entry(id)]
     }
 
-    func popCurrent() {
-        switch tab {
-        case .journal: _ = journalPath.popLast()
-        case .review: _ = reviewPath.popLast()
-        case .search: _ = searchPath.popLast()
-        }
-    }
-
     // MARK: 从外面打开（小组件、控制中心、快捷指令）
 
     /// 最新一张照片和它写没写过日记；只有“写最新一张”要用，由调用方去照片库查。
@@ -123,13 +125,20 @@ final class Router {
     }
 
     /// 打开一个 photodiary:// 链接。原来开着的面板先关掉，再到链接指的地方。
+    /// 编辑器里有没保存的字时先记下，等编辑器关掉再打开（程序关掉编辑器不经过“放弃这次修改？”，字会丢）。
     func open(_ link: DeepLink, latestPhoto: LatestPhoto? = nil) {
+        if editorIsDirty {
+            deferredLink = (link, latestPhoto)
+            return
+        }
+        // 照片库里一张照片都没有：“写最新一张”什么也不做，开着的东西也不动。
+        if link == .writeLatest, latestPhoto == nil { return }
         let hadSheet = showAddFromPhotos || showSettings || editor != nil
         showAddFromPhotos = false
         showSettings = false
         switch link {
         case .writeLatest:
-            guard let latestPhoto else { editor = nil; return }
+            guard let latestPhoto else { return }
             let request = EditorRequest(assetID: latestPhoto.id, mode: latestPhoto.hasDiary ? .append : .new)
             if !hadSheet {
                 editor = request
@@ -160,6 +169,29 @@ final class Router {
             searchPath = []
             searchRequest = query
         }
+    }
+
+    private func openDeferredLink() {
+        guard let deferred = deferredLink else { return }
+        deferredLink = nil
+        Task {
+            // 编辑器正在收起：等它收完再开别的面板，同时换会被 SwiftUI 吞掉。
+            try? await Task.sleep(for: .milliseconds(600))
+            open(deferred.link, latestPhoto: deferred.latestPhoto)
+        }
+    }
+
+    // MARK: 草稿
+
+    private static func draftKey(_ assetID: String, _ mode: DiaryStore.WriteMode) -> String { "\(mode):\(assetID)" }
+
+    func saveDraft(_ text: String, for assetID: String, mode: DiaryStore.WriteMode) {
+        drafts[Self.draftKey(assetID, mode)] = text
+    }
+
+    /// 取出并清掉这张照片的草稿。
+    func takeDraft(for assetID: String, mode: DiaryStore.WriteMode) -> String? {
+        drafts.removeValue(forKey: Self.draftKey(assetID, mode))
     }
 
     // MARK: 标签栏收起

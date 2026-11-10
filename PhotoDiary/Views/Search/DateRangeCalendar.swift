@@ -91,30 +91,13 @@ private struct RangeMonthGrid: View {
     @Environment(DiaryStore.self) private var store
     @Environment(\.brand) private var brand
 
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 2), count: 7)
-
     var body: some View {
-        let cal = Calendar.diary
-        let leading = cal.leadingBlanks(before: firstDay)
-        let count = cal.range(of: .day, in: .month, for: firstDay)?.count ?? 30
-        let days = (1...count).map { DayStamp(cal.date(byAdding: .day, value: $0 - 1, to: firstDay)!) }
-        let total = days.reduce(0) { $0 + store.entries(on: $1).count }
-
-        VStack(alignment: .leading, spacing: 12) {
-            MonthHeading(date: firstDay, count: total == 0 ? nil : total)
-                .padding(.horizontal, 16)
-            LazyVGrid(columns: columns, spacing: 2) {
-                ForEach(0..<leading, id: \.self) { _ in Color.clear.aspectRatio(1, contentMode: .fit).accessibilityHidden(true) }
-                ForEach(days, id: \.self) { day in
-                    Button { select(day) } label: { cell(day) }
-                        .buttonStyle(.press)
-                        .accessibilityLabel(label(day))
-                        .accessibilityValue(value(day))
-                        .accessibilityAddTraits(isEndpoint(day) ? .isSelected : [])
-                }
-            }
-            .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
-            .padding(.horizontal, 4)
+        MonthFrame(firstDay: firstDay) { day in
+            Button { select(day) } label: { cell(day) }
+                .buttonStyle(.press)
+                .accessibilityLabel(label(day))
+                .accessibilityValue(value(day))
+                .accessibilityAddTraits(isEndpoint(day) ? .isSelected : [])
         }
     }
 
@@ -146,7 +129,7 @@ private struct RangeMonthGrid: View {
         let first = store.entries(on: day).first
         let selected = inRange(day)
         let endpoint = isEndpoint(day)
-        let shape = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        let shape = RoundedRectangle(cornerRadius: Metrics.Radius.thumb, style: .continuous)
         return Color.clear
             .aspectRatio(1, contentMode: .fit)
             .overlay {

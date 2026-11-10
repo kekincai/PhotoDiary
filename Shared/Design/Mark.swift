@@ -7,7 +7,6 @@ import SwiftUI
 // 图形有两个“进度”：照片显影（0 = 一片乳白，1 = 完整的画面）和白边上的字写到哪里（0…1）。
 
 nonisolated enum MarkGeometry {
-    static let canvas: CGFloat = 1024
     /// 整张拍立得微微左倾。
     static let tilt: Angle = .degrees(-6)
 

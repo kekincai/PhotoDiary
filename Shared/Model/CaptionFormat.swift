@@ -9,9 +9,6 @@ nonisolated struct DiarySegment: Hashable, Codable, Sendable {
 nonisolated struct ParsedCaption: Hashable, Sendable {
     var segments: [DiarySegment]
     var tags: [String]
-
-    /// 至少有一段带写作时间行，才算“日记”格式。
-    var hasDateLine: Bool { segments.contains { $0.date != nil } }
 }
 
 /// 照片说明的纯文本格式。说明是唯一正本，这里只负责读和按规则拼接，
@@ -63,15 +60,9 @@ nonisolated enum CaptionFormat {
         }
         flush(date: nil)
 
-        // 只有一个日期行、没有正文的段落合并进前一段，避免显示空段。
-        segments = segments.reduce(into: []) { result, segment in
-            if segment.text.isEmpty, var last = result.last, last.date == nil {
-                last.date = segment.date
-                result[result.count - 1] = last
-            } else if !segment.text.isEmpty {
-                result.append(segment)
-            }
-        }
+        // 只有日期行、没有正文的段落不算一段（丢掉，它的日期也不算写作日期），避免显示空段。
+        // 例如“正文\n— 2026.10.31\n— 2026.11.02”：第二个日期行前面没有正文，不算 11 月 2 日写过。
+        segments.removeAll { $0.text.isEmpty }
         return ParsedCaption(segments: segments, tags: tags(in: caption))
     }
 

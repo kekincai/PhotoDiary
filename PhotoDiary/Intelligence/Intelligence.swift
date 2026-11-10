@@ -66,10 +66,11 @@ final class Intelligence {
 
     /// 输出语言：跟界面语言。
     static var languageName: String {
+        // AppLanguage.current 已经解析过，不会是“跟随系统”。
         switch AppLanguage.current {
-        case .chinese, .system: "Simplified Chinese"
         case .japanese: "Japanese"
         case .english: "English"
+        default: "Simplified Chinese"
         }
     }
 }

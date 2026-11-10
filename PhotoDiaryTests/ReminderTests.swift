@@ -29,9 +29,11 @@ struct ReminderPlanTests {
         #expect(items[3].date == at(21, day: 10))
     }
 
-    @Test func noPhotosTodaySkipsToday() {
-        let items = plan(now: at(18), photos: 0, wrote: false)
-        #expect(items.map(\.dayOffset) == [1, 2, 3])
+    /// 早上打开 App 时今天还没拍：照样排今天的（通用文字），之后拍了照片不会唤醒 App 重排。
+    @Test func noPhotosYetTodayStillGetsGenericReminder() {
+        let items = plan(now: at(8), photos: 0, wrote: false)
+        #expect(items.map(\.dayOffset) == [0, 1, 2, 3])
+        #expect(items.first?.photoCount == nil)
     }
 
     @Test func alreadyWroteTodaySkipsToday() {

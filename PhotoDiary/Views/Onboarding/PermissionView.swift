@@ -79,15 +79,13 @@ struct PermissionView: View {
         .frame(maxWidth: .infinity)
     }
 
-    /// 和 App 图标一样的书签，放在主题色的圆角方块上。
+    /// 和 App 图标一样的拍立得，放在图标的底色上（不用主题色）。
     private var icon: some View {
         let palette: MarkPalette = colorScheme == .dark ? .dark : .light
         return BrandMark(width: 40, palette: palette)
             .frame(width: 88, height: 88)
-            .background(
-                LinearGradient(colors: [brand.opacity(0.85), brand], startPoint: .top, endPoint: .bottom),
-                in: .rect(cornerRadius: 20, style: .continuous))
-            .shadow(color: brand.opacity(0.3), radius: 16, y: 8)
+            .background(palette.background, in: .rect(cornerRadius: 20, style: .continuous))
+            .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
             .accessibilityHidden(true)
     }
 
@@ -95,7 +93,7 @@ struct PermissionView: View {
         HStack(alignment: .top, spacing: Metrics.Spacing.l) {
             Image(systemName: symbol)
                 .font(.title)
-                .foregroundStyle(brand)
+                .foregroundStyle(Color.ink)
                 .frame(minWidth: 40, minHeight: 40)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
